@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 export default async function HomePage() {

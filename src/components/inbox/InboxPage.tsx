@@ -1,7 +1,7 @@
 'use client';
+import type { Share } from '@/types/database';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function InboxPage({ shares }: { shares: any[] }) {
+export default function InboxPage({ shares }: { shares: Share[] }) {
   return (
     <div className="px-4 pt-4">
       <h1 className="text-xl font-bold text-slate-900 mb-4">Posteingang</h1>

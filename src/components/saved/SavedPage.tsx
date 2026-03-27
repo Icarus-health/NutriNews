@@ -1,7 +1,9 @@
 'use client';
+import type { Collection } from '@/types/database';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function SavedPage({ bookmarks, collections }: { bookmarks: any[]; collections: any[] }) {
+type Bookmark = { news_card_id: string };
+
+export default function SavedPage({ bookmarks, collections }: { bookmarks: Bookmark[]; collections: Collection[] }) {
   return (
     <div className="px-4 pt-4">
       <h1 className="text-xl font-bold text-slate-900 mb-4">Gespeichert</h1>

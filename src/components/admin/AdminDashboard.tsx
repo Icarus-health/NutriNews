@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import type { NewsCard } from '@/types/database';
 
 interface Props {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  drafts: any[];
+  drafts: NewsCard[];
 }
 
 export default function AdminDashboard({ drafts }: Props) {
@@ -39,7 +39,7 @@ export default function AdminDashboard({ drafts }: Props) {
       {tab === 'drafts' && (
         <div className="space-y-2">
           {drafts.length === 0 && <p className="text-slate-400 text-sm">Keine Entwürfe vorhanden.</p>}
-          {drafts.map((d: any) => (
+          {drafts.map((d) => (
             <div key={d.id} className="bg-white rounded-xl p-3 border border-slate-100">
               <p className="font-semibold text-sm text-slate-800">{d.headline}</p>
               <p className="text-xs text-slate-400 mt-1">{d.category_main} · {d.evidence_level}</p>
