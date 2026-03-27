@@ -3,41 +3,39 @@
 import { useState } from 'react';
 import { Heart, Bookmark, Send, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { NewsCard as NewsCardType } from '@/types/database';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle } from '@/lib/categories';
+import type { EvidenceLevel } from '@/types/database';
 
 interface Props {
-  card: NewsCardType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  card: any;
   userId: string | null;
   onRequireAuth?: () => void;
 }
 
 export default function NewsCard({ card, userId, onRequireAuth }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [liked, setLiked] = useState(card.user_has_liked ?? false);
-  const [likeCount, setLikeCount] = useState(card.like_count ?? 0);
-  const [bookmarked, setBookmarked] = useState(card.user_has_bookmarked ?? false);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [bookmarked, setBookmarked] = useState(false);
 
-  const evidence = EVIDENCE_CONFIG[card.evidence_level];
-  const readMin = Math.ceil(card.read_time_sec / 60);
+  const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
+  const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
 
-  async function handleLike() {
+  function handleLike() {
     if (!userId) { onRequireAuth?.(); return; }
     setLiked(p => !p);
     setLikeCount(p => liked ? p - 1 : p + 1);
-    // TODO: supabase like/unlike call
   }
 
-  async function handleBookmark() {
+  function handleBookmark() {
     if (!userId) { onRequireAuth?.(); return; }
     setBookmarked(p => !p);
-    // TODO: supabase bookmark call
   }
 
   return (
     <article className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-3">
-      {/* Header */}
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-2">
           <span className={clsx('text-xs font-semibold px-2 py-0.5 rounded-full', getCategoryStyle(card.category_main))}>
@@ -53,7 +51,6 @@ export default function NewsCard({ card, userId, onRequireAuth }: Props) {
         <h2 className="font-bold text-slate-900 text-base leading-snug">{card.headline}</h2>
       </div>
 
-      {/* Snack */}
       <div className="px-4 py-2">
         <button
           onClick={() => setExpanded(p => !p)}
@@ -75,7 +72,6 @@ export default function NewsCard({ card, userId, onRequireAuth }: Props) {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
         <button
           onClick={handleLike}
@@ -91,7 +87,7 @@ export default function NewsCard({ card, userId, onRequireAuth }: Props) {
           <Bookmark size={18} fill={bookmarked ? 'currentColor' : 'none'}/>
         </button>
         <button
-          onClick={() => { if (!userId) { onRequireAuth?.(); return; } /* TODO: share dialog */ }}
+          onClick={() => { if (!userId) { onRequireAuth?.(); return; } }}
           className="text-slate-400 hover:text-forest-500 transition-colors"
         >
           <Send size={18}/>

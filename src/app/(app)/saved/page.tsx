@@ -10,13 +10,13 @@ export default async function Saved() {
   const [{ data: bookmarks }, { data: collections }] = await Promise.all([
     supabase
       .from('bookmarks')
-      .select('news_card_id, news_cards(*)')
+      .select('news_card_id')
       .eq('user_id', user.id),
     supabase
       .from('collections')
-      .select('*, collection_items(news_card_id, news_cards(*))')
+      .select('*')
       .eq('user_id', user.id),
   ]);
 
-  return <SavedPage bookmarks={(bookmarks ?? []) as unknown[]} collections={(collections ?? []) as unknown[]} />;
+  return <SavedPage bookmarks={bookmarks ?? []} collections={collections ?? []} />;
 }

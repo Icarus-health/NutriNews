@@ -1,14 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
-import type { NewsCard } from '@/types/database';
 
 export const revalidate = 60;
 
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const { data: newsCardsData } = await supabase
+  const { data: newsCards } = await supabase
     .from('news_cards')
     .select('*')
     .eq('status', 'published')
@@ -20,7 +19,7 @@ export default async function HomePage() {
   return (
     <div>
       <HomeHeader user={user} />
-      <NewsFeed initialCards={(newsCardsData ?? []) as NewsCard[]} userId={user?.id ?? null} />
+      <NewsFeed initialCards={newsCards ?? []} userId={user?.id ?? null} />
     </div>
   );
 }

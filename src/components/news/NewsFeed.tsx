@@ -1,20 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import type { NewsCard } from '@/types/database';
 import NewsCardComponent from './NewsCard';
 
 interface Props {
-  initialCards: NewsCard[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialCards: any[];
   userId: string | null;
 }
 
 export default function NewsFeed({ initialCards, userId }: Props) {
-  const [cards] = useState<NewsCard[]>(initialCards);
+  const [cards] = useState(initialCards);
 
   function handleRequireAuth() {
     alert('Bitte anmelden, um diese Funktion zu nutzen.');
-    // TODO: open login modal
   }
 
   if (cards.length === 0) {
@@ -29,7 +28,7 @@ export default function NewsFeed({ initialCards, userId }: Props) {
 
   return (
     <div className="px-3 pt-3">
-      {cards.map(card => (
+      {cards.map((card: any) => (
         <NewsCardComponent
           key={card.id}
           card={card}

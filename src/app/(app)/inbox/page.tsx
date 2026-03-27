@@ -13,5 +13,5 @@ export default async function Inbox() {
     .eq('receiver_id', user.id)
     .order('created_at', { ascending: false });
 
-  return <InboxPage shares={(shares ?? []) as unknown[]} />;
+  return <InboxPage shares={shares ?? []} />;
 }
