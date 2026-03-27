@@ -18,5 +18,5 @@ export default async function Saved() {
       .eq('user_id', user.id),
   ]);
 
-  return <SavedPage bookmarks={bookmarks ?? []} collections={collections ?? []} />;
+  return <SavedPage bookmarks={(bookmarks ?? []) as unknown[]} collections={(collections ?? []) as unknown[]} />;
 }
