@@ -12,13 +12,14 @@ export default async function Saved() {
   const [{ data: bookmarks }, { data: collections }] = await Promise.all([
     supabase
       .from('bookmarks')
-      .select('news_card_id')
-      .eq('user_id', user.id),
+      .select('news_card_id, news_card:news_cards(*)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
     supabase
       .from('collections')
       .select('*')
       .eq('user_id', user.id),
   ]);
 
-  return <SavedPage bookmarks={bookmarks ?? []} collections={collections ?? []} />;
+  return <SavedPage bookmarks={(bookmarks as never) ?? []} collections={collections ?? []} />;
 }

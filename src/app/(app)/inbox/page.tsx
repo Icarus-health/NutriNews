@@ -11,9 +11,9 @@ export default async function Inbox() {
 
   const { data: shares } = await supabase
     .from('shares')
-    .select('*')
+    .select('*, news_card:news_cards(*), sender:profiles!sender_id(*)')
     .eq('receiver_id', user.id)
     .order('created_at', { ascending: false });
 
-  return <InboxPage shares={shares ?? []} />;
+  return <InboxPage shares={(shares as never) ?? []} />;
 }
