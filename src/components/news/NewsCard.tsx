@@ -5,11 +5,10 @@ import { Heart, Bookmark, Send, ChevronDown, ChevronUp, ExternalLink } from 'luc
 import { clsx } from 'clsx';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle } from '@/lib/categories';
-import type { EvidenceLevel } from '@/types/database';
+import type { EvidenceLevel, NewsCard as NewsCardType } from '@/types/database';
 
 interface Props {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  card: any;
+  card: NewsCardType;
   userId: string | null;
   onRequireAuth?: () => void;
 }

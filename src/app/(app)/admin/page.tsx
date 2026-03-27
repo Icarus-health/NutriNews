@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Admin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -9,11 +11,11 @@ export default async function Admin() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('*')
     .eq('id', user.id)
     .single();
 
-  if ((profile as { role: string } | null)?.role !== 'admin') redirect('/');
+  if (profile?.role !== 'admin') redirect('/');
 
   const { data: drafts } = await supabase
     .from('news_cards')

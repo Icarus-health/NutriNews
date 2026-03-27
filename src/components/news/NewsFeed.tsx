@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import NewsCardComponent from './NewsCard';
+import type { NewsCard } from '@/types/database';
 
 interface Props {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  initialCards: any[];
+  initialCards: NewsCard[];
   userId: string | null;
 }
 
@@ -28,7 +28,7 @@ export default function NewsFeed({ initialCards, userId }: Props) {
 
   return (
     <div className="px-3 pt-3">
-      {cards.map((card: any) => (
+      {cards.map((card) => (
         <NewsCardComponent
           key={card.id}
           card={card}

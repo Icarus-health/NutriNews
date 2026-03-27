@@ -2,9 +2,9 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import type { Profile } from '@/types/database';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function ProfilePage({ profile }: { profile: any }) {
+export default function ProfilePage({ profile }: { profile: Profile | null }) {
   const router = useRouter();
   const supabase = createClient();
 
