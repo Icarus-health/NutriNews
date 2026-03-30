@@ -9,7 +9,7 @@ import type { NewsCard, Collection } from '@/types/database';
 interface Props {
   cards: NewsCard[];
   collections: Collection[];
-  userId: string;
+  userId: string | null;
 }
 
 export default function SavedPage({ cards, collections, userId }: Props) {

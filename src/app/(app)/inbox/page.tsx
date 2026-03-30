@@ -1,13 +1,22 @@
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import InboxPage from '@/components/inbox/InboxPage';
+import LoginPrompt from '@/components/auth/LoginPrompt';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Inbox() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+
+  if (!user) {
+    return (
+      <LoginPrompt
+        title="Posteingang"
+        description="Melde dich an, um von Kollegen geteilte News zu empfangen."
+        icon="📨"
+      />
+    );
+  }
 
   const { data: shares } = await supabase
     .from('shares')
