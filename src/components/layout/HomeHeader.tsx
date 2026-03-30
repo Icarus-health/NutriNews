@@ -49,57 +49,66 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
   }
 
   return (
-    <header className="sticky top-0 z-10 bg-white border-b border-slate-200 safe-top">
+    <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 safe-top">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-forest-700 flex items-center justify-center">
-            <img src="/icon.svg" alt="" className="w-5 h-5" />
+      <div className="flex items-center justify-between px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-forest-600 to-forest-800 flex items-center justify-center shadow-sm">
+            <span className="text-white font-bold text-[13px] tracking-tight">NN</span>
           </div>
-          <span className="font-bold text-forest-800 text-lg">Nutri News</span>
+          <div>
+            <h1 className="font-bold text-slate-900 text-[17px] tracking-[-0.02em] leading-none">
+              NutriNews
+            </h1>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              {user ? user.email?.split('@')[0] : 'Evidenzbasiert'}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowSearch(s => !s)}
-            className={clsx('p-1.5 rounded-lg transition-colors', showSearch ? 'bg-forest-100 text-forest-700' : 'text-slate-400 hover:text-slate-600')}
-          >
-            <Search size={20} />
-          </button>
-          {user && (
-            <span className="text-xs text-slate-400">{user.email?.split('@')[0]}</span>
+        <button
+          onClick={() => setShowSearch(s => !s)}
+          className={clsx(
+            'w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200',
+            showSearch
+              ? 'bg-forest-100 text-forest-700'
+              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           )}
-        </div>
+        >
+          <Search size={18} strokeWidth={2} />
+        </button>
       </div>
 
       {/* Search bar */}
       {showSearch && (
-        <div className="px-4 pb-3 animate-fade-in">
+        <div className="px-5 pb-3 animate-fade-in">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="News durchsuchen..."
               value={query}
               onChange={e => handleSearch(e.target.value)}
               autoFocus
-              className="w-full pl-9 pr-9 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-forest-500 focus:bg-white"
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-100 rounded-xl text-[14px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:bg-white transition-all border border-transparent focus:border-forest-200"
             />
             {query && (
-              <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <X size={16} />
+              <button onClick={clearSearch} className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-300 flex items-center justify-center hover:bg-slate-400 transition-colors">
+                <X size={11} className="text-white" strokeWidth={3} />
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Category chips - horizontally scrollable */}
-      <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
+      {/* Category chips */}
+      <div className="flex gap-2 px-5 pb-3 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => selectCategory(null)}
           className={clsx(
-            'flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors',
-            !activeCategory ? 'bg-forest-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200',
+            !activeCategory
+              ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
+              : 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-slate-200'
           )}
         >
           Alle
@@ -109,8 +118,10 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
             key={cat.id}
             onClick={() => selectCategory(activeCategory === cat.id ? null : cat.id)}
             className={clsx(
-              'flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors whitespace-nowrap',
-              activeCategory === cat.id ? 'bg-forest-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap',
+              activeCategory === cat.id
+                ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-slate-200'
             )}
           >
             {cat.label}
