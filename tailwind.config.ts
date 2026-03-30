@@ -35,7 +35,15 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: [
+          '-apple-system', 'BlinkMacSystemFont', 'Inter',
+          'SF Pro Display', 'SF Pro Text',
+          'system-ui', 'Segoe UI', 'sans-serif',
+        ],
+      },
+      borderRadius: {
+        '2xl': '16px',
+        '3xl': '20px',
       },
     },
   },

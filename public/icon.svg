@@ -1,16 +1,60 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#2a8234"/>
-  <g transform="translate(256,240)">
-    <!-- Leaf shape -->
-    <ellipse cx="0" cy="-20" rx="80" ry="120" fill="#fff" transform="rotate(-15)"/>
-    <line x1="0" y1="-140" x2="0" y2="60" stroke="#2a8234" stroke-width="6" transform="rotate(-15)"/>
-    <line x1="0" y1="-100" x2="-30" y2="-70" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
-    <line x1="0" y1="-60" x2="-25" y2="-35" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
-    <line x1="0" y1="-20" x2="-20" y2="0" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
-    <line x1="0" y1="-100" x2="30" y2="-70" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
-    <line x1="0" y1="-60" x2="25" y2="-35" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
-    <line x1="0" y1="-20" x2="20" y2="0" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
+  <!-- Background rounded square for PWA icon -->
+  <rect width="512" height="512" rx="96" fill="#1a4420"/>
+
+  <!-- Outer ring -->
+  <circle cx="256" cy="240" r="176" fill="none" stroke="#5cc165" stroke-width="5" opacity="0.7"/>
+
+  <!-- Inner filled circle -->
+  <circle cx="256" cy="240" r="168" fill="#236829"/>
+
+  <!-- Hummingbird silhouette - clean geometric style -->
+  <g transform="translate(256, 235) scale(1.1)">
+    <!-- Body core -->
+    <path d="M-5,15 Q-20,-25 -5,-55 Q5,-70 15,-55 Q25,-30 10,20 Q5,35 -5,15Z"
+          fill="white" opacity="0.95"/>
+
+    <!-- Head -->
+    <ellipse cx="5" cy="-58" rx="18" ry="16" fill="white" opacity="0.95"/>
+
+    <!-- Beak - long thin needle pointing right-up -->
+    <path d="M20,-62 L72,-78 L20,-66Z" fill="white" opacity="0.9"/>
+
+    <!-- Eye -->
+    <circle cx="10" cy="-60" r="3.5" fill="#236829"/>
+
+    <!-- Left wing - elegant swept shape -->
+    <path d="M-8,-25
+             C-35,-55 -85,-95 -95,-65
+             C-100,-45 -75,-15 -10,-8Z"
+          fill="white" opacity="0.75"/>
+    <path d="M-8,-20
+             C-30,-40 -80,-75 -88,-50
+             C-92,-35 -65,-10 -8,-5Z"
+          fill="white" opacity="0.95"/>
+
+    <!-- Right wing - spread upward -->
+    <path d="M8,-30
+             C30,-55 75,-90 82,-62
+             C86,-45 60,-18 12,-12Z"
+          fill="white" opacity="0.75"/>
+    <path d="M8,-25
+             C25,-45 68,-72 74,-52
+             C78,-38 55,-15 10,-8Z"
+          fill="white" opacity="0.95"/>
+
+    <!-- Tail feathers - three elegant lines -->
+    <path d="M-8,28 C-25,65 -40,95 -32,98 C-25,99 -15,72 -2,32Z"
+          fill="white" opacity="0.8"/>
+    <path d="M0,30 C-5,70 -8,100 0,102 C8,100 5,70 2,30Z"
+          fill="white" opacity="0.95"/>
+    <path d="M8,28 C20,65 32,92 28,95 C22,96 15,68 5,30Z"
+          fill="white" opacity="0.8"/>
   </g>
-  <!-- "NN" text -->
-  <text x="256" y="430" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="80" fill="#fff" letter-spacing="-2">NN</text>
+
+  <!-- App name -->
+  <text x="256" y="450" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+        font-weight="700" font-size="40" fill="white" opacity="0.85"
+        letter-spacing="2">NutriNews</text>
 </svg>
