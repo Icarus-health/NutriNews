@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw } from 'lucide-react';
 import CommentSection from './CommentSection';
+import CardVerification from './CardVerification';
 import { clsx } from 'clsx';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
@@ -242,6 +243,14 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
               </button>
               <span className="text-[11px] text-slate-300 font-medium tabular-nums">{readMin} Min</span>
             </div>
+
+            {/* Community verification */}
+            <CardVerification
+              newsCardId={card.id}
+              userId={userId}
+              counts={{ praxisrelevant: 0, fachlich_korrekt: 0, korrektur_noetig: 0, quelle_zweifelhaft: 0 }}
+              onRequireAuth={onRequireAuth}
+            />
 
             {/* Comments (front side, below card visually) */}
             {showComments && (

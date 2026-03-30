@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Bookmark, Inbox, User, ShieldCheck } from 'lucide-react';
+import { Home, Bookmark, Users, User, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const navItems = [
-  { href: '/',        label: 'Home',        icon: Home },
-  { href: '/saved',   label: 'Gespeichert', icon: Bookmark },
-  { href: '/inbox',   label: 'Posteingang', icon: Inbox },
-  { href: '/profile', label: 'Profil',      icon: User },
+  { href: '/',           label: 'Home',       icon: Home },
+  { href: '/community',  label: 'Community',  icon: Users },
+  { href: '/saved',      label: 'Gespeichert', icon: Bookmark },
+  { href: '/profile',    label: 'Profil',     icon: User },
 ];
 
 export default function BottomNav({ isAdmin = false }: { isAdmin?: boolean }) {
