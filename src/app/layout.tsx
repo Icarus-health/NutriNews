@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import UXProvider from '@/components/providers/UXProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -28,14 +29,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de">
+    <html lang="de" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body className="bg-slate-50 text-slate-900 font-sans antialiased">
-        {children}
+      <body className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans antialiased">
+        <UXProvider>
+          {children}
+        </UXProvider>
       </body>
     </html>
   );

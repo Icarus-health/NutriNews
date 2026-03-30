@@ -27,7 +27,7 @@ export default function LayPressFeed({ cards, userId }: Props) {
       <div className="flex items-center gap-2 mb-3 px-1">
         <span className="text-lg">📰</span>
         <div>
-          <h2 className="text-[14px] font-bold text-slate-800">
+          <h2 className="text-[14px] font-bold text-slate-800 dark:text-slate-200">
             Was Ihre Patienten gerade lesen
           </h2>
           <p className="text-[11px] text-slate-400">
@@ -49,9 +49,9 @@ export default function LayPressFeed({ cards, userId }: Props) {
 
       {/* Separator */}
       <div className="flex items-center gap-3 py-2 px-1 mb-2">
-        <div className="flex-1 h-px bg-slate-200" />
+        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
         <span className="text-[11px] text-slate-400 font-medium">Fachnews</span>
-        <div className="flex-1 h-px bg-slate-200" />
+        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
       </div>
 
       {shareCardId && (

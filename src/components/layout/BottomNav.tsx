@@ -16,7 +16,7 @@ export default function BottomNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 glass border-t border-slate-200/60 safe-bottom max-w-2xl mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 glass border-t border-slate-200/60 dark:border-slate-700/60 safe-bottom max-w-2xl mx-auto">
       <div className="flex">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
@@ -27,7 +27,7 @@ export default function BottomNav({ isAdmin = false }: { isAdmin?: boolean }) {
               className={clsx(
                 'flex-1 flex flex-col items-center pt-2 pb-1.5 text-[10px] gap-0.5 transition-all duration-200',
                 active
-                  ? 'text-forest-700 font-semibold'
+                  ? 'text-forest-700 dark:text-forest-400 font-semibold'
                   : 'text-slate-400 hover:text-slate-500 active:text-slate-500'
               )}
             >
@@ -42,7 +42,7 @@ export default function BottomNav({ isAdmin = false }: { isAdmin?: boolean }) {
             className={clsx(
               'flex-1 flex flex-col items-center pt-2 pb-1.5 text-[10px] gap-0.5 transition-all duration-200',
               pathname === '/admin'
-                ? 'text-forest-700 font-semibold'
+                ? 'text-forest-700 dark:text-forest-400 font-semibold'
                 : 'text-slate-400 hover:text-slate-500'
             )}
           >

@@ -81,15 +81,15 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
   }
 
   return (
-    <div className="border-t border-slate-100 px-4 py-3">
-      <p className="text-xs font-semibold text-slate-500 mb-2">
+    <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-3">
+      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
         Kommentare {!loading && `(${comments.length})`}
       </p>
 
       {loading ? (
         <div className="flex gap-2 items-center py-2">
-          <div className="w-6 h-6 rounded-full bg-slate-100 animate-pulse" />
-          <div className="h-3 w-32 bg-slate-100 rounded animate-pulse" />
+          <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 animate-pulse" />
+          <div className="h-3 w-32 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
         </div>
       ) : comments.length === 0 ? (
         <p className="text-xs text-slate-400 py-1">Noch keine Kommentare.</p>
@@ -97,12 +97,12 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
         <div className="space-y-2 mb-3 max-h-60 overflow-y-auto">
           {comments.map(c => (
             <div key={c.id} className="flex gap-2 group">
-              <div className="w-6 h-6 rounded-full bg-forest-100 flex items-center justify-center text-xs font-bold text-forest-700 flex-shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center text-xs font-bold text-forest-700 dark:text-forest-400 flex-shrink-0 mt-0.5">
                 {(c.profiles?.full_name || '?')[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-semibold text-slate-700">{c.profiles?.full_name || 'Anonym'}</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{c.profiles?.full_name || 'Anonym'}</span>
                   <span className="text-xs text-slate-400">{formatTime(c.created_at)}</span>
                   {c.user_id === userId && (
                     <button
@@ -113,7 +113,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
                     </button>
                   )}
                 </div>
-                <p className="text-sm text-slate-600">{c.body}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{c.body}</p>
               </div>
             </div>
           ))}
@@ -128,7 +128,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
             value={body}
             onChange={e => setBody(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            className="flex-1 border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-forest-500"
           />
           <button
             onClick={handleSubmit}

@@ -71,8 +71,8 @@ export default function CardVerification({ newsCardId, userId, counts, onRequire
     <div className="px-5 pb-3" onClick={e => e.stopPropagation()}>
       {/* Retracted warning */}
       {isRetracted && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2">
-          <p className="text-[11px] text-red-600 font-semibold">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2 mb-2">
+          <p className="text-[11px] text-red-600 dark:text-red-400 font-semibold">
             ⚠ Diese Karte wurde von der Community zur Überprüfung markiert.
           </p>
         </div>
@@ -80,8 +80,8 @@ export default function CardVerification({ newsCardId, userId, counts, onRequire
 
       {/* Therapist-recommended badge */}
       {showBadge && (
-        <div className="bg-forest-50 border border-forest-200 rounded-xl px-3 py-1.5 mb-2">
-          <p className="text-[11px] text-forest-700 font-semibold">
+        <div className="bg-forest-50 dark:bg-forest-900/20 border border-forest-200 dark:border-forest-800 rounded-xl px-3 py-1.5 mb-2">
+          <p className="text-[11px] text-forest-700 dark:text-forest-400 font-semibold">
             ✓ Von {totalPositive} Therapeuten als praxisrelevant bewertet
           </p>
         </div>
@@ -100,8 +100,8 @@ export default function CardVerification({ newsCardId, userId, counts, onRequire
               className={clsx(
                 'flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors',
                 count > 0
-                  ? `${action.activeColor} bg-slate-50`
-                  : 'text-slate-400 hover:bg-slate-50'
+                  ? `${action.activeColor} bg-slate-50 dark:bg-slate-700`
+                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
               )}
             >
               <Icon size={12} />
@@ -122,7 +122,7 @@ export default function CardVerification({ newsCardId, userId, counts, onRequire
               onChange={e => setReason(e.target.value)}
               placeholder="Begründung (Pflicht)..."
               autoFocus
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              className="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-[12px] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
             />
             <button
               type="submit"

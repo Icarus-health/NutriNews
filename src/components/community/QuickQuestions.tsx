@@ -105,12 +105,12 @@ export default function QuickQuestions({ questions, userId }: Props) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpCircle size={18} className="text-forest-600" />
-          <h2 className="font-bold text-[15px] text-slate-800">Schnellfragen</h2>
+          <h2 className="font-bold text-[15px] text-slate-800 dark:text-slate-200">Schnellfragen</h2>
         </div>
         {userId && (
           <button
             onClick={() => setShowForm(f => !f)}
-            className="text-[12px] font-semibold text-forest-700 bg-forest-50 px-3 py-1.5 rounded-full hover:bg-forest-100 transition-colors"
+            className="text-[12px] font-semibold text-forest-700 dark:text-forest-400 bg-forest-50 dark:bg-forest-900/30 px-3 py-1.5 rounded-full hover:bg-forest-100 dark:hover:bg-forest-900/50 transition-colors"
           >
             + Frage stellen
           </button>
@@ -119,11 +119,11 @@ export default function QuickQuestions({ questions, userId }: Props) {
 
       {/* New question form */}
       {showForm && (
-        <form onSubmit={handleSubmitQuestion} className="bg-white rounded-2xl border border-slate-100 p-4 mb-4 animate-fade-in">
+        <form onSubmit={handleSubmitQuestion} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 mb-4 animate-fade-in">
           <select
             value={newCategory}
             onChange={e => setNewCategory(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:ring-2 focus:ring-forest-500/40"
+            className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-[13px] text-slate-900 dark:text-slate-100 mb-2 focus:outline-none focus:ring-2 focus:ring-forest-500/40"
           >
             {CATEGORIES.map(c => (
               <option key={c.id} value={c.id}>{c.label}</option>
@@ -134,7 +134,7 @@ export default function QuickQuestions({ questions, userId }: Props) {
             onChange={e => setNewBody(e.target.value)}
             placeholder="Deine Fachfrage (ohne Patientenbezug)..."
             rows={3}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:ring-2 focus:ring-forest-500/40 resize-none"
+            className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-[13px] text-slate-900 dark:text-slate-100 mb-2 focus:outline-none focus:ring-2 focus:ring-forest-500/40 resize-none"
           />
           <button
             type="submit"
@@ -154,17 +154,17 @@ export default function QuickQuestions({ questions, userId }: Props) {
           </p>
         )}
         {localQuestions.map(q => (
-          <div key={q.id} className="bg-white rounded-2xl border border-slate-100 p-4">
+          <div key={q.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
             {/* Category badge */}
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-50 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                 {q.category}
               </span>
               <span className="text-[10px] text-slate-300">{timeAgo(q.created_at)}</span>
             </div>
 
             {/* Question body */}
-            <p className="text-[13px] text-slate-800 leading-relaxed mb-3">
+            <p className="text-[13px] text-slate-800 dark:text-slate-200 leading-relaxed mb-3">
               &ldquo;{q.body}&rdquo;
             </p>
 
@@ -198,16 +198,16 @@ export default function QuickQuestions({ questions, userId }: Props) {
 
             {/* Expanded: answers + answer form */}
             {expandedId === q.id && (
-              <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in">
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 animate-fade-in">
                 {(answers[q.id] ?? []).map(a => (
-                  <div key={a.id} className="mb-2 bg-slate-50 rounded-xl px-3 py-2">
+                  <div key={a.id} className="mb-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3 py-2">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[11px] font-semibold text-slate-600">
+                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                         {a.profile?.full_name ?? 'Anonym'}
                       </span>
                       <span className="text-[10px] text-slate-300">{timeAgo(a.created_at)}</span>
                     </div>
-                    <p className="text-[12px] text-slate-700">{a.body}</p>
+                    <p className="text-[12px] text-slate-700 dark:text-slate-300">{a.body}</p>
                   </div>
                 ))}
 
@@ -218,7 +218,7 @@ export default function QuickQuestions({ questions, userId }: Props) {
                       value={answerBody}
                       onChange={e => setAnswerBody(e.target.value)}
                       placeholder="Antwort schreiben..."
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-forest-500/40"
+                      className="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-[12px] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-forest-500/40"
                     />
                     <button
                       type="submit"

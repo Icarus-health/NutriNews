@@ -60,13 +60,13 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={onBack}
-          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
         >
-          <ArrowLeft size={16} className="text-slate-600" />
+          <ArrowLeft size={16} className="text-slate-600 dark:text-slate-400" />
         </button>
         <span className="text-xl">{channel.emoji}</span>
         <div>
-          <h2 className="font-bold text-[15px] text-slate-800">{channel.name}</h2>
+          <h2 className="font-bold text-[15px] text-slate-800 dark:text-slate-200">{channel.name}</h2>
           <p className="text-[11px] text-slate-400">{channel.member_count} Mitglieder</p>
         </div>
       </div>
@@ -80,7 +80,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
               value={body}
               onChange={e => setBody(e.target.value)}
               placeholder="Beitrag schreiben..."
-              className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:border-forest-200"
+              className="flex-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-[13px] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:border-forest-200"
             />
             <button
               type="submit"
@@ -94,13 +94,13 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
       )}
 
       {!userId && (
-        <p className="text-[12px] text-slate-400 text-center mb-4 bg-slate-50 rounded-xl py-3">
+        <p className="text-[12px] text-slate-400 text-center mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl py-3">
           Melde dich an, um mitzudiskutieren
         </p>
       )}
 
       {userId && !channel.is_member && (
-        <p className="text-[12px] text-slate-400 text-center mb-4 bg-slate-50 rounded-xl py-3">
+        <p className="text-[12px] text-slate-400 text-center mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl py-3">
           Tritt dem Kanal bei, um Beiträge zu schreiben
         </p>
       )}
@@ -118,20 +118,20 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
             : null;
 
           return (
-            <div key={post.id} className="bg-white rounded-2xl border border-slate-100 p-4">
+            <div key={post.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
               {/* Author */}
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-forest-100 flex items-center justify-center flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center flex-shrink-0">
                   {post.profile?.avatar_url ? (
                     <img src={post.profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
                   ) : (
-                    <span className="text-[11px] font-bold text-forest-700">
+                    <span className="text-[11px] font-bold text-forest-700 dark:text-forest-400">
                       {(post.profile?.full_name || '?')[0].toUpperCase()}
                     </span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-[12px] font-semibold text-slate-700">
+                  <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">
                     {post.profile?.full_name ?? 'Anonym'}
                   </span>
                   <span className="text-[10px] text-slate-400 ml-2">
@@ -141,13 +141,13 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
               </div>
 
               {/* Body */}
-              <p className="text-[13px] text-slate-700 leading-relaxed">{post.body}</p>
+              <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{post.body}</p>
 
               {/* Shared news card reference */}
               {post.news_card && (
-                <div className="mt-2 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+                <div className="mt-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-600">
                   <p className="text-[11px] text-slate-400 mb-0.5">Geteilter Artikel:</p>
-                  <p className="text-[12px] font-semibold text-slate-700">{post.news_card.headline}</p>
+                  <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{post.news_card.headline}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] text-slate-400">{post.news_card.source_name}</span>
                     {evidence && (
