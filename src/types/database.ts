@@ -12,7 +12,10 @@ export type SourceType =
   | 'laienpresse'
   | 'forschung'
   | 'berufspolitik'
-  | 'supplement';
+  | 'supplement'
+  | 'international';
+
+export type PolicyImpactLevel = 'info' | 'beobachten' | 'handeln';
 
 export type NewsStatus = 'draft' | 'published';
 
@@ -84,6 +87,10 @@ export interface NewsCard {
   evidence_summary: string | null;
   source_type: SourceType;
   lay_press_fact_check: string | null;
+  // Sprint 5: Berufspolitik & International
+  policy_impact: PolicyImpactLevel | null;
+  policy_action_needed: string | null;
+  international_relevance_de: string | null;
   // Computed / joined
   like_count?: number;
   user_has_liked?: boolean;

@@ -166,6 +166,51 @@ export const RSS_SOURCES: RSSSource[] = [
   },
 
   // ═══════════════════════════════════════════════
+  // INTERNATIONAL — Globale Perspektive
+  // ═══════════════════════════════════════════════
+
+  // WHO Nutrition News
+  {
+    name: 'WHO Nutrition',
+    url: 'https://www.who.int/rss-feeds/news-english.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  // FAO Food Safety & Nutrition
+  {
+    name: 'FAO Food & Nutrition',
+    url: 'https://www.fao.org/feeds/news/rss.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  // The Lancet - Global Health (nutrition relevant)
+  {
+    name: 'Lancet Global Health',
+    url: 'https://www.thelancet.com/rssfeed/lancetgh_current.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  // BMJ Nutrition Prevention & Health
+  {
+    name: 'BMJ Nutrition',
+    url: 'https://nutrition.bmj.com/rss/current.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  // PubMed - Global Nutrition Policy
+  {
+    name: 'PubMed Global Nutrition Policy',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/rss/search/?term=(nutrition+policy)+AND+(global+OR+international+OR+WHO)&limit=10&fc=20250101000000',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+
+  // ═══════════════════════════════════════════════
   // LAIENPRESSE — Was Patienten gerade lesen
   // ═══════════════════════════════════════════════
 

@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
 import LayPressFeed from '@/components/news/LayPressFeed';
+import BerufspolitikMonitor from '@/components/news/BerufspolitikMonitor';
+import InternationalFeed from '@/components/news/InternationalFeed';
 import DailyBriefing from '@/components/briefing/DailyBriefing';
 import type { NewsCard, DailyBriefing as DailyBriefingType } from '@/types/database';
 
@@ -37,10 +39,16 @@ export default async function HomePage({ searchParams }: PageProps) {
   const { data: newsCards } = await query;
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Separate lay press cards and regular cards
+  // Separate cards by source type
   const allCards: NewsCard[] = newsCards ?? [];
   const layPressCards = allCards.filter(c => c.source_type === 'laienpresse');
-  const regularCards = allCards.filter(c => c.source_type !== 'laienpresse');
+  const berufspolitikCards = allCards.filter(c => c.source_type === 'berufspolitik');
+  const internationalCards = allCards.filter(c => c.source_type === 'international');
+  const regularCards = allCards.filter(c =>
+    c.source_type !== 'laienpresse' &&
+    c.source_type !== 'berufspolitik' &&
+    c.source_type !== 'international'
+  );
 
   // Load user interactions and like counts
   async function enrichCards(cards: NewsCard[]): Promise<NewsCard[]> {
@@ -94,10 +102,13 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   const enrichedRegular = await enrichCards(regularCards);
   const enrichedLayPress = await enrichCards(layPressCards);
+  const enrichedBerufspolitik = await enrichCards(berufspolitikCards);
+  const enrichedInternational = await enrichCards(internationalCards);
 
-  // Don't show lay press section when filtering by specific category or searching
-  const showLayPress = !params.category && !params.q && enrichedLayPress.length > 0;
-  const showBriefing = !params.category && !params.q;
+  // Don't show special sections when filtering by specific category or searching
+  const showSpecialSections = !params.category && !params.q;
+  const showLayPress = showSpecialSections && enrichedLayPress.length > 0;
+  const showBriefing = showSpecialSections;
 
   // Load daily briefing
   let briefingData: { briefing: DailyBriefingType | null; isYesterday: boolean } = { briefing: null, isYesterday: false };
@@ -139,8 +150,14 @@ export default async function HomePage({ searchParams }: PageProps) {
           isYesterday={briefingData.isYesterday}
         />
       )}
+      {showSpecialSections && enrichedBerufspolitik.length > 0 && (
+        <BerufspolitikMonitor cards={enrichedBerufspolitik} />
+      )}
       {showLayPress && (
         <LayPressFeed cards={enrichedLayPress.slice(0, 3)} userId={user?.id ?? null} />
+      )}
+      {showSpecialSections && enrichedInternational.length > 0 && (
+        <InternationalFeed cards={enrichedInternational} />
       )}
       <NewsFeed initialCards={enrichedRegular} userId={user?.id ?? null} />
     </div>

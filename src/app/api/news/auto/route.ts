@@ -74,6 +74,10 @@ export async function POST(request: Request) {
         evidence_summary: result.evidence_summary,
         source_type: item.source.sourceType,
         lay_press_fact_check: result.lay_press_fact_check,
+        // Sprint 5: Berufspolitik & International
+        policy_impact: result.policy_impact,
+        policy_action_needed: result.policy_action_needed,
+        international_relevance_de: result.international_relevance_de,
       });
 
       if (error) {

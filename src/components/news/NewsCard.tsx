@@ -359,6 +359,26 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
                 </div>
               )}
 
+              {/* Berufspolitik: Handlungsbedarf */}
+              {card.policy_action_needed && (
+                <div className="bg-orange-50/60 dark:bg-orange-900/20 rounded-2xl px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-1">
+                    Was ist zu tun?
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.policy_action_needed}</p>
+                </div>
+              )}
+
+              {/* International: Relevanz für DE */}
+              {card.international_relevance_de && (
+                <div className="bg-sky-50/60 dark:bg-sky-900/20 rounded-2xl px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-1">
+                    Relevanz für Deutschland
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.international_relevance_de}</p>
+                </div>
+              )}
+
               {/* KI-Transparenz-Label */}
               {card.curated_by_agent && (
                 <div className="flex items-center gap-2 pt-1">

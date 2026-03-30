@@ -47,6 +47,23 @@ Format: "MEDIEN: [Was behauptet wird] → FACH: [Fachliche Einordnung mit Eviden
 Setze evidence_level auf "Laienpresse/Trend".
 Bewerte: Ist die Medienmeldung korrekt, uebertrieben, irreführend oder falsch?`;
 
+const BERUFSPOLITIK_ADDITION = `
+
+ZUSAETZLICH fuer Berufspolitik-Artikel:
+Bewerte die AUSWIRKUNG auf den Berufsalltag von Ernaehrungstherapeuten.
+- "policy_impact": Waehle eines von: "info" (zur Kenntnis), "beobachten" (Entwicklung verfolgen), "handeln" (jetzt aktiv werden)
+- "policy_action_needed": Was muessen Ernaehrungstherapeuten konkret tun? (1-2 Saetze). Bei "info" kann dies leer sein.
+Setze category_main auf "Berufspolitik & Recht".
+Beruecksichtige: G-BA-Beschluesse, Leitlinien-Updates, GKV-Aenderungen, Berufsordnung, Abrechnungsaenderungen.`;
+
+const INTERNATIONAL_ADDITION = `
+
+ZUSAETZLICH fuer internationale Artikel:
+Bewerte die UEBERTRAGBARKEIT auf den deutschen Kontext.
+- "international_relevance_de": Erklaere in 2-3 Saetzen, was dieser internationale Beitrag fuer die deutsche Ernaehrungstherapie-Praxis bedeutet. Beruecksichtige Unterschiede in Gesundheitssystemen, Leitlinien und Ernaehrungsgewohnheiten.
+Setze category_main auf "Internationale Perspektive", es sei denn, eine andere Kategorie ist deutlich passender.
+Englische Inhalte muessen auf Deutsch zusammengefasst werden.`;
+
 interface CurationResult {
   headline: string;
   snack_what: string;
@@ -62,10 +79,30 @@ interface CurationResult {
   patient_question_anticipation: string;
   evidence_summary: string;
   lay_press_fact_check: string | null;
+  // Sprint 5: Berufspolitik & International
+  policy_impact: string | null;
+  policy_action_needed: string | null;
+  international_relevance_de: string | null;
 }
 
 function buildUserPrompt(item: RSSItem): string {
   const isLayPress = item.source.sourceType === 'laienpresse';
+  const isBerufspolitik = item.source.sourceType === 'berufspolitik';
+  const isInternational = item.source.sourceType === 'international';
+
+  const extraFields: string[] = [];
+  if (isLayPress) {
+    extraFields.push(`  "lay_press_fact_check": "MEDIEN: [Claim der Meldung] → FACH: [Fachliche Einordnung mit Evidenzlage] (2-3 Saetze)"`);
+  }
+  if (isBerufspolitik) {
+    extraFields.push(`  "policy_impact": "info | beobachten | handeln"`);
+    extraFields.push(`  "policy_action_needed": "Was muessen Ernaehrungstherapeuten konkret tun? (1-2 Saetze)"`);
+  }
+  if (isInternational) {
+    extraFields.push(`  "international_relevance_de": "Was bedeutet das fuer die deutsche Ernaehrungstherapie-Praxis? (2-3 Saetze)"`);
+  }
+
+  const extraFieldsStr = extraFields.length > 0 ? `,\n${extraFields.join(',\n')}` : '';
 
   return `Erstelle eine NewsCard aus diesem Artikel:
 
@@ -88,8 +125,7 @@ Antwortformat:
   "practice_relevance_score": 1-5,
   "action_recommendation": "Was tue ich morgen in der Beratung konkret anders? (1-2 Saetze)",
   "patient_question_anticipation": "Welche Frage werden Patienten dazu stellen? (1 Satz)",
-  "evidence_summary": "Kurze Evidenz-Einordnung: Studiendesign, Staerken, Limitationen, Uebertragbarkeit (2-3 Saetze)"${isLayPress ? `,
-  "lay_press_fact_check": "MEDIEN: [Claim der Meldung] → FACH: [Fachliche Einordnung mit Evidenzlage] (2-3 Saetze)"` : ''}
+  "evidence_summary": "Kurze Evidenz-Einordnung: Studiendesign, Staerken, Limitationen, Uebertragbarkeit (2-3 Saetze)"${extraFieldsStr}
 }
 
 Oder falls der Artikel nicht relevant/ausreichend ist:
@@ -123,6 +159,9 @@ function parseResult(content: string, item: RSSItem): CurationResult | null {
       patient_question_anticipation: parsed.patient_question_anticipation || '',
       evidence_summary: parsed.evidence_summary || '',
       lay_press_fact_check: parsed.lay_press_fact_check || null,
+      policy_impact: ['info', 'beobachten', 'handeln'].includes(parsed.policy_impact) ? parsed.policy_impact : null,
+      policy_action_needed: parsed.policy_action_needed || null,
+      international_relevance_de: parsed.international_relevance_de || null,
     };
   } catch {
     return null;
@@ -137,12 +176,19 @@ const HF_MODELS = [
 ];
 
 // --- Hugging Face Provider (free) ---
+function buildSystemPrompt(sourceType: SourceType): string {
+  let prompt = SYSTEM_PROMPT;
+  if (sourceType === 'laienpresse') prompt += LAY_PRESS_ADDITION;
+  if (sourceType === 'berufspolitik') prompt += BERUFSPOLITIK_ADDITION;
+  if (sourceType === 'international') prompt += INTERNATIONAL_ADDITION;
+  return prompt;
+}
+
 async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.HUGGINGFACE_API_KEY;
   if (!apiKey) return null;
 
-  const isLayPress = item.source.sourceType === 'laienpresse';
-  const systemPrompt = isLayPress ? SYSTEM_PROMPT + LAY_PRESS_ADDITION : SYSTEM_PROMPT;
+  const systemPrompt = buildSystemPrompt(item.source.sourceType);
 
   for (const model of HF_MODELS) {
     try {
@@ -193,8 +239,7 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
-  const isLayPress = item.source.sourceType === 'laienpresse';
-  const systemPrompt = isLayPress ? SYSTEM_PROMPT + LAY_PRESS_ADDITION : SYSTEM_PROMPT;
+  const systemPrompt = buildSystemPrompt(item.source.sourceType);
 
   // Dynamic import to avoid requiring openai package when using HF
   const OpenAI = (await import('openai')).default;
