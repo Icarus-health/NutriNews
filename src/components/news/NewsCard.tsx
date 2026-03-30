@@ -5,7 +5,7 @@ import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw } from 'l
 import CommentSection from './CommentSection';
 import { clsx } from 'clsx';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
-import { getCategoryStyle } from '@/lib/categories';
+import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
 import { toggleLike, toggleBookmark } from '@/lib/actions/news';
 import type { EvidenceLevel, NewsCard as NewsCardType } from '@/types/database';
 
@@ -14,6 +14,25 @@ interface Props {
   userId: string | null;
   onRequireAuth?: () => void;
   onShare?: (cardId: string) => void;
+}
+
+function PracticeRelevanceIndicator({ score }: { score: number | null }) {
+  if (!score) return null;
+  const clamped = Math.min(5, Math.max(1, score));
+  return (
+    <div className="flex items-center gap-1" title={`Praxisrelevanz: ${clamped}/5`}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <div
+          key={i}
+          className={clsx(
+            'w-1.5 h-1.5 rounded-full',
+            i <= clamped ? 'bg-forest-500' : 'bg-slate-200'
+          )}
+        />
+      ))}
+      <span className="text-[10px] text-slate-400 ml-0.5">Praxis</span>
+    </div>
+  );
 }
 
 export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
@@ -29,6 +48,7 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
+  const isLayPress = card.source_type === 'laienpresse';
 
   // Measure back content to set card height when flipped
   useEffect(() => {
@@ -57,7 +77,6 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
   function handleBookmark(e: React.MouseEvent) {
     e.stopPropagation();
     if (!userId) {
-      // Anonymous: toggle bookmark in localStorage
       setBookmarked(prev => {
         const next = !prev;
         try {
@@ -111,18 +130,33 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
         {/* ═══ FRONT ═══ */}
         <div ref={frontRef} className="flip-card-front">
           <article
-            className="bg-white rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border border-slate-100/60 overflow-hidden cursor-pointer active:scale-[0.985] transition-transform duration-150"
+            className={clsx(
+              'rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border overflow-hidden cursor-pointer active:scale-[0.985] transition-transform duration-150',
+              isLayPress
+                ? 'bg-amber-50/50 border-amber-200/60'
+                : 'bg-white border-slate-100/60'
+            )}
             onClick={() => setFlipped(true)}
           >
-            {/* Category + Evidence bar */}
+            {/* Laienpresse-Label */}
+            {isLayPress && (
+              <div className="bg-amber-100 px-5 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700">
+                  📰 Was Ihre Patienten gerade lesen
+                </span>
+              </div>
+            )}
+
+            {/* Category + Evidence + Praxisrelevanz bar */}
             <div className="flex items-center justify-between px-5 pt-4 pb-1">
               <span className={clsx(
                 'text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full',
                 getCategoryStyle(card.category_main)
               )}>
-                {card.category_main}
+                {getCategoryLabel(card.category_main)}
               </span>
               <div className="flex items-center gap-2">
+                <PracticeRelevanceIndicator score={card.practice_relevance_score} />
                 <span className={clsx(
                   'text-[11px] font-medium px-2.5 py-1 rounded-full',
                   evidence.color
@@ -139,8 +173,23 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
               </h2>
             </div>
 
+            {/* Laienpresse: Fact-Check Gegenüberstellung */}
+            {isLayPress && card.lay_press_fact_check && (
+              <div className="mx-5 mb-3 bg-white rounded-2xl px-4 py-3 border border-amber-200">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">
+                  Faktencheck
+                </p>
+                <p className="text-[13px] leading-relaxed text-slate-800">
+                  {card.lay_press_fact_check}
+                </p>
+              </div>
+            )}
+
             {/* Therapist-Check */}
-            <div className="mx-5 mb-4 bg-forest-50/70 rounded-2xl px-4 py-3 border border-forest-100">
+            <div className={clsx(
+              'mx-5 mb-4 rounded-2xl px-4 py-3 border',
+              isLayPress ? 'bg-forest-50/50 border-forest-100' : 'bg-forest-50/70 border-forest-100'
+            )}>
               <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 mb-1">
                 Therapist-Check
               </p>
@@ -216,7 +265,7 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
                   'text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full',
                   getCategoryStyle(card.category_main)
                 )}>
-                  {card.category_main}
+                  {getCategoryLabel(card.category_main)}
                 </span>
                 <span className="text-[11px] text-slate-400 font-medium">Details</span>
               </div>
@@ -252,6 +301,50 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
                 <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-1">Konsequenz</p>
                 <p className="text-[13px] leading-relaxed text-slate-800">{card.snack_consequence}</p>
               </div>
+
+              {/* Evidenz-Einordnung (NEU) */}
+              {card.evidence_summary && (
+                <div className="bg-indigo-50/60 rounded-2xl px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-1">
+                    {evidence.icon} Evidenz-Einordnung
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-slate-800">{card.evidence_summary}</p>
+                </div>
+              )}
+
+              {/* Handlungsempfehlung (NEU) */}
+              {card.action_recommendation && (
+                <div className="bg-forest-50/60 rounded-2xl px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-forest-500 mb-1">
+                    Handlungsempfehlung
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-slate-800">{card.action_recommendation}</p>
+                </div>
+              )}
+
+              {/* Patientenfrage (NEU) */}
+              {card.patient_question_anticipation && (
+                <div className="bg-rose-50/60 rounded-2xl px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-1">
+                    Erwartbare Patientenfrage
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-slate-800 italic">
+                    &ldquo;{card.patient_question_anticipation}&rdquo;
+                  </p>
+                </div>
+              )}
+
+              {/* KI-Transparenz-Label */}
+              {card.curated_by_agent && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    KI-zusammengefasst
+                  </span>
+                  <span className="text-[10px] text-slate-300">
+                    {card.source_name}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Source + Evidence footer */}
@@ -260,6 +353,7 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
                 <span className={clsx('text-[11px] font-medium px-2.5 py-1 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
+                <PracticeRelevanceIndicator score={card.practice_relevance_score} />
                 <span className="text-[11px] text-slate-400">{readMin} Min</span>
               </div>
               <a

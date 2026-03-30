@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { clsx } from 'clsx';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
 import type { User } from '@supabase/supabase-js';
 
 interface Props {
@@ -100,7 +100,7 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
         </div>
       )}
 
-      {/* Category chips */}
+      {/* Category chips — gruppiert nach Berufskontext */}
       <div className="flex gap-2 px-5 pb-3 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => selectCategory(null)}
@@ -113,19 +113,26 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
         >
           Alle
         </button>
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => selectCategory(activeCategory === cat.id ? null : cat.id)}
-            className={clsx(
-              'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap',
-              activeCategory === cat.id
-                ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-slate-200'
-            )}
-          >
-            {cat.label}
-          </button>
+        {CATEGORY_CONTEXTS.map((ctx) => (
+          <div key={ctx.id} className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider pl-1.5 pr-0.5">
+              {ctx.label.split(' ')[0]}
+            </span>
+            {CATEGORIES.filter(cat => (ctx.topics as readonly string[]).includes(cat.id)).map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => selectCategory(activeCategory === cat.id ? null : cat.id)}
+                className={clsx(
+                  'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap',
+                  activeCategory === cat.id
+                    ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-slate-200'
+                )}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         ))}
       </div>
     </header>

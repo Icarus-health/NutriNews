@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
+import LayPressFeed from '@/components/news/LayPressFeed';
 import type { NewsCard } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const supabase = await createClient();
 
-  // Build query
+  // Build query for main feed
   let query = supabase
     .from('news_cards')
     .select('*')
@@ -35,11 +36,16 @@ export default async function HomePage({ searchParams }: PageProps) {
   const { data: newsCards } = await query;
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Load user interactions and like counts
-  let enrichedCards: NewsCard[] = newsCards ?? [];
+  // Separate lay press cards and regular cards
+  const allCards: NewsCard[] = newsCards ?? [];
+  const layPressCards = allCards.filter(c => c.source_type === 'laienpresse');
+  const regularCards = allCards.filter(c => c.source_type !== 'laienpresse');
 
-  if (enrichedCards.length > 0) {
-    const cardIds = enrichedCards.map(c => c.id);
+  // Load user interactions and like counts
+  async function enrichCards(cards: NewsCard[]): Promise<NewsCard[]> {
+    if (cards.length === 0) return cards;
+
+    const cardIds = cards.map(c => c.id);
 
     // Get like counts for all cards
     const { data: likeCounts } = await supabase
@@ -71,19 +77,25 @@ export default async function HomePage({ searchParams }: PageProps) {
 
       const userBookmarkSet = new Set(userBookmarks?.map(b => b.news_card_id));
 
-      enrichedCards = enrichedCards.map(card => ({
+      return cards.map(card => ({
         ...card,
         like_count: likeCountMap[card.id] ?? 0,
         user_has_liked: userLikeSet.has(card.id),
         user_has_bookmarked: userBookmarkSet.has(card.id),
       }));
-    } else {
-      enrichedCards = enrichedCards.map(card => ({
-        ...card,
-        like_count: likeCountMap[card.id] ?? 0,
-      }));
     }
+
+    return cards.map(card => ({
+      ...card,
+      like_count: likeCountMap[card.id] ?? 0,
+    }));
   }
+
+  const enrichedRegular = await enrichCards(regularCards);
+  const enrichedLayPress = await enrichCards(layPressCards);
+
+  // Don't show lay press section when filtering by specific category or searching
+  const showLayPress = !params.category && !params.q && enrichedLayPress.length > 0;
 
   return (
     <div>
@@ -92,7 +104,10 @@ export default async function HomePage({ searchParams }: PageProps) {
         activeCategory={params.category ?? null}
         searchQuery={params.q ?? ''}
       />
-      <NewsFeed initialCards={enrichedCards} userId={user?.id ?? null} />
+      {showLayPress && (
+        <LayPressFeed cards={enrichedLayPress.slice(0, 3)} userId={user?.id ?? null} />
+      )}
+      <NewsFeed initialCards={enrichedRegular} userId={user?.id ?? null} />
     </div>
   );
 }

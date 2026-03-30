@@ -1,8 +1,14 @@
 import type { RSSItem } from './rss';
+import type { SourceType } from '@/types/database';
+
+// ═══════════════════════════════════════════════════════════════
+// System-Prompt: Erweitert um Evidenz-Bewertung, Praxisrelevanz,
+// Handlungsempfehlung und Patientenfragen-Antizipation
+// ═══════════════════════════════════════════════════════════════
 
 const SYSTEM_PROMPT = `Du bist ein erfahrener Ernaehrungswissenschaftler, der eine Fachnachrichtenplattform fuer Ernaehrungstherapeuten in Deutschland betreibt.
 
-Deine Aufgabe: Erstelle aus einem Quellartikel eine strukturierte NewsCard.
+Deine Aufgabe: Erstelle aus einem Quellartikel eine strukturierte NewsCard mit besonderem Fokus auf EVIDENZ-BEWERTUNG.
 
 WICHTIGE REGELN:
 1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel. Erfinde NICHTS hinzu.
@@ -10,6 +16,7 @@ WICHTIGE REGELN:
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
 5. Der Therapist-Check soll die praktische Relevanz fuer Ernaehrungstherapeuten hervorheben.
+6. Die Evidenz-Einordnung ist PFLICHT: Bewerte Studiendesign, Stichprobengroesse, Limitationen und Uebertragbarkeit auf deutsche Ernaehrungstherapie-Praxis.
 
 EVIDENZ-LEVEL (waehle basierend auf der Studienart im Artikel):
 - "Meta-Analyse" - Zusammenfassung mehrerer Studien
@@ -21,9 +28,24 @@ EVIDENZ-LEVEL (waehle basierend auf der Studienart im Artikel):
 - "Laienpresse/Trend" - Allgemeine Nachrichten, Trends, Politik
 
 KATEGORIEN (waehle die passendste):
-Wissenschaft, Ernaehrungsmedizin, Klinik, Forschung, Politik, Medikation, Praxis, Paediatrie, Onkologie, Diabetologie, Gastroenterologie, Sportmedizin, Psychiatrie, Hepatologie, Nephrologie, Fettstoffwechsel, Ernaehrungspsychologie, Geriatrie, Trends
+Kuenstliche Ernaehrung, Onkologische Ernaehrung, Geriatrie & Sarkopenie, Nieren & Leber, GLP-1 & Adipositastherapie, Diabetologie & Ernaehrung, Gastroenterologie, Supplements & NEM, Kardiovaskulaer, Psychiatrie & Ernaehrung, Paediatrische Ernaehrung, Nachhaltigkeit & Ernaehrung, Sport & klinische Ernaehrung, Mikronaehrstoffe klinisch, Adipositas & Gewichtsmanagement, Berufspolitik & Recht, Fortbildung & Lehre, Laienpresse & Patientenfragen, Internationale Perspektive, Medikament-Naehrstoff-Interaktionen
+
+PRAXISRELEVANZ-SCORE (1-5):
+1 = Theoretisch interessant, kein unmittelbarer Praxisbezug
+2 = Hintergrundinformation, nuetzlich fuer Fachwissen
+3 = Relevant fuer bestimmte Patientengruppen
+4 = Direkt anwendbar in der Beratung bei haeufigen Fragestellungen
+5 = Aendert morgen meine Beratungsempfehlung, sofort handlungsrelevant
 
 Antworte IMMER als valides JSON.`;
+
+const LAY_PRESS_ADDITION = `
+
+ZUSAETZLICH fuer Laienpresse-Artikel:
+Erstelle eine fachliche Gegenueberstellung im Feld "lay_press_fact_check".
+Format: "MEDIEN: [Was behauptet wird] → FACH: [Fachliche Einordnung mit Evidenzlage]"
+Setze evidence_level auf "Laienpresse/Trend".
+Bewerte: Ist die Medienmeldung korrekt, uebertrieben, irreführend oder falsch?`;
 
 interface CurationResult {
   headline: string;
@@ -34,13 +56,22 @@ interface CurationResult {
   category_main: string;
   evidence_level: string;
   read_time_sec: number;
+  // Sprint 1: Erweiterte Felder
+  practice_relevance_score: number;
+  action_recommendation: string;
+  patient_question_anticipation: string;
+  evidence_summary: string;
+  lay_press_fact_check: string | null;
 }
 
 function buildUserPrompt(item: RSSItem): string {
+  const isLayPress = item.source.sourceType === 'laienpresse';
+
   return `Erstelle eine NewsCard aus diesem Artikel:
 
 TITEL: ${item.title}
 QUELLE: ${item.source.name}
+QUELLENTYP: ${item.source.sourceType}
 SPRACHE: ${item.source.language === 'en' ? 'Englisch (bitte auf Deutsch zusammenfassen)' : 'Deutsch'}
 BESCHREIBUNG: ${item.description || 'Keine Beschreibung verfuegbar'}
 URL: ${item.link}
@@ -53,7 +84,12 @@ Antwortformat:
   "snack_consequence": "Was bedeutet das fuer die Praxis? (1-2 Saetze)",
   "therapist_check": "Praktische Einordnung fuer Ernaehrungstherapeuten (2-3 Saetze)",
   "category_main": "Eine der oben genannten Kategorien",
-  "evidence_level": "Eines der oben genannten Evidenz-Level"
+  "evidence_level": "Eines der oben genannten Evidenz-Level",
+  "practice_relevance_score": 1-5,
+  "action_recommendation": "Was tue ich morgen in der Beratung konkret anders? (1-2 Saetze)",
+  "patient_question_anticipation": "Welche Frage werden Patienten dazu stellen? (1 Satz)",
+  "evidence_summary": "Kurze Evidenz-Einordnung: Studiendesign, Staerken, Limitationen, Uebertragbarkeit (2-3 Saetze)"${isLayPress ? `,
+  "lay_press_fact_check": "MEDIEN: [Claim der Meldung] → FACH: [Fachliche Einordnung mit Evidenzlage] (2-3 Saetze)"` : ''}
 }
 
 Oder falls der Artikel nicht relevant/ausreichend ist:
@@ -70,7 +106,7 @@ function parseResult(content: string, item: RSSItem): CurationResult | null {
     if (parsed.insufficient) return null;
     if (!parsed.headline || !parsed.snack_what) return null;
 
-    const totalText = [parsed.snack_what, parsed.snack_result, parsed.snack_consequence, parsed.therapist_check].join(' ');
+    const totalText = [parsed.snack_what, parsed.snack_result, parsed.snack_consequence, parsed.therapist_check, parsed.evidence_summary].filter(Boolean).join(' ');
     const readTimeSec = Math.ceil(totalText.split(/\s+/).length / 3.5);
 
     return {
@@ -82,6 +118,11 @@ function parseResult(content: string, item: RSSItem): CurationResult | null {
       category_main: parsed.category_main || item.source.defaultCategory,
       evidence_level: parsed.evidence_level || 'Expertenmeinung',
       read_time_sec: readTimeSec,
+      practice_relevance_score: Math.min(5, Math.max(1, Number(parsed.practice_relevance_score) || 3)),
+      action_recommendation: parsed.action_recommendation || '',
+      patient_question_anticipation: parsed.patient_question_anticipation || '',
+      evidence_summary: parsed.evidence_summary || '',
+      lay_press_fact_check: parsed.lay_press_fact_check || null,
     };
   } catch {
     return null;
@@ -100,6 +141,9 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
   const apiKey = process.env.HUGGINGFACE_API_KEY;
   if (!apiKey) return null;
 
+  const isLayPress = item.source.sourceType === 'laienpresse';
+  const systemPrompt = isLayPress ? SYSTEM_PROMPT + LAY_PRESS_ADDITION : SYSTEM_PROMPT;
+
   for (const model of HF_MODELS) {
     try {
       const res = await fetch(`https://api-inference.huggingface.co/models/${model}/v1/chat/completions`, {
@@ -111,11 +155,11 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: buildUserPrompt(item) },
           ],
           temperature: 0.3,
-          max_tokens: 800,
+          max_tokens: 1200,
         }),
         signal: AbortSignal.timeout(60000),
       });
@@ -149,6 +193,9 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
+  const isLayPress = item.source.sourceType === 'laienpresse';
+  const systemPrompt = isLayPress ? SYSTEM_PROMPT + LAY_PRESS_ADDITION : SYSTEM_PROMPT;
+
   // Dynamic import to avoid requiring openai package when using HF
   const OpenAI = (await import('openai')).default;
   const openai = new OpenAI({ apiKey });
@@ -156,12 +203,12 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: buildUserPrompt(item) },
     ],
     response_format: { type: 'json_object' },
     temperature: 0.3,
-    max_tokens: 800,
+    max_tokens: 1200,
   });
 
   const content = response.choices[0]?.message?.content;

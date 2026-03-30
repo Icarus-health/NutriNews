@@ -7,6 +7,13 @@ export type EvidenceLevel =
   | 'Expertenmeinung'
   | 'Laienpresse/Trend';
 
+export type SourceType =
+  | 'fachpresse'
+  | 'laienpresse'
+  | 'forschung'
+  | 'berufspolitik'
+  | 'supplement';
+
 export type NewsStatus = 'draft' | 'published';
 
 export interface Profile {
@@ -41,6 +48,13 @@ export interface NewsCard {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  // Sprint 1: Erweiterte Evidenz- und Praxisfelder
+  practice_relevance_score: number | null;
+  action_recommendation: string | null;
+  patient_question_anticipation: string | null;
+  evidence_summary: string | null;
+  source_type: SourceType;
+  lay_press_fact_check: string | null;
   // Computed / joined
   like_count?: number;
   user_has_liked?: boolean;
