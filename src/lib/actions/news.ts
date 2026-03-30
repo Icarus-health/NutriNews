@@ -208,7 +208,7 @@ export async function deleteNewsCard(newsCardId: string) {
   return { success: true };
 }
 
-export async function updateProfile(data: { full_name?: string; specialties?: string[]; preferred_categories?: string[]; notify_new_news?: boolean }) {
+export async function updateProfile(data: { full_name?: string; specialties?: string[]; preferred_categories?: string[]; notify_new_news?: boolean; setting?: string }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };

@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
-import type { NewsCard } from '@/types/database';
+import LayPressFeed from '@/components/news/LayPressFeed';
+import BerufspolitikMonitor from '@/components/news/BerufspolitikMonitor';
+import InternationalFeed from '@/components/news/InternationalFeed';
+import DailyBriefing from '@/components/briefing/DailyBriefing';
+import type { NewsCard, DailyBriefing as DailyBriefingType } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -14,7 +18,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const supabase = await createClient();
 
-  // Build query
+  // Build query for main feed
   let query = supabase
     .from('news_cards')
     .select('*')
@@ -35,11 +39,22 @@ export default async function HomePage({ searchParams }: PageProps) {
   const { data: newsCards } = await query;
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Load user interactions and like counts
-  let enrichedCards: NewsCard[] = newsCards ?? [];
+  // Separate cards by source type
+  const allCards: NewsCard[] = newsCards ?? [];
+  const layPressCards = allCards.filter(c => c.source_type === 'laienpresse');
+  const berufspolitikCards = allCards.filter(c => c.source_type === 'berufspolitik');
+  const internationalCards = allCards.filter(c => c.source_type === 'international');
+  const regularCards = allCards.filter(c =>
+    c.source_type !== 'laienpresse' &&
+    c.source_type !== 'berufspolitik' &&
+    c.source_type !== 'international'
+  );
 
-  if (enrichedCards.length > 0) {
-    const cardIds = enrichedCards.map(c => c.id);
+  // Load user interactions and like counts
+  async function enrichCards(cards: NewsCard[]): Promise<NewsCard[]> {
+    if (cards.length === 0) return cards;
+
+    const cardIds = cards.map(c => c.id);
 
     // Get like counts for all cards
     const { data: likeCounts } = await supabase
@@ -71,17 +86,53 @@ export default async function HomePage({ searchParams }: PageProps) {
 
       const userBookmarkSet = new Set(userBookmarks?.map(b => b.news_card_id));
 
-      enrichedCards = enrichedCards.map(card => ({
+      return cards.map(card => ({
         ...card,
         like_count: likeCountMap[card.id] ?? 0,
         user_has_liked: userLikeSet.has(card.id),
         user_has_bookmarked: userBookmarkSet.has(card.id),
       }));
+    }
+
+    return cards.map(card => ({
+      ...card,
+      like_count: likeCountMap[card.id] ?? 0,
+    }));
+  }
+
+  const enrichedRegular = await enrichCards(regularCards);
+  const enrichedLayPress = await enrichCards(layPressCards);
+  const enrichedBerufspolitik = await enrichCards(berufspolitikCards);
+  const enrichedInternational = await enrichCards(internationalCards);
+
+  // Don't show special sections when filtering by specific category or searching
+  const showSpecialSections = !params.category && !params.q;
+  const showLayPress = showSpecialSections && enrichedLayPress.length > 0;
+  const showBriefing = showSpecialSections;
+
+  // Load daily briefing
+  let briefingData: { briefing: DailyBriefingType | null; isYesterday: boolean } = { briefing: null, isYesterday: false };
+  if (showBriefing) {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: todayBriefing } = await supabase
+      .from('daily_briefings')
+      .select('*')
+      .eq('date', today)
+      .single();
+
+    if (todayBriefing) {
+      briefingData = { briefing: todayBriefing, isYesterday: false };
     } else {
-      enrichedCards = enrichedCards.map(card => ({
-        ...card,
-        like_count: likeCountMap[card.id] ?? 0,
-      }));
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { data: yesterdayBriefing } = await supabase
+        .from('daily_briefings')
+        .select('*')
+        .eq('date', yesterday)
+        .single();
+
+      if (yesterdayBriefing) {
+        briefingData = { briefing: yesterdayBriefing, isYesterday: true };
+      }
     }
   }
 
@@ -92,7 +143,23 @@ export default async function HomePage({ searchParams }: PageProps) {
         activeCategory={params.category ?? null}
         searchQuery={params.q ?? ''}
       />
-      <NewsFeed initialCards={enrichedCards} userId={user?.id ?? null} />
+      {briefingData.briefing && (
+        <DailyBriefing
+          items={briefingData.briefing.items}
+          date={briefingData.briefing.date}
+          isYesterday={briefingData.isYesterday}
+        />
+      )}
+      {showSpecialSections && enrichedBerufspolitik.length > 0 && (
+        <BerufspolitikMonitor cards={enrichedBerufspolitik} />
+      )}
+      {showLayPress && (
+        <LayPressFeed cards={enrichedLayPress.slice(0, 3)} userId={user?.id ?? null} />
+      )}
+      {showSpecialSections && enrichedInternational.length > 0 && (
+        <InternationalFeed cards={enrichedInternational} />
+      )}
+      <NewsFeed initialCards={enrichedRegular} userId={user?.id ?? null} />
     </div>
   );
 }

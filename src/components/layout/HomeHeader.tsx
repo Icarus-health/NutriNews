@@ -2,9 +2,10 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
+import { useUX } from '@/components/providers/UXProvider';
 import type { User } from '@supabase/supabase-js';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 
 export default function HomeHeader({ user, activeCategory, searchQuery }: Props) {
   const router = useRouter();
+  const ux = useUX();
   const [showSearch, setShowSearch] = useState(!!searchQuery);
   const [query, setQuery] = useState(searchQuery);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -33,11 +35,14 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
     timerRef.current = setTimeout(() => {
       const params = new URLSearchParams();
       if (activeCategory) params.set('category', activeCategory);
-      if (value) params.set('q', value);
+      if (value) {
+        params.set('q', value);
+        ux.addSearchQuery(value);
+      }
       const qs = params.toString();
       router.push(qs ? `/?${qs}` : '/');
     }, 400);
-  }, [activeCategory, router]);
+  }, [activeCategory, router, ux]);
 
   function clearSearch() {
     setQuery('');
@@ -49,7 +54,7 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
   }
 
   return (
-    <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 safe-top">
+    <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 dark:border-slate-700/60 safe-top">
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2.5">
@@ -57,7 +62,7 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
             <img src="/icon.svg" alt="NutriNews" className="w-full h-full" />
           </div>
           <div>
-            <h1 className="font-bold text-slate-900 text-[17px] tracking-[-0.02em] leading-none">
+            <h1 className="font-bold text-slate-900 dark:text-slate-100 text-[17px] tracking-[-0.02em] leading-none">
               NutriNews
             </h1>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">
@@ -70,8 +75,8 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
           className={clsx(
             'w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200',
             showSearch
-              ? 'bg-forest-100 text-forest-700'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              ? 'bg-forest-100 dark:bg-forest-900/40 text-forest-700 dark:text-forest-400'
+              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
           )}
         >
           <Search size={18} strokeWidth={2} />
@@ -89,18 +94,39 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
               value={query}
               onChange={e => handleSearch(e.target.value)}
               autoFocus
-              className="w-full pl-10 pr-10 py-2.5 bg-slate-100 rounded-xl text-[14px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:bg-white transition-all border border-transparent focus:border-forest-200"
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-[14px] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:bg-white dark:focus:bg-slate-600 transition-all border border-transparent focus:border-forest-200 dark:focus:border-forest-700"
             />
             {query && (
-              <button onClick={clearSearch} className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-300 flex items-center justify-center hover:bg-slate-400 transition-colors">
+              <button onClick={clearSearch} className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-500 flex items-center justify-center hover:bg-slate-400 transition-colors">
                 <X size={11} className="text-white" strokeWidth={3} />
               </button>
             )}
           </div>
+          {/* Search history suggestions */}
+          {!query && ux.searchHistory.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {ux.searchHistory.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSearch(q)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  <Clock size={10} />
+                  {q}
+                </button>
+              ))}
+              <button
+                onClick={() => ux.clearSearchHistory()}
+                className="px-2 py-1 text-[10px] text-slate-400 hover:text-red-400 transition-colors"
+              >
+                Löschen
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Category chips */}
+      {/* Category chips — gruppiert nach Berufskontext */}
       <div className="flex gap-2 px-5 pb-3 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => selectCategory(null)}
@@ -108,24 +134,31 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
             'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200',
             !activeCategory
               ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-slate-200'
+              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-200'
           )}
         >
           Alle
         </button>
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => selectCategory(activeCategory === cat.id ? null : cat.id)}
-            className={clsx(
-              'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap',
-              activeCategory === cat.id
-                ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-slate-200'
-            )}
-          >
-            {cat.label}
-          </button>
+        {CATEGORY_CONTEXTS.map((ctx) => (
+          <div key={ctx.id} className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[10px] text-slate-300 dark:text-slate-500 font-bold uppercase tracking-wider pl-1.5 pr-0.5">
+              {ctx.label.split(' ')[0]}
+            </span>
+            {CATEGORIES.filter(cat => (ctx.topics as readonly string[]).includes(cat.id)).map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => selectCategory(activeCategory === cat.id ? null : cat.id)}
+                className={clsx(
+                  'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap',
+                  activeCategory === cat.id
+                    ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-200'
+                )}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         ))}
       </div>
     </header>
