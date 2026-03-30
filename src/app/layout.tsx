@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import UXProvider from '@/components/providers/UXProvider';
+import CookieConsent from '@/components/compliance/CookieConsent';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans antialiased">
         <UXProvider>
           {children}
+          <CookieConsent />
         </UXProvider>
       </body>
     </html>

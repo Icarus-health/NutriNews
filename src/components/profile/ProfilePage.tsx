@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Save, LogOut, Bell, BellOff, Stethoscope, Moon, Sun, Monitor, Type } from 'lucide-react';
+import Link from 'next/link';
+import { Save, LogOut, Bell, BellOff, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile } from '@/lib/actions/news';
@@ -277,11 +278,34 @@ export default function ProfilePage({ profile, stats }: Props) {
       {/* Sign out */}
       <button
         onClick={handleSignOut}
-        className="w-full border border-red-200 dark:border-red-800 text-red-500 rounded-xl py-2.5 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2"
+        className="w-full border border-red-200 dark:border-red-800 text-red-500 rounded-xl py-2.5 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2 mb-4"
       >
         <LogOut size={16} />
         Abmelden
       </button>
+
+      {/* Legal links */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700 mb-4">
+        {[
+          { href: '/impressum', icon: FileText, label: 'Impressum' },
+          { href: '/datenschutz', icon: Shield, label: 'Datenschutzerklärung' },
+          { href: '/nutzungsbedingungen', icon: Scale, label: 'Nutzungsbedingungen' },
+          { href: '/ki-transparenz', icon: Bot, label: 'KI-Transparenzhinweis' },
+        ].map(item => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex items-center gap-3 px-4 py-3 text-[13px] text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors first:rounded-t-xl last:rounded-b-xl"
+          >
+            <item.icon size={16} className="text-slate-400" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
+
+      <p className="text-center text-[11px] text-slate-300 dark:text-slate-600 mb-4">
+        NutriNews v1.0 &middot; Icarus Health GmbH
+      </p>
     </div>
   );
 }
