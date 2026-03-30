@@ -1,4 +1,3 @@
-import OpenAI from 'openai';
 import type { RSSItem } from './rss';
 
 const SYSTEM_PROMPT = `Du bist ein erfahrener Ernaehrungswissenschaftler, der eine Fachnachrichtenplattform fuer Ernaehrungstherapeuten in Deutschland betreibt.
@@ -37,16 +36,8 @@ interface CurationResult {
   read_time_sec: number;
 }
 
-export async function curateArticle(item: RSSItem): Promise<CurationResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.error('OPENAI_API_KEY not set');
-    return null;
-  }
-
-  const openai = new OpenAI({ apiKey });
-
-  const userPrompt = `Erstelle eine NewsCard aus diesem Artikel:
+function buildUserPrompt(item: RSSItem): string {
+  return `Erstelle eine NewsCard aus diesem Artikel:
 
 TITEL: ${item.title}
 QUELLE: ${item.source.name}
@@ -67,30 +58,20 @@ Antwortformat:
 
 Oder falls der Artikel nicht relevant/ausreichend ist:
 {"insufficient": true}`;
+}
 
+function parseResult(content: string, item: RSSItem): CurationResult | null {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-      max_tokens: 800,
-    });
+    // Extract JSON from response (handle markdown code blocks)
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) return null;
-
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(jsonMatch[0]);
     if (parsed.insufficient) return null;
-
-    // Validate required fields
     if (!parsed.headline || !parsed.snack_what) return null;
 
     const totalText = [parsed.snack_what, parsed.snack_result, parsed.snack_consequence, parsed.therapist_check].join(' ');
-    const readTimeSec = Math.ceil(totalText.split(/\s+/).length / 3.5); // ~210 words/min reading speed
+    const readTimeSec = Math.ceil(totalText.split(/\s+/).length / 3.5);
 
     return {
       headline: parsed.headline,
@@ -102,8 +83,93 @@ Oder falls der Artikel nicht relevant/ausreichend ist:
       evidence_level: parsed.evidence_level || 'Expertenmeinung',
       read_time_sec: readTimeSec,
     };
+  } catch {
+    return null;
+  }
+}
+
+// --- Hugging Face Provider (free) ---
+async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | null> {
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!apiKey) return null;
+
+  const prompt = `${SYSTEM_PROMPT}\n\n${buildUserPrompt(item)}`;
+
+  const res = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek/deepseek-v3-0324',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: buildUserPrompt(item) },
+      ],
+      temperature: 0.3,
+      max_tokens: 800,
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!res.ok) {
+    console.error('Hugging Face API error:', res.status, await res.text().catch(() => ''));
+    return null;
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) return null;
+
+  return parseResult(content, item);
+}
+
+// --- OpenAI Provider (paid, higher quality) ---
+async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  // Dynamic import to avoid requiring openai package when using HF
+  const OpenAI = (await import('openai')).default;
+  const openai = new OpenAI({ apiKey });
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: buildUserPrompt(item) },
+    ],
+    response_format: { type: 'json_object' },
+    temperature: 0.3,
+    max_tokens: 800,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) return null;
+
+  return parseResult(content, item);
+}
+
+// --- Main entry: tries Hugging Face first, falls back to OpenAI ---
+export async function curateArticle(item: RSSItem): Promise<CurationResult | null> {
+  try {
+    // Try Hugging Face first (free)
+    if (process.env.HUGGINGFACE_API_KEY) {
+      const result = await curateWithHuggingFace(item);
+      if (result) return result;
+    }
+
+    // Fallback to OpenAI (paid)
+    if (process.env.OPENAI_API_KEY) {
+      const result = await curateWithOpenAI(item);
+      if (result) return result;
+    }
+
+    console.error('No AI provider configured. Set HUGGINGFACE_API_KEY or OPENAI_API_KEY.');
+    return null;
   } catch (error) {
-    console.error('OpenAI curation failed:', error);
+    console.error('AI curation failed:', error);
     return null;
   }
 }
