@@ -88,41 +88,60 @@ function parseResult(content: string, item: RSSItem): CurationResult | null {
   }
 }
 
+// HF model priority: try larger models first, fall back to smaller ones
+const HF_MODELS = [
+  'Qwen/Qwen2.5-72B-Instruct',         // Excellent multilingual, free serverless
+  'mistralai/Mixtral-8x7B-Instruct-v0.1', // Good at structured output
+  'mistralai/Mistral-7B-Instruct-v0.3',   // Fallback
+];
+
 // --- Hugging Face Provider (free) ---
 async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.HUGGINGFACE_API_KEY;
   if (!apiKey) return null;
 
-  const prompt = `${SYSTEM_PROMPT}\n\n${buildUserPrompt(item)}`;
+  for (const model of HF_MODELS) {
+    try {
+      const res = await fetch(`https://api-inference.huggingface.co/models/${model}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: buildUserPrompt(item) },
+          ],
+          temperature: 0.3,
+          max_tokens: 800,
+        }),
+        signal: AbortSignal.timeout(60000),
+      });
 
-  const res = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'deepseek/deepseek-v3-0324',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: buildUserPrompt(item) },
-      ],
-      temperature: 0.3,
-      max_tokens: 800,
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.warn(`HF model ${model} failed (${res.status}): ${errText.slice(0, 200)}`);
+        continue; // Try next model
+      }
 
-  if (!res.ok) {
-    console.error('Hugging Face API error:', res.status, await res.text().catch(() => ''));
-    return null;
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) continue;
+
+      const result = parseResult(content, item);
+      if (result) {
+        console.log(`Curated with HF model: ${model}`);
+        return result;
+      }
+    } catch (err) {
+      console.warn(`HF model ${model} error:`, err instanceof Error ? err.message : err);
+      continue;
+    }
   }
 
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) return null;
-
-  return parseResult(content, item);
+  return null;
 }
 
 // --- OpenAI Provider (paid, higher quality) ---
