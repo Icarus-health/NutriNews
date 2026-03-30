@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, X, Clock } from 'lucide-react';
+import { Search, X, Clock, ChevronDown, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
 import { useUX } from '@/components/providers/UXProvider';
@@ -10,48 +10,81 @@ import type { User } from '@supabase/supabase-js';
 
 interface Props {
   user: User | null;
-  activeCategory: string | null;
+  activeCategories: string[];
   searchQuery: string;
 }
 
-export default function HomeHeader({ user, activeCategory, searchQuery }: Props) {
+export default function HomeHeader({ user, activeCategories, searchQuery }: Props) {
   const router = useRouter();
   const ux = useUX();
   const [showSearch, setShowSearch] = useState(!!searchQuery);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [query, setQuery] = useState(searchQuery);
+  const [selected, setSelected] = useState<Set<string>>(new Set(activeCategories));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  function selectCategory(catId: string | null) {
+  // Sync selected with URL on prop change
+  useEffect(() => {
+    setSelected(new Set(activeCategories));
+  }, [activeCategories]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClick);
+      return () => document.removeEventListener('mousedown', handleClick);
+    }
+  }, [showDropdown]);
+
+  function buildUrl(cats: Set<string>, q: string) {
     const params = new URLSearchParams();
-    if (catId) params.set('category', catId);
-    if (query) params.set('q', query);
+    if (cats.size > 0) params.set('categories', Array.from(cats).join(','));
+    if (q) params.set('q', q);
     const qs = params.toString();
-    router.push(qs ? `/?${qs}` : '/');
+    return qs ? `/?${qs}` : '/';
+  }
+
+  function toggleCategory(catId: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(catId)) {
+        next.delete(catId);
+      } else {
+        next.add(catId);
+      }
+      router.push(buildUrl(next, query));
+      return next;
+    });
+  }
+
+  function clearCategories() {
+    setSelected(new Set());
+    router.push(buildUrl(new Set(), query));
+    setShowDropdown(false);
   }
 
   const handleSearch = useCallback((value: string) => {
     setQuery(value);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      const params = new URLSearchParams();
-      if (activeCategory) params.set('category', activeCategory);
-      if (value) {
-        params.set('q', value);
-        ux.addSearchQuery(value);
-      }
-      const qs = params.toString();
-      router.push(qs ? `/?${qs}` : '/');
+      if (value) ux.addSearchQuery(value);
+      router.push(buildUrl(selected, value));
     }, 400);
-  }, [activeCategory, router, ux]);
+  }, [selected, router, ux]);
 
   function clearSearch() {
     setQuery('');
     setShowSearch(false);
-    const params = new URLSearchParams();
-    if (activeCategory) params.set('category', activeCategory);
-    const qs = params.toString();
-    router.push(qs ? `/?${qs}` : '/');
+    router.push(buildUrl(selected, ''));
   }
+
+  const categoryCount = selected.size;
 
   return (
     <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 dark:border-slate-700/60 safe-top">
@@ -126,40 +159,125 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
         </div>
       )}
 
-      {/* Category chips — gruppiert nach Berufskontext */}
-      <div className="flex gap-2 px-5 pb-3 overflow-x-auto scrollbar-hide">
+      {/* Category dropdown trigger */}
+      <div className="px-5 pb-3 relative" ref={dropdownRef}>
         <button
-          onClick={() => selectCategory(null)}
+          onClick={() => setShowDropdown(d => !d)}
           className={clsx(
-            'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200',
-            !activeCategory
-              ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
-              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-200'
+            'w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all border',
+            categoryCount > 0
+              ? 'bg-forest-50 dark:bg-forest-900/20 border-forest-200 dark:border-forest-800 text-forest-700 dark:text-forest-400'
+              : 'bg-slate-100 dark:bg-slate-700 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
           )}
         >
-          Alle
-        </button>
-        {CATEGORY_CONTEXTS.map((ctx) => (
-          <div key={ctx.id} className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-[10px] text-slate-300 dark:text-slate-500 font-bold uppercase tracking-wider pl-1.5 pr-0.5">
-              {ctx.label.split(' ')[0]}
-            </span>
-            {CATEGORIES.filter(cat => (ctx.topics as readonly string[]).includes(cat.id)).map(cat => (
+          <span>
+            {categoryCount === 0
+              ? 'Alle Kategorien'
+              : categoryCount === 1
+                ? CATEGORIES.find(c => selected.has(c.id))?.label ?? '1 Kategorie'
+                : `${categoryCount} Kategorien`}
+          </span>
+          <div className="flex items-center gap-2">
+            {categoryCount > 0 && (
               <button
-                key={cat.id}
-                onClick={() => selectCategory(activeCategory === cat.id ? null : cat.id)}
-                className={clsx(
-                  'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap',
-                  activeCategory === cat.id
-                    ? 'bg-forest-700 text-white shadow-sm shadow-forest-700/20'
-                    : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-200'
-                )}
+                onClick={(e) => { e.stopPropagation(); clearCategories(); }}
+                className="w-5 h-5 rounded-full bg-forest-200 dark:bg-forest-800 flex items-center justify-center hover:bg-forest-300 dark:hover:bg-forest-700 transition-colors"
               >
-                {cat.label}
+                <X size={10} className="text-forest-700 dark:text-forest-300" strokeWidth={3} />
               </button>
-            ))}
+            )}
+            <ChevronDown size={16} className={clsx('transition-transform', showDropdown && 'rotate-180')} />
           </div>
-        ))}
+        </button>
+
+        {/* Selected chips (shown when dropdown closed and categories selected) */}
+        {!showDropdown && categoryCount > 0 && categoryCount <= 5 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {Array.from(selected).map(catId => {
+              const cat = CATEGORIES.find(c => c.id === catId);
+              if (!cat) return null;
+              return (
+                <button
+                  key={catId}
+                  onClick={() => toggleCategory(catId)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-forest-700 text-white text-[11px] font-semibold transition-colors hover:bg-forest-800"
+                >
+                  {cat.label}
+                  <X size={10} strokeWidth={3} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Dropdown panel */}
+        {showDropdown && (
+          <div className="absolute left-5 right-5 top-full mt-1 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-900/10 dark:shadow-black/30 max-h-[60vh] overflow-y-auto z-20 animate-fade-in">
+            {CATEGORY_CONTEXTS.map((ctx) => {
+              const ctxCategories = CATEGORIES.filter(cat => (ctx.topics as readonly string[]).includes(cat.id));
+              return (
+                <div key={ctx.id}>
+                  {/* Context group label */}
+                  <div className="sticky top-0 bg-slate-50 dark:bg-slate-750 px-4 py-2 border-b border-slate-100 dark:border-slate-700">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      {ctx.label}
+                    </p>
+                  </div>
+                  {/* Category items */}
+                  {ctxCategories.map(cat => {
+                    const isSelected = selected.has(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => toggleCategory(cat.id)}
+                        className={clsx(
+                          'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                          isSelected
+                            ? 'bg-forest-50 dark:bg-forest-900/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                        )}
+                      >
+                        <div className={clsx(
+                          'w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors flex-shrink-0',
+                          isSelected
+                            ? 'bg-forest-700 border-forest-700'
+                            : 'border-slate-300 dark:border-slate-600'
+                        )}>
+                          {isSelected && <Check size={12} className="text-white" strokeWidth={3} />}
+                        </div>
+                        <span className={clsx(
+                          'text-[13px] font-medium',
+                          isSelected ? 'text-forest-700 dark:text-forest-400' : 'text-slate-700 dark:text-slate-300'
+                        )}>
+                          {cat.label}
+                        </span>
+                        <span className={clsx('ml-auto text-[10px] px-2 py-0.5 rounded-full', cat.color)}>
+                          {cat.id.split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
+              <button
+                onClick={clearCategories}
+                className="text-[12px] text-slate-400 hover:text-red-400 transition-colors"
+              >
+                Alle zurücksetzen
+              </button>
+              <button
+                onClick={() => setShowDropdown(false)}
+                className="bg-forest-700 text-white px-4 py-1.5 rounded-lg text-[12px] font-semibold hover:bg-forest-800 transition-colors"
+              >
+                Fertig {categoryCount > 0 && `(${categoryCount})`}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
