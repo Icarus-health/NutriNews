@@ -1,6 +1,7 @@
 'use client';
 
 import BottomNav from '@/components/layout/BottomNav';
+import InstallPrompt from '@/components/pwa/InstallPrompt';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <BottomNav />
+      <InstallPrompt />
     </div>
   );
 }

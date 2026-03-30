@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#2a8234"/>
+  <g transform="translate(256,240)">
+    <!-- Leaf shape -->
+    <ellipse cx="0" cy="-20" rx="80" ry="120" fill="#fff" transform="rotate(-15)"/>
+    <line x1="0" y1="-140" x2="0" y2="60" stroke="#2a8234" stroke-width="6" transform="rotate(-15)"/>
+    <line x1="0" y1="-100" x2="-30" y2="-70" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
+    <line x1="0" y1="-60" x2="-25" y2="-35" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
+    <line x1="0" y1="-20" x2="-20" y2="0" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
+    <line x1="0" y1="-100" x2="30" y2="-70" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
+    <line x1="0" y1="-60" x2="25" y2="-35" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
+    <line x1="0" y1="-20" x2="20" y2="0" stroke="#2a8234" stroke-width="4" transform="rotate(-15)"/>
+  </g>
+  <!-- "NN" text -->
+  <text x="256" y="430" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="80" fill="#fff" letter-spacing="-2">NN</text>
+</svg>
