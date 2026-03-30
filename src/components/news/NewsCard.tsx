@@ -56,7 +56,22 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
 
   function handleBookmark(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!userId) { onRequireAuth?.(); return; }
+    if (!userId) {
+      // Anonymous: toggle bookmark in localStorage
+      setBookmarked(prev => {
+        const next = !prev;
+        try {
+          const stored = JSON.parse(localStorage.getItem('nn-bookmarks') || '[]') as string[];
+          if (next) {
+            localStorage.setItem('nn-bookmarks', JSON.stringify([...stored, card.id]));
+          } else {
+            localStorage.setItem('nn-bookmarks', JSON.stringify(stored.filter(id => id !== card.id)));
+          }
+        } catch { /* ignore */ }
+        return next;
+      });
+      return;
+    }
     setBookmarked(prev => !prev);
     startTransition(async () => {
       const result = await toggleBookmark(card.id);

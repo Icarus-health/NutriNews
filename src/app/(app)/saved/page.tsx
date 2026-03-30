@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import SavedPage from '@/components/saved/SavedPage';
 
 export const dynamic = 'force-dynamic';
@@ -7,7 +6,11 @@ export const dynamic = 'force-dynamic';
 export default async function Saved() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+
+  if (!user) {
+    // Anonymous users see a local-only saved page
+    return <SavedPage cards={[]} collections={[]} userId={null} />;
+  }
 
   const [{ data: bookmarkedCards }, { data: collections }] = await Promise.all([
     supabase

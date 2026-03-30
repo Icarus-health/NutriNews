@@ -15,7 +15,9 @@ export default function NewsFeed({ initialCards, userId }: Props) {
   const [shareCardId, setShareCardId] = useState<string | null>(null);
 
   function handleRequireAuth() {
-    alert('Bitte anmelden, um diese Funktion zu nutzen.');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   }
 
   if (cards.length === 0) {
