@@ -11,12 +11,15 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 interface PageProps {
-  searchParams: Promise<{ category?: string; q?: string }>;
+  searchParams: Promise<{ categories?: string; q?: string }>;
 }
 
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const supabase = await createClient();
+
+  // Parse multi-category filter
+  const activeCategories = params.categories ? params.categories.split(',').filter(Boolean) : [];
 
   // Build query for main feed
   let query = supabase
@@ -26,9 +29,11 @@ export default async function HomePage({ searchParams }: PageProps) {
     .order('published_at', { ascending: false })
     .limit(30);
 
-  // Category filter
-  if (params.category) {
-    query = query.eq('category_main', params.category);
+  // Category filter (multi-select)
+  if (activeCategories.length === 1) {
+    query = query.eq('category_main', activeCategories[0]);
+  } else if (activeCategories.length > 1) {
+    query = query.in('category_main', activeCategories);
   }
 
   // Search filter
@@ -105,8 +110,9 @@ export default async function HomePage({ searchParams }: PageProps) {
   const enrichedBerufspolitik = await enrichCards(berufspolitikCards);
   const enrichedInternational = await enrichCards(internationalCards);
 
-  // Don't show special sections when filtering by specific category or searching
-  const showSpecialSections = !params.category && !params.q;
+  // Don't show special sections when filtering by category or searching
+  const hasFilters = activeCategories.length > 0 || !!params.q;
+  const showSpecialSections = !hasFilters;
   const showLayPress = showSpecialSections && enrichedLayPress.length > 0;
   const showBriefing = showSpecialSections;
 
@@ -140,7 +146,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     <div>
       <HomeHeader
         user={user}
-        activeCategory={params.category ?? null}
+        activeCategories={activeCategories}
         searchQuery={params.q ?? ''}
       />
       {briefingData.briefing && (
