@@ -3,11 +3,21 @@
 import { useState, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Save, LogOut, Bell, BellOff } from 'lucide-react';
+import { Save, LogOut, Bell, BellOff, Stethoscope } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile } from '@/lib/actions/news';
-import type { Profile } from '@/types/database';
+import type { Profile, TherapistSetting } from '@/types/database';
+
+const SETTINGS: { id: TherapistSetting; label: string; description: string }[] = [
+  { id: 'akutklinik', label: 'Akutklinik', description: 'Stationäre Versorgung, Intensiv' },
+  { id: 'rehabilitation', label: 'Rehabilitation', description: 'Reha-Einrichtungen' },
+  { id: 'ambulant', label: 'Ambulante Praxis', description: 'Freiberufliche Ernährungstherapie' },
+  { id: 'psychiatrie', label: 'Psychiatrische Einrichtung', description: 'Psychiatrie, Psychosomatik' },
+  { id: 'langzeitpflege', label: 'Langzeitpflege', description: 'Pflegeheime, Geriatrie' },
+  { id: 'praevention', label: 'Prävention', description: 'Gesundheitsförderung, Kursleitung' },
+  { id: 'forschung_lehre', label: 'Forschung & Lehre', description: 'Hochschule, Wissenschaft' },
+];
 
 interface Props {
   profile: Profile | null;
@@ -21,6 +31,7 @@ export default function ProfilePage({ profile, stats }: Props) {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [notify, setNotify] = useState(profile?.notify_new_news ?? true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(profile?.preferred_categories ?? []);
+  const [setting, setSetting] = useState<TherapistSetting | null>(profile?.setting ?? null);
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
 
@@ -42,6 +53,7 @@ export default function ProfilePage({ profile, stats }: Props) {
         full_name: fullName || undefined,
         preferred_categories: selectedCategories,
         notify_new_news: notify,
+        setting: setting ?? undefined,
       });
       setSaved(true);
       setEditing(false);
@@ -91,6 +103,37 @@ export default function ProfilePage({ profile, stats }: Props) {
             <p className="text-xs text-slate-400">{s.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Setting */}
+      <div className="bg-white rounded-xl border border-slate-100 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Stethoscope size={18} className="text-forest-600" />
+          <p className="text-sm font-medium text-slate-700">Mein Arbeitsumfeld</p>
+        </div>
+        <p className="text-xs text-slate-400 mb-3">Personalisiert dein tägliches Briefing und die Nachrichtenpriorisierung.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {SETTINGS.map(s => (
+            <button
+              key={s.id}
+              onClick={() => { setSetting(setting === s.id ? null : s.id); setEditing(true); }}
+              className={clsx(
+                'px-3 py-2 rounded-xl text-left transition-all border',
+                setting === s.id
+                  ? 'bg-forest-50 border-forest-300 ring-1 ring-forest-300'
+                  : 'bg-slate-50 border-slate-100 hover:border-slate-200'
+              )}
+            >
+              <p className={clsx(
+                'text-xs font-semibold',
+                setting === s.id ? 'text-forest-700' : 'text-slate-600'
+              )}>
+                {s.label}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{s.description}</p>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Notifications */}

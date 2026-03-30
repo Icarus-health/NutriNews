@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
 import LayPressFeed from '@/components/news/LayPressFeed';
-import type { NewsCard } from '@/types/database';
+import DailyBriefing from '@/components/briefing/DailyBriefing';
+import type { NewsCard, DailyBriefing as DailyBriefingType } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -96,6 +97,33 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   // Don't show lay press section when filtering by specific category or searching
   const showLayPress = !params.category && !params.q && enrichedLayPress.length > 0;
+  const showBriefing = !params.category && !params.q;
+
+  // Load daily briefing
+  let briefingData: { briefing: DailyBriefingType | null; isYesterday: boolean } = { briefing: null, isYesterday: false };
+  if (showBriefing) {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: todayBriefing } = await supabase
+      .from('daily_briefings')
+      .select('*')
+      .eq('date', today)
+      .single();
+
+    if (todayBriefing) {
+      briefingData = { briefing: todayBriefing, isYesterday: false };
+    } else {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { data: yesterdayBriefing } = await supabase
+        .from('daily_briefings')
+        .select('*')
+        .eq('date', yesterday)
+        .single();
+
+      if (yesterdayBriefing) {
+        briefingData = { briefing: yesterdayBriefing, isYesterday: true };
+      }
+    }
+  }
 
   return (
     <div>
@@ -104,6 +132,13 @@ export default async function HomePage({ searchParams }: PageProps) {
         activeCategory={params.category ?? null}
         searchQuery={params.q ?? ''}
       />
+      {briefingData.briefing && (
+        <DailyBriefing
+          items={briefingData.briefing.items}
+          date={briefingData.briefing.date}
+          isYesterday={briefingData.isYesterday}
+        />
+      )}
       {showLayPress && (
         <LayPressFeed cards={enrichedLayPress.slice(0, 3)} userId={user?.id ?? null} />
       )}

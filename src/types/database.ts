@@ -16,6 +16,15 @@ export type SourceType =
 
 export type NewsStatus = 'draft' | 'published';
 
+export type TherapistSetting =
+  | 'akutklinik'
+  | 'rehabilitation'
+  | 'ambulant'
+  | 'psychiatrie'
+  | 'langzeitpflege'
+  | 'praevention'
+  | 'forschung_lehre';
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -25,8 +34,28 @@ export interface Profile {
   specialties: string[];
   preferred_categories: string[];
   notify_new_news: boolean;
+  setting: TherapistSetting | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface BriefingItem {
+  headline: string;
+  summary: string;
+  source_name: string;
+  source_url: string;
+  evidence_level: EvidenceLevel;
+  category_main: string;
+  practice_relevance_score: number;
+  news_card_id: string | null;
+}
+
+export interface DailyBriefing {
+  id: string;
+  date: string;
+  items: BriefingItem[];
+  generated_at: string;
+  created_at: string;
 }
 
 export interface NewsCard {
@@ -99,6 +128,7 @@ export type Database = {
       comments: { Row: Comment; Insert: Partial<Comment>; Update: Partial<Comment> };
       collections: { Row: Collection; Insert: Partial<Collection>; Update: Partial<Collection> };
       shares: { Row: Share; Insert: Partial<Share>; Update: Partial<Share> };
+      daily_briefings: { Row: DailyBriefing; Insert: Partial<DailyBriefing>; Update: Partial<DailyBriefing> };
     };
   };
 };
