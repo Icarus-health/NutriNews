@@ -53,8 +53,8 @@ export default function HomeHeader({ user, activeCategory, searchQuery }: Props)
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-forest-600 to-forest-800 flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-[13px] tracking-tight">NN</span>
+          <div className="w-9 h-9 rounded-[10px] overflow-hidden shadow-sm">
+            <img src="/icon.svg" alt="NutriNews" className="w-full h-full" />
           </div>
           <div>
             <h1 className="font-bold text-slate-900 text-[17px] tracking-[-0.02em] leading-none">
