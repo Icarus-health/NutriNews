@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Heart, Bookmark, Send, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Heart, Bookmark, Send, ChevronDown, ChevronUp, ExternalLink, MessageCircle } from 'lucide-react';
+import CommentSection from './CommentSection';
 import { clsx } from 'clsx';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle } from '@/lib/categories';
@@ -17,6 +18,7 @@ interface Props {
 
 export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(card.user_has_liked ?? false);
   const [likeCount, setLikeCount] = useState(card.like_count ?? 0);
   const [bookmarked, setBookmarked] = useState(card.user_has_bookmarked ?? false);
@@ -127,6 +129,12 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
           <Bookmark size={18} fill={bookmarked ? 'currentColor' : 'none'}/>
         </button>
         <button
+          onClick={() => setShowComments(p => !p)}
+          className={clsx('flex items-center gap-1.5 text-sm transition-colors', showComments ? 'text-forest-600' : 'text-slate-400 hover:text-forest-500')}
+        >
+          <MessageCircle size={18} fill={showComments ? 'currentColor' : 'none'} />
+        </button>
+        <button
           onClick={handleShare}
           className="text-slate-400 hover:text-forest-500 transition-colors"
         >
@@ -141,6 +149,12 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
           <ExternalLink size={18}/>
         </a>
       </div>
+
+      {showComments && (
+        <div className="animate-fade-in">
+          <CommentSection newsCardId={card.id} userId={userId} onRequireAuth={onRequireAuth} />
+        </div>
+      )}
     </article>
   );
 }

@@ -83,6 +83,147 @@ export async function shareToUser(newsCardId: string, receiverEmail: string, mes
   return { success: true };
 }
 
+export async function addComment(newsCardId: string, body: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const trimmed = body.trim();
+  if (!trimmed) return { error: 'Kommentar darf nicht leer sein' };
+
+  const { error } = await supabase.from('comments').insert({
+    news_card_id: newsCardId,
+    user_id: user.id,
+    body: trimmed,
+  });
+
+  if (error) return { error: 'Kommentar konnte nicht gespeichert werden' };
+
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function deleteComment(commentId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  await supabase.from('comments').delete()
+    .eq('id', commentId)
+    .eq('user_id', user.id);
+
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function getComments(newsCardId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('comments')
+    .select('id, body, created_at, user_id, profiles:user_id(full_name, avatar_url)')
+    .eq('news_card_id', newsCardId)
+    .order('created_at', { ascending: true })
+    .limit(50);
+
+  return data ?? [];
+}
+
+export async function markShareRead(shareId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  await supabase.from('shares').update({ read: true })
+    .eq('id', shareId)
+    .eq('receiver_id', user.id);
+
+  revalidatePath('/inbox');
+  return { success: true };
+}
+
+export async function createNewsCard(data: {
+  headline: string;
+  snack_what: string;
+  snack_result: string;
+  snack_consequence: string;
+  therapist_check: string;
+  source_url: string;
+  source_name?: string;
+  category_main: string;
+  subcategories?: string[];
+  evidence_level: string;
+  read_time_sec?: number;
+  status?: 'draft' | 'published';
+  curated_by_agent?: boolean;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error, data: card } = await supabase.from('news_cards').insert({
+    ...data,
+    curated_by: user.id,
+    published_at: data.status === 'published' ? new Date().toISOString() : null,
+  }).select('id').single();
+
+  if (error) return { error: 'Karte konnte nicht erstellt werden' };
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+  return { success: true, id: card.id };
+}
+
+export async function publishNewsCard(newsCardId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { data: profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return { error: 'Keine Berechtigung' };
+
+  await supabase.from('news_cards').update({
+    status: 'published',
+    published_at: new Date().toISOString(),
+  }).eq('id', newsCardId);
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+export async function deleteNewsCard(newsCardId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { data: profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return { error: 'Keine Berechtigung' };
+
+  await supabase.from('news_cards').delete().eq('id', newsCardId);
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+export async function updateProfile(data: { full_name?: string; specialties?: string[]; preferred_categories?: string[]; notify_new_news?: boolean }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('profiles').update({
+    ...data,
+    updated_at: new Date().toISOString(),
+  }).eq('id', user.id);
+
+  if (error) return { error: 'Profil konnte nicht aktualisiert werden' };
+
+  revalidatePath('/profile');
+  return { success: true };
+}
+
 export async function searchProfiles(query: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
