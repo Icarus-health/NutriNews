@@ -5,7 +5,7 @@ import { Check, Trash2, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
-import { createNewsCard, publishNewsCard, deleteNewsCard } from '@/lib/actions/news';
+import { createNewsCard, publishNewsCard, deleteNewsCard, triggerCron } from '@/lib/actions/news';
 import { getCategoryStyle } from '@/lib/categories';
 import type { NewsCard, EvidenceLevel } from '@/types/database';
 
@@ -18,6 +18,7 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
   const [drafts, setDrafts] = useState(initialDrafts);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [autoRunning, setAutoRunning] = useState(false);
+  const [cronRunning, setCronRunning] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Create form state
@@ -37,6 +38,13 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
     const data = await res.json();
     alert(data.message ?? data.error);
     setAutoRunning(false);
+  }
+
+  async function runCron() {
+    setCronRunning(true);
+    const data = await triggerCron();
+    alert((data as { message?: string; error?: string }).message ?? (data as { error?: string }).error ?? 'Fertig');
+    setCronRunning(false);
   }
 
   function handlePublish(cardId: string) {
@@ -253,15 +261,29 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
 
       {/* Auto agent tab */}
       {tab === 'auto' && (
-        <div className="bg-white rounded-xl p-4 border border-slate-100 text-center">
-          <p className="text-sm text-slate-600 mb-4">KI holt automatisch aktuelle Ernaehrungsnews, bewertet die Evidenz und erstellt fertige Karten.</p>
-          <button
-            onClick={runAutoAgent}
-            disabled={autoRunning}
-            className="bg-forest-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-forest-800 disabled:opacity-60 transition-colors"
-          >
-            {autoRunning ? 'Laeuft...' : 'Jetzt 5 News automatisch holen'}
-          </button>
+        <div className="space-y-3">
+          <div className="bg-white rounded-xl p-4 border border-slate-100 text-center">
+            <p className="text-sm font-semibold text-slate-700 mb-1">Als Entwurf speichern</p>
+            <p className="text-xs text-slate-400 mb-3">KI holt News, erstellt Karten zum Überprüfen (nicht direkt veröffentlicht).</p>
+            <button
+              onClick={runAutoAgent}
+              disabled={autoRunning}
+              className="bg-slate-100 text-slate-700 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-200 disabled:opacity-60 transition-colors"
+            >
+              {autoRunning ? 'Läuft...' : '5 News als Entwurf holen'}
+            </button>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-forest-200 text-center">
+            <p className="text-sm font-semibold text-slate-700 mb-1">RSS-Feed jetzt abrufen</p>
+            <p className="text-xs text-slate-400 mb-3">Holt bis zu 8 neue Artikel aus allen RSS-Feeds und veröffentlicht sie sofort.</p>
+            <button
+              onClick={runCron}
+              disabled={cronRunning}
+              className="bg-forest-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-forest-800 disabled:opacity-60 transition-colors"
+            >
+              {cronRunning ? 'Läuft...' : 'RSS-Feed jetzt abrufen & veröffentlichen'}
+            </button>
+          </div>
         </div>
       )}
     </div>
