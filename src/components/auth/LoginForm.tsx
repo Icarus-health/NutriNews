@@ -7,25 +7,33 @@ export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${location.origin}/auth/callback` },
     });
     setLoading(false);
-    if (!error) setSent(true);
+    if (error) {
+      setError('Fehler beim Senden. Bitte prüfe deine E-Mail-Adresse.');
+    } else {
+      setSent(true);
+    }
   }
 
   async function handleGoogle() {
+    setError(null);
     const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${location.origin}/auth/callback` },
     });
+    if (error) setError('Google-Anmeldung fehlgeschlagen. Bitte versuche es erneut.');
   }
 
   if (sent) {
@@ -54,12 +62,12 @@ export default function LoginForm() {
           <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
         </svg>
-        Mit Google anmelden
+        Mit Google anmelden / registrieren
       </button>
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-slate-100"/>
-        <span className="text-[12px] text-slate-300 font-medium">oder</span>
+        <span className="text-[12px] text-slate-300 font-medium">oder per E-Mail</span>
         <div className="flex-1 h-px bg-slate-100"/>
       </div>
 
@@ -80,6 +88,14 @@ export default function LoginForm() {
           {loading ? 'Sende...' : 'Magic Link senden'}
         </button>
       </form>
+
+      {error && (
+        <p className="text-[12px] text-red-500 text-center">{error}</p>
+      )}
+
+      <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+        Noch kein Konto? Einfach E-Mail eingeben — wird automatisch erstellt.
+      </p>
     </div>
   );
 }
