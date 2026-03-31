@@ -91,8 +91,8 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-[10px] overflow-hidden shadow-sm">
-            <img src="/icon.svg" alt="NutriNews" className="w-full h-full" />
+          <div className="h-9 w-[100px] overflow-hidden flex items-center">
+            <img src="/icarus-logo.png" alt="NutriNews" className="h-full w-full object-contain object-left" />
           </div>
           <div>
             <h1 className="font-bold text-slate-900 dark:text-slate-100 text-[17px] tracking-[-0.02em] leading-none">

@@ -36,6 +36,9 @@ export default function LoginForm() {
         <p className="text-[13px] text-slate-400 mt-2 leading-relaxed">
           Schau in dein E-Mail-Postfach und klicke auf den Link.
         </p>
+        <p className="text-[11px] text-slate-300 mt-3 leading-relaxed">
+          Die E-Mail kommt von <span className="font-medium">noreply@mail.supabase.io</span> — bitte auch den Spam-Ordner prüfen.
+        </p>
       </div>
     );
   }
