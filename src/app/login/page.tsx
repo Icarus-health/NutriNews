@@ -27,7 +27,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <img
-            src="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png"
+            src="/Design  Titel.png"
             alt="NutriNews"
             className="w-full max-w-[280px] mx-auto mb-4 object-contain"
           />

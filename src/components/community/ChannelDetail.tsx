@@ -72,7 +72,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
       </div>
 
       {/* Post input */}
-      {userId && channel.is_member && (
+      {userId && (
         <form onSubmit={handleSubmit} className="mb-4">
           <div className="flex gap-2">
             <input
@@ -99,11 +99,6 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
         </p>
       )}
 
-      {userId && !channel.is_member && (
-        <p className="text-[12px] text-slate-400 text-center mb-4 bg-slate-50 dark:bg-slate-800 rounded-xl py-3">
-          Tritt dem Kanal bei, um Beiträge zu schreiben
-        </p>
-      )}
 
       {/* Posts */}
       <div className="space-y-3">

@@ -32,6 +32,7 @@ export interface Profile {
   id: string;
   email: string | null;
   full_name: string | null;
+  alias: string | null;
   avatar_url: string | null;
   role: 'therapist' | 'admin';
   specialties: string[];
