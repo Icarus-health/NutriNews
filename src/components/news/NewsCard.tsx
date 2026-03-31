@@ -257,7 +257,9 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
               <button onClick={handleShare} className="text-slate-400 hover:text-forest-500 transition-colors">
                 <Send size={17} strokeWidth={1.5} />
               </button>
-              <span className="text-[11px] text-slate-300 dark:text-slate-500 font-medium tabular-nums">{readMin} Min</span>
+              <span className="text-[11px] text-slate-300 dark:text-slate-500 font-medium tabular-nums">
+                {card.published_at ? new Date(card.published_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' }) + ' · ' : ''}{readMin} Min
+              </span>
             </div>
 
             {/* Community verification */}

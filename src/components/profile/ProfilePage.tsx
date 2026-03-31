@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, LogOut, Bell, BellOff, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot } from 'lucide-react';
+import { Save, LogOut, Bell, BellOff, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile } from '@/lib/actions/news';
@@ -32,16 +32,38 @@ export default function ProfilePage({ profile, stats }: Props) {
   const ux = useUX();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
+  const [alias, setAlias] = useState(profile?.alias ?? '');
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ?? null);
+  const [uploading, setUploading] = useState(false);
   const [notify, setNotify] = useState(profile?.notify_new_news ?? true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(profile?.preferred_categories ?? []);
   const [setting, setSetting] = useState<TherapistSetting | null>(profile?.setting ?? null);
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push('/');
     router.refresh();
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext = file.name.split('.').pop();
+    const fileName = `${profile?.id ?? 'user'}.${ext}`;
+    const { error, data } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true, contentType: file.type });
+    if (!error && data) {
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      setAvatarUrl(publicUrl);
+      await updateProfile({ full_name: fullName || undefined, alias: alias || undefined });
+      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile!.id);
+    }
+    setUploading(false);
   }
 
   function toggleCategory(catId: string) {
@@ -54,6 +76,7 @@ export default function ProfilePage({ profile, stats }: Props) {
     startTransition(async () => {
       await updateProfile({
         full_name: fullName || undefined,
+        alias: alias || undefined,
         preferred_categories: selectedCategories,
         notify_new_news: notify,
         setting: setting ?? undefined,
@@ -64,30 +87,63 @@ export default function ProfilePage({ profile, stats }: Props) {
     });
   }
 
+  const displayName = profile?.alias || profile?.full_name || profile?.email?.split('@')[0] || '?';
+
   return (
     <div className="px-4 pt-6 pb-8">
       {/* Avatar & info */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-16 h-16 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center text-2xl flex-shrink-0">
-          {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full rounded-full object-cover"/>
-          ) : (
-            <span className="text-2xl font-bold text-forest-700 dark:text-forest-400">
-              {(profile?.full_name || profile?.email || '?')[0].toUpperCase()}
-            </span>
-          )}
+        <div className="relative flex-shrink-0">
+          <div className="w-16 h-16 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover"/>
+            ) : (
+              <span className="text-2xl font-bold text-forest-700 dark:text-forest-400">
+                {displayName[0].toUpperCase()}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-forest-700 text-white flex items-center justify-center shadow-md hover:bg-forest-800 transition-colors disabled:opacity-60"
+          >
+            {uploading ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" /> : <Camera size={12} />}
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
         </div>
         <div className="flex-1 min-w-0">
           {editing ? (
-            <input
-              type="text"
-              value={fullName}
-              onChange={e => setFullName(e.target.value)}
-              placeholder="Dein Name"
-              className="font-bold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-forest-500"
-            />
+            <div className="space-y-1.5">
+              <input
+                type="text"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="Vollständiger Name"
+                className="font-bold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 w-full text-[14px] focus:outline-none focus:ring-2 focus:ring-forest-500"
+              />
+              <input
+                type="text"
+                value={alias}
+                onChange={e => setAlias(e.target.value)}
+                placeholder="Alias (sichtbar für andere)"
+                className="text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 w-full text-[13px] focus:outline-none focus:ring-2 focus:ring-forest-500"
+              />
+            </div>
           ) : (
-            <p className="font-bold text-slate-900 dark:text-slate-100">{profile?.full_name ?? 'Kein Name'}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="font-bold text-slate-900 dark:text-slate-100">{displayName}</p>
+              <button
+                onClick={() => setEditing(true)}
+                className="text-slate-400 hover:text-forest-600 transition-colors"
+                title="Name bearbeiten"
+              >
+                <Pencil size={13} />
+              </button>
+            </div>
+          )}
+          {profile?.alias && profile?.full_name && !editing && (
+            <p className="text-[11px] text-slate-400 truncate">{profile.full_name}</p>
           )}
           <p className="text-sm text-slate-400 truncate">{profile?.email}</p>
           <span className="text-xs bg-forest-100 dark:bg-forest-900/30 text-forest-700 dark:text-forest-400 px-2 py-0.5 rounded-full">{profile?.role}</span>
