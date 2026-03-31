@@ -14,8 +14,8 @@ export const metadata: Metadata = {
     title: 'Nutri News',
   },
   icons: {
-    icon: '/icarus-logo.png',
-    apple: '/icarus-logo.png',
+    icon: '/Gemini_Generated_Image_r9u96tr9u96tr9u9.png',
+    apple: '/Gemini_Generated_Image_r9u96tr9u96tr9u9.png',
   },
 };
 
@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="de" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icarus-logo.png" />
+        <link rel="apple-touch-icon" href="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>

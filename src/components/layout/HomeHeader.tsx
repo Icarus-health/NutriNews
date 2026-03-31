@@ -92,7 +92,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           <div className="h-9 w-[100px] overflow-hidden flex items-center">
-            <img src="/icarus-logo.png" alt="NutriNews" className="h-full w-full object-contain object-left" />
+            <img src="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png" alt="NutriNews" className="h-full w-full object-contain object-left" />
           </div>
           <div>
             <h1 className="font-bold text-slate-900 dark:text-slate-100 text-[17px] tracking-[-0.02em] leading-none">

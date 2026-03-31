@@ -6,7 +6,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <div className="inline-flex w-[180px] h-[64px] overflow-hidden mb-5">
-            <img src="/icarus-logo.png" alt="NutriNews" className="w-full h-full object-contain" />
+            <img src="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png" alt="NutriNews" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-[26px] font-bold text-slate-900 tracking-[-0.03em]">NutriNews</h1>
           <p className="text-slate-400 text-[14px] mt-1.5 font-medium">Für Ernährungstherapeut:innen</p>
