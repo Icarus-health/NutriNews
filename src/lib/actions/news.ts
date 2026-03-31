@@ -224,6 +224,26 @@ export async function updateProfile(data: { full_name?: string; alias?: string; 
   return { success: true };
 }
 
+export async function createCollection(name: string, emoji: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const trimmed = name.trim();
+  if (!trimmed) return { error: 'Name darf nicht leer sein' };
+
+  const { error, data } = await supabase.from('collections').insert({
+    user_id: user.id,
+    name: trimmed,
+    emoji: emoji || '📁',
+  }).select('id').single();
+
+  if (error) return { error: 'Sammlung konnte nicht erstellt werden' };
+
+  revalidatePath('/saved');
+  return { success: true, id: data.id };
+}
+
 export async function searchProfiles(query: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

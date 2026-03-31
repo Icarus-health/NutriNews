@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
-import { Heart, Bookmark, BookmarkPlus, Send, ExternalLink, MessageCircle, RotateCcw, Clock } from 'lucide-react';
+import { Heart, Bookmark, BookmarkPlus, Send, ExternalLink, MessageCircle, RotateCcw, Clock, ChevronRight, CheckCircle2 } from 'lucide-react';
 import CommentSection from './CommentSection';
 import CardVerification from './CardVerification';
 import { clsx } from 'clsx';
@@ -18,21 +18,35 @@ interface Props {
   onShare?: (cardId: string) => void;
 }
 
+const RELEVANCE_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: 'Theoretisch', color: 'text-slate-400' },
+  2: { label: 'Hintergrund', color: 'text-slate-500' },
+  3: { label: 'Relevant', color: 'text-amber-600 dark:text-amber-400' },
+  4: { label: 'Praxisnah', color: 'text-forest-600 dark:text-forest-400' },
+  5: { label: 'Sofort umsetzbar', color: 'text-forest-700 dark:text-forest-300 font-semibold' },
+};
+
 function PracticeRelevanceIndicator({ score }: { score: number | null }) {
   if (!score) return null;
   const clamped = Math.min(5, Math.max(1, score));
+  const meta = RELEVANCE_LABELS[clamped];
   return (
-    <div className="flex items-center gap-1" title={`Praxisrelevanz: ${clamped}/5`}>
+    <div
+      className="flex items-center gap-1"
+      title={`Praxisrelevanz ${clamped}/5: ${meta.label}`}
+    >
       {[1, 2, 3, 4, 5].map(i => (
         <div
           key={i}
           className={clsx(
-            'w-1.5 h-1.5 rounded-full',
-            i <= clamped ? 'bg-forest-500' : 'bg-slate-200 dark:bg-slate-600'
+            'w-1.5 h-1.5 rounded-full transition-colors',
+            i <= clamped
+              ? clamped >= 4 ? 'bg-forest-500' : clamped === 3 ? 'bg-amber-400' : 'bg-slate-400'
+              : 'bg-slate-200 dark:bg-slate-600'
           )}
         />
       ))}
-      <span className="text-[10px] text-slate-400 ml-0.5">Praxis</span>
+      <span className={clsx('text-[10px] ml-0.5', meta.color)}>{meta.label}</span>
     </div>
   );
 }
@@ -49,6 +63,7 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
   const backRef = useRef<HTMLDivElement>(null);
   const ux = useUX();
   const inReadLater = ux.isInReadLater(card.id);
+  const isRead = ux.readHistory.some(e => e.cardId === card.id);
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
@@ -138,7 +153,9 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
               'rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border overflow-hidden cursor-pointer active:scale-[0.985] transition-transform duration-150',
               isLayPress
                 ? 'bg-amber-50/50 border-amber-200/60 dark:bg-amber-950/30 dark:border-amber-800/40'
-                : 'bg-white border-slate-100/60 dark:bg-slate-800 dark:border-slate-700/60'
+                : isRead
+                  ? 'bg-slate-50/80 border-slate-100/60 dark:bg-slate-800/70 dark:border-slate-700/50 opacity-90'
+                  : 'bg-white border-slate-100/60 dark:bg-slate-800 dark:border-slate-700/60'
             )}
             onClick={() => {
               setFlipped(true);
@@ -205,60 +222,84 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
               </p>
             </div>
 
-            {/* Flip hint */}
-            <div className="flex items-center justify-center pb-2">
-              <span className="text-[11px] text-slate-300 dark:text-slate-500 font-medium flex items-center gap-1">
-                Antippen für Details
+            {/* Flip hint + read indicator */}
+            <div className="flex items-center justify-between px-5 pb-2">
+              {isRead ? (
+                <span className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  <CheckCircle2 size={13} className="text-forest-400 dark:text-forest-500" />
+                  Gelesen
+                </span>
+              ) : (
+                <span />
+              )}
+              <span className="flex items-center gap-1 text-[11px] text-forest-600 dark:text-forest-400 font-medium bg-forest-50 dark:bg-forest-900/30 px-3 py-1 rounded-full border border-forest-100 dark:border-forest-800/40">
+                Details
+                <ChevronRight size={13} strokeWidth={2.5} />
               </span>
             </div>
 
             {/* Action bar */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100/80 dark:border-slate-700/60">
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100/80 dark:border-slate-700/60">
               <button
                 onClick={handleLike}
                 disabled={isPending}
+                title={liked ? 'Gefällt mir entfernen' : 'Gefällt mir'}
                 className={clsx(
-                  'flex items-center gap-1.5 text-[13px] font-medium transition-all duration-200',
-                  liked ? 'text-red-500 scale-110' : 'text-slate-400 hover:text-red-400'
+                  'flex items-center gap-1 text-[11px] font-medium transition-all duration-200 px-2 py-1 rounded-lg',
+                  liked ? 'text-red-500' : 'text-slate-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
                 )}
               >
-                <Heart size={17} fill={liked ? 'currentColor' : 'none'} strokeWidth={liked ? 0 : 1.5} />
-                <span>{likeCount}</span>
+                <Heart size={15} fill={liked ? 'currentColor' : 'none'} strokeWidth={liked ? 0 : 1.5} />
+                <span>{likeCount > 0 ? likeCount : ''}</span>
               </button>
               <button
                 onClick={handleBookmark}
                 disabled={isPending}
+                title={bookmarked ? 'Lesezeichen entfernen' : 'Lesezeichen setzen'}
                 className={clsx(
-                  'transition-all duration-200',
-                  bookmarked ? 'text-forest-600 scale-110' : 'text-slate-400 hover:text-forest-500'
+                  'flex items-center gap-1 text-[11px] font-medium transition-all duration-200 px-2 py-1 rounded-lg',
+                  bookmarked
+                    ? 'text-forest-600 dark:text-forest-400'
+                    : 'text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20'
                 )}
               >
-                <Bookmark size={17} fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={bookmarked ? 0 : 1.5} />
+                <Bookmark size={15} fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={bookmarked ? 0 : 1.5} />
+                <span className="hidden xs:inline">{bookmarked ? 'Gespeichert' : 'Speichern'}</span>
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); ux.toggleReadLater(card.id); }}
+                title={inReadLater ? 'Aus Leseliste entfernen' : 'Für später merken'}
                 className={clsx(
-                  'transition-all duration-200',
-                  inReadLater ? 'text-amber-500 scale-110' : 'text-slate-400 hover:text-amber-500'
+                  'flex items-center gap-1 text-[11px] font-medium transition-all duration-200 px-2 py-1 rounded-lg',
+                  inReadLater
+                    ? 'text-amber-500'
+                    : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'
                 )}
-                title={inReadLater ? 'Aus Später-Lesen entfernen' : 'Später lesen'}
               >
-                <Clock size={17} fill={inReadLater ? 'currentColor' : 'none'} strokeWidth={inReadLater ? 0 : 1.5} />
+                <Clock size={15} fill={inReadLater ? 'currentColor' : 'none'} strokeWidth={inReadLater ? 0 : 1.5} />
+                <span className="hidden xs:inline">{inReadLater ? 'Merkliste' : 'Später'}</span>
               </button>
               <button
                 onClick={handleCommentToggle}
+                title="Kommentare"
                 className={clsx(
-                  'transition-colors',
-                  showComments ? 'text-forest-600' : 'text-slate-400 hover:text-forest-500'
+                  'flex items-center gap-1 text-[11px] font-medium transition-colors px-2 py-1 rounded-lg',
+                  showComments
+                    ? 'text-forest-600 dark:text-forest-400 bg-forest-50 dark:bg-forest-900/20'
+                    : 'text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20'
                 )}
               >
-                <MessageCircle size={17} strokeWidth={1.5} />
+                <MessageCircle size={15} strokeWidth={1.5} />
               </button>
-              <button onClick={handleShare} className="text-slate-400 hover:text-forest-500 transition-colors">
-                <Send size={17} strokeWidth={1.5} />
+              <button
+                onClick={handleShare}
+                title="Kollegen teilen"
+                className="flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20 transition-colors px-2 py-1 rounded-lg"
+              >
+                <Send size={15} strokeWidth={1.5} />
               </button>
-              <span className="text-[11px] text-slate-300 dark:text-slate-500 font-medium tabular-nums">
-                {card.published_at ? new Date(card.published_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' }) + ' · ' : ''}{readMin} Min
+              <span className="text-[10px] text-slate-300 dark:text-slate-500 tabular-nums">
+                {readMin} Min
               </span>
             </div>
 
