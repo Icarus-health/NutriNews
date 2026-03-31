@@ -91,14 +91,13 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="h-9 w-[100px] overflow-hidden flex items-center">
-            <img src="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png" alt="NutriNews" className="h-full w-full object-contain object-left" />
-          </div>
-          <div>
-            <h1 className="font-bold text-slate-900 dark:text-slate-100 text-[17px] tracking-[-0.02em] leading-none">
-              NutriNews
-            </h1>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+          <div className="flex flex-col justify-center">
+            <img
+              src="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png"
+              alt="NutriNews"
+              className="h-7 w-auto object-contain object-left"
+            />
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5 leading-none">
               {user ? user.email?.split('@')[0] : 'Evidenzbasiert'}
             </p>
           </div>
