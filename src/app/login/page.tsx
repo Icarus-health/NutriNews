@@ -1,4 +1,25 @@
+'use client';
+
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
+
+function ErrorBanner() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+
+  if (!error) return null;
+
+  const message = error === 'link-expired'
+    ? 'Der Link ist abgelaufen oder wurde bereits verwendet. Bitte gib deine E-Mail erneut ein.'
+    : 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.';
+
+  return (
+    <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-[13px] text-center mb-4">
+      {message}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   return (
@@ -12,6 +33,9 @@ export default function LoginPage() {
           />
           <p className="text-slate-400 text-[14px] font-medium">Für Ernährungstherapeut:innen</p>
         </div>
+        <Suspense>
+          <ErrorBanner />
+        </Suspense>
         <LoginForm />
         <p className="text-center text-[11px] text-slate-300 mt-8">
           Evidenzbasierte Ernährungsnews &middot; Keine Werbung
