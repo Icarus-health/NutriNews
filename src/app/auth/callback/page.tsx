@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export default function AuthCallbackPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -36,11 +36,30 @@ export default function AuthCallbackPage() {
         }
       }
 
-      window.location.href = '/login?error=auth';
+      setFailed(true);
+      setTimeout(() => {
+        window.location.href = '/login?error=link-expired';
+      }, 3000);
     }
 
     handleCallback();
   }, []);
+
+  if (failed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-forest-50 via-white to-slate-50">
+        <div className="text-center max-w-xs px-4">
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <p className="text-[15px] text-slate-900 font-semibold mb-1">Link abgelaufen</p>
+          <p className="text-[13px] text-slate-400">
+            Der Link ist nicht mehr gültig. Du wirst zur Anmeldeseite weitergeleitet…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-forest-50 via-white to-slate-50">
