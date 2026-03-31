@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Search, X, Clock, ChevronDown, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
@@ -92,10 +93,13 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           <div className="flex flex-col justify-center">
-            <img
-              src="/Design  Titel.png"
+            <Image
+              src="/logo.webp"
               alt="NutriNews"
+              width={120}
+              height={120}
               className="h-7 w-auto object-contain object-left"
+              priority
             />
             <p className="text-[11px] text-slate-400 font-medium mt-0.5 leading-none">
               {user ? user.email?.split('@')[0] : 'Evidenzbasiert'}
