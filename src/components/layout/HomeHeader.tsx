@@ -93,7 +93,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
         <div className="flex items-center gap-2.5">
           <div className="flex flex-col justify-center">
             <img
-              src="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png"
+              src="/Design  Titel.png"
               alt="NutriNews"
               className="h-7 w-auto object-contain object-left"
             />
