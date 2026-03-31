@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     title: 'Nutri News',
   },
   icons: {
-    icon: '/Gemini_Generated_Image_r9u96tr9u96tr9u9.png',
+    icon: '/favicon.png',
     apple: '/Gemini_Generated_Image_r9u96tr9u96tr9u9.png',
   },
 };
@@ -34,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/Gemini_Generated_Image_r9u96tr9u96tr9u9.png" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>

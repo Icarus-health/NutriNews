@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
-          router.replace(next);
+          window.location.href = next;
           return;
         }
       }
@@ -31,12 +31,12 @@ export default function AuthCallbackPage() {
           type: type as 'email' | 'recovery' | 'invite' | 'email_change',
         });
         if (!error) {
-          router.replace(next);
+          window.location.href = next;
           return;
         }
       }
 
-      router.replace('/login?error=auth');
+      window.location.href = '/login?error=auth';
     }
 
     handleCallback();
