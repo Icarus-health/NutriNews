@@ -220,7 +220,7 @@ export default function ProfilePage({ profile, stats }: Props) {
       {/* Preferred categories */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Bevorzugte Kategorien</p>
-        <p className="text-xs text-slate-400 mb-3">Waehle Themen, die dich besonders interessieren.</p>
+        <p className="text-xs text-slate-400 mb-3">Wähle Themen, die dich besonders interessieren.</p>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map(cat => (
             <button
@@ -247,7 +247,7 @@ export default function ProfilePage({ profile, stats }: Props) {
           className="w-full bg-forest-700 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-forest-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 mb-4 animate-fade-in"
         >
           <Save size={16} />
-          {isPending ? 'Wird gespeichert...' : 'Aenderungen speichern'}
+          {isPending ? 'Wird gespeichert...' : 'Änderungen speichern'}
         </button>
       )}
 

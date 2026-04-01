@@ -23,11 +23,13 @@ export default function NewsFeed({ initialCards, userId }: Props) {
   if (cards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-400 px-5">
-        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
           <span className="text-2xl">📭</span>
         </div>
-        <p className="text-[15px] font-semibold text-slate-500">Noch keine News</p>
-        <p className="text-[13px] mt-1 text-center">Verwende den Admin-Bereich, um erste Karten hinzuzufügen.</p>
+        <p className="text-[15px] font-semibold text-slate-500 dark:text-slate-400">Keine Beiträge gefunden</p>
+        <p className="text-[13px] mt-1 text-center text-slate-400 dark:text-slate-500">
+          Für diese Auswahl sind aktuell keine Meldungen vorhanden. Bitte Filter anpassen oder später zurückkommen.
+        </p>
       </div>
     );
   }

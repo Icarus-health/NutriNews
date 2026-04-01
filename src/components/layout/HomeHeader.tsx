@@ -8,6 +8,18 @@ import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
 import { useUX } from '@/components/providers/UXProvider';
 import type { User } from '@supabase/supabase-js';
 
+// Die 8 klinisch am häufigsten nachgefragten Kategorien als Schnellfilter
+const QUICK_FILTER_IDS = [
+  'GLP-1 & Adipositastherapie',
+  'Diabetologie & Ernährung',
+  'Onkologische Ernährung',
+  'Gastroenterologie',
+  'Medikament-Nährstoff-Interaktionen',
+  'Mikronährstoffe klinisch',
+  'Geriatrie & Sarkopenie',
+  'Kardiovaskulär',
+];
+
 interface Props {
   user: User | null;
   activeCategories: string[];
@@ -89,17 +101,43 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
   return (
     <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 dark:border-slate-700/60 safe-top">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 py-3.5">
+      <div className="flex items-center justify-between px-5 py-3">
         <div className="flex items-center gap-2.5">
+          {/* Inline SVG-Icon – kein Netzwerkrequest */}
+          <div className="w-9 h-9 rounded-xl bg-forest-700 dark:bg-forest-600 flex items-center justify-center shadow-sm flex-shrink-0">
+            <svg viewBox="0 0 512 512" width="26" height="26" aria-hidden="true">
+              <path
+                d="M370,130 A160,160 0 1,0 380,160"
+                fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" opacity="0.9"
+              />
+              <circle cx="382" cy="148" r="4.5" fill="white" opacity="0.85" />
+              <circle cx="390" cy="138" r="3.5" fill="white" opacity="0.65" />
+              <circle cx="397" cy="128" r="2.5" fill="white" opacity="0.45" />
+              <g fill="none" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"
+                transform="translate(248, 260)">
+                <path d="M50,-60 L62,-72 L70,-58 L55,-50 Z" />
+                <circle cx="58" cy="-60" r="3.5" fill="white" stroke="none" />
+                <line x1="70" y1="-62" x2="112" y2="-80" />
+                <line x1="70" y1="-56" x2="112" y2="-80" />
+                <path d="M30,-40 L35,-30 L20,10 L5,30 L-5,20 L10,-10 Z" />
+                <path d="M35,-30 L65,-35 L50,-15 Z" />
+                <path d="M50,-15 L65,-35 L80,-20 Z" />
+                <path d="M10,-10 L-30,-45 L-10,-20 Z" />
+                <path d="M-30,-45 L-55,-70 L-35,-50 Z" />
+                <path d="M5,30 L-25,70 L-15,65 L-5,25" />
+                <path d="M5,30 L-10,80 L0,72 L5,28" />
+                <path d="M5,30 L8,82 L14,72 L10,28" />
+                <path d="M5,30 L25,70 L18,65 L10,28" />
+              </g>
+            </svg>
+          </div>
           <div className="flex flex-col justify-center">
-            <img
-              src="/Design  Titel.png"
-              alt="NutriNews"
-              className="h-7 w-auto object-contain object-left"
-            />
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5 leading-none">
-              {user ? user.email?.split('@')[0] : 'Evidenzbasiert'}
-            </p>
+            <span className="text-[17px] font-bold text-slate-900 dark:text-slate-100 leading-none tracking-tight">
+              NutriNews
+            </span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-none font-medium">
+              {user ? user.email?.split('@')[0] : 'Evidenzbasiert · Praxisnah'}
+            </span>
           </div>
         </div>
         <button
@@ -157,6 +195,29 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
           )}
         </div>
       )}
+
+      {/* Quick-filter chip strip */}
+      <div className="flex gap-2 px-5 pb-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+        {QUICK_FILTER_IDS.map(catId => {
+          const cat = CATEGORIES.find(c => c.id === catId);
+          if (!cat) return null;
+          const isActive = selected.has(catId);
+          return (
+            <button
+              key={catId}
+              onClick={() => toggleCategory(catId)}
+              className={clsx(
+                'flex-shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all duration-150 whitespace-nowrap',
+                isActive
+                  ? 'bg-forest-700 text-white border-forest-700'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-forest-300 dark:hover:border-forest-700'
+              )}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Category dropdown trigger */}
       <div className="px-5 pb-3 relative" ref={dropdownRef}>
