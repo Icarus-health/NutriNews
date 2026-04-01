@@ -105,16 +105,19 @@ export default async function HomePage({ searchParams }: PageProps) {
     }));
   }
 
-  const enrichedRegular = await enrichCards(regularCards);
-  const enrichedLayPress = await enrichCards(layPressCards);
-  const enrichedBerufspolitik = await enrichCards(berufspolitikCards);
-  const enrichedInternational = await enrichCards(internationalCards);
-
   // Don't show special sections when filtering by category or searching
   const hasFilters = activeCategories.length > 0 || !!params.q;
   const showSpecialSections = !hasFilters;
-  const showLayPress = showSpecialSections && enrichedLayPress.length > 0;
   const showBriefing = showSpecialSections;
+
+  // When filters active: show ALL matching cards in the main feed (ignore source_type split)
+  // When no filters: use the source_type split for special sections
+  const enrichedRegular = await enrichCards(hasFilters ? allCards : regularCards);
+  const enrichedLayPress = showSpecialSections ? await enrichCards(layPressCards) : [];
+  const enrichedBerufspolitik = showSpecialSections ? await enrichCards(berufspolitikCards) : [];
+  const enrichedInternational = showSpecialSections ? await enrichCards(internationalCards) : [];
+
+  const showLayPress = showSpecialSections && enrichedLayPress.length > 0;
 
   // Load daily briefing
   let briefingData: { briefing: DailyBriefingType | null; isYesterday: boolean } = { briefing: null, isYesterday: false };
