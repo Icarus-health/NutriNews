@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, X, Clock, ChevronDown, Check, SlidersHorizontal } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
-import { EVIDENCE_CONFIG } from '@/lib/evidence';
+import { EVIDENCE_CONFIG, evidenceLevelToKey } from '@/lib/evidence';
 import { useUX } from '@/components/providers/UXProvider';
 import type { User } from '@supabase/supabase-js';
 import type { EvidenceLevel } from '@/types/database';
@@ -64,7 +64,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
     if (cats.size > 0) params.set('categories', Array.from(cats).join(','));
     if (q) params.set('q', q);
     const evSet = ev ?? selectedEvidence;
-    if (evSet.size > 0) params.set('evidence', Array.from(evSet).join(','));
+    if (evSet.size > 0) params.set('evidence', Array.from(evSet).map(evidenceLevelToKey).join(','));
     const dVal = d ?? days;
     if (dVal) params.set('days', dVal);
     const rVal = r ?? relevance;

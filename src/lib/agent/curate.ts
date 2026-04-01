@@ -12,7 +12,7 @@ Deine Aufgabe: Erstelle aus einem Quellartikel eine strukturierte NewsCard mit b
 
 WICHTIGE REGELN:
 1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel. Erfinde NICHTS hinzu.
-2. Wenn der Artikel nicht genug relevante Informationen enthaelt, antworte mit {"insufficient": true}.
+2. Antworte NUR mit {"insufficient": true} wenn der Artikel KOMPLETT irrelevant fuer Ernaehrungstherapeuten ist (z.B. reine Werbung, Stellenanzeige, oder voellig themenfremder Inhalt). Bei Laienpresse, Berufspolitik und allgemeinen Ernaehrungsnachrichten: IMMER eine Card erstellen, auch wenn die Informationslage duenn ist — gerade diese Artikel sind wertvoll fuer die Berufsgruppe.
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
 5. Der Therapist-Check soll die praktische Relevanz fuer Ernaehrungstherapeuten hervorheben.

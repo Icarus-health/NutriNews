@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Alle Artikel bereits bekannt.', created: 0 });
     }
 
-    // Diverse selection: round-robin across source types
+    // Diverse selection with minimum quotas per source type
     const byType: Record<string, typeof newItems> = {};
     for (const item of newItems) {
       const t = item.source.sourceType;
@@ -48,13 +48,32 @@ export async function GET(request: Request) {
     }
 
     const toCurate: typeof newItems = [];
+    const minQuotas: Record<string, number> = {
+      laienpresse: 3, berufspolitik: 2, international: 2,
+      supplement: 2, fachpresse: 3, forschung: 4,
+    };
+
+    // Fill minimum quotas first
+    for (const [type, min] of Object.entries(minQuotas)) {
+      const items = byType[type] ?? [];
+      for (let i = 0; i < Math.min(min, items.length); i++) {
+        toCurate.push(items[i]);
+      }
+    }
+
+    // Fill remaining with round-robin
+    const usedPerType: Record<string, number> = {};
+    for (const item of toCurate) {
+      usedPerType[item.source.sourceType] = (usedPerType[item.source.sourceType] ?? 0) + 1;
+    }
     const types = Object.keys(byType);
     let round = 0;
     while (toCurate.length < 20) {
       let added = false;
       for (const type of types) {
-        if (byType[type][round]) {
-          toCurate.push(byType[type][round]);
+        const start = usedPerType[type] ?? 0;
+        if (byType[type][start + round]) {
+          toCurate.push(byType[type][start + round]);
           added = true;
           if (toCurate.length >= 20) break;
         }

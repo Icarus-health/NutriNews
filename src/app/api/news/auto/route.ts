@@ -38,8 +38,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Alle Artikel sind bereits in der Datenbank.', created: 0 });
     }
 
-    // 3. Select a diverse mix of items across source types
-    // Group by source_type, pick proportionally to ensure diversity
+    // 3. Select diverse mix with MINIMUM QUOTAS per source type
+    // Ensures every run has laienpresse, berufspolitik, etc. — not just forschung
     const byType: Record<string, typeof newItems> = {};
     for (const item of newItems) {
       const t = item.source.sourceType;
@@ -48,16 +48,41 @@ export async function POST(request: Request) {
     }
 
     const toCurate: typeof newItems = [];
-    const targetSize = 20; // Try more items to get a good yield
-    const types = Object.keys(byType);
+    const targetSize = 20;
 
-    // Round-robin across source types for diversity
+    // Minimum quotas: guarantee diversity even when forschung dominates
+    const minQuotas: Record<string, number> = {
+      laienpresse: 3,
+      berufspolitik: 2,
+      international: 2,
+      supplement: 2,
+      fachpresse: 3,
+      forschung: 4,
+    };
+
+    // First pass: fill minimum quotas
+    for (const [type, min] of Object.entries(minQuotas)) {
+      const items = byType[type] ?? [];
+      const take = Math.min(min, items.length);
+      for (let i = 0; i < take; i++) {
+        toCurate.push(items[i]);
+      }
+    }
+
+    // Second pass: fill remaining slots with round-robin from all types
+    const usedPerType: Record<string, number> = {};
+    for (const item of toCurate) {
+      usedPerType[item.source.sourceType] = (usedPerType[item.source.sourceType] ?? 0) + 1;
+    }
+
+    const types = Object.keys(byType);
     let round = 0;
     while (toCurate.length < targetSize) {
       let added = false;
       for (const type of types) {
-        if (byType[type][round]) {
-          toCurate.push(byType[type][round]);
+        const startIdx = usedPerType[type] ?? 0;
+        if (byType[type][startIdx + round]) {
+          toCurate.push(byType[type][startIdx + round]);
           added = true;
           if (toCurate.length >= targetSize) break;
         }
