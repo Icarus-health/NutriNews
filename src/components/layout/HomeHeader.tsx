@@ -103,33 +103,8 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3">
         <div className="flex items-center gap-2.5">
-          {/* Inline SVG-Icon – kein Netzwerkrequest */}
-          <div className="w-9 h-9 rounded-xl bg-forest-700 dark:bg-forest-600 flex items-center justify-center shadow-sm flex-shrink-0">
-            <svg viewBox="0 0 512 512" width="26" height="26" aria-hidden="true">
-              <path
-                d="M370,130 A160,160 0 1,0 380,160"
-                fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" opacity="0.9"
-              />
-              <circle cx="382" cy="148" r="4.5" fill="white" opacity="0.85" />
-              <circle cx="390" cy="138" r="3.5" fill="white" opacity="0.65" />
-              <circle cx="397" cy="128" r="2.5" fill="white" opacity="0.45" />
-              <g fill="none" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"
-                transform="translate(248, 260)">
-                <path d="M50,-60 L62,-72 L70,-58 L55,-50 Z" />
-                <circle cx="58" cy="-60" r="3.5" fill="white" stroke="none" />
-                <line x1="70" y1="-62" x2="112" y2="-80" />
-                <line x1="70" y1="-56" x2="112" y2="-80" />
-                <path d="M30,-40 L35,-30 L20,10 L5,30 L-5,20 L10,-10 Z" />
-                <path d="M35,-30 L65,-35 L50,-15 Z" />
-                <path d="M50,-15 L65,-35 L80,-20 Z" />
-                <path d="M10,-10 L-30,-45 L-10,-20 Z" />
-                <path d="M-30,-45 L-55,-70 L-35,-50 Z" />
-                <path d="M5,30 L-25,70 L-15,65 L-5,25" />
-                <path d="M5,30 L-10,80 L0,72 L5,28" />
-                <path d="M5,30 L8,82 L14,72 L10,28" />
-                <path d="M5,30 L25,70 L18,65 L10,28" />
-              </g>
-            </svg>
+          <div className="w-9 h-9 rounded-xl shadow-sm flex-shrink-0 overflow-hidden">
+            <img src="/RichtigesLogo.svg" alt="NutriNews" className="w-full h-full object-contain" />
           </div>
           <div className="flex flex-col justify-center">
             <span className="text-[17px] font-bold text-slate-900 dark:text-slate-100 leading-none tracking-tight">
