@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import UXProvider from '@/components/providers/UXProvider';
 import CookieConsent from '@/components/compliance/CookieConsent';
 import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
+import PWAUpdateHandler from '@/components/pwa/PWAUpdateHandler';
 import SplashScreen from '@/components/pwa/SplashScreen';
 import './globals.css';
 
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SplashScreen />
           {children}
           <PWAInstallPrompt />
+          <PWAUpdateHandler />
           <CookieConsent />
         </UXProvider>
       </body>

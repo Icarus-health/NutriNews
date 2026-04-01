@@ -36,6 +36,7 @@ export default async function CommunityRoute() {
       name: c.name,
       emoji: c.emoji,
       description: c.description,
+      is_private: false,
       member_count: 0,
       post_count: 0,
       is_member: false,

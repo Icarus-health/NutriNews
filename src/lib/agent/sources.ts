@@ -573,6 +573,60 @@ export const RSS_SOURCES: RSSSource[] = [
   },
 
   // ═══════════════════════════════════════════════
+  // GV / PRÄVENTION — Gemeinschaftsverpflegung & Gesundheitsförderung
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'DGE Qualitätsstandards GV',
+    url: 'https://news.google.com/rss/search?q=DGE+Qualit%C3%A4tsstandard+Gemeinschaftsverpflegung+OR+Schulverpflegung+OR+Seniorenverpflegung&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Planetary Health Diet & Nachhaltigkeit',
+    url: 'https://news.google.com/rss/search?q=Planetary+Health+Diet+OR+EAT+Lancet+OR+nachhaltige+Ern%C3%A4hrung+Gesundheit&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Bio-Lebensmittel & Qualität',
+    url: 'https://news.google.com/rss/search?q=Bio-Lebensmittel+Qualit%C3%A4t+OR+%C3%B6kologische+Ern%C3%A4hrung+Studie&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Gemeinschaftsverpflegung & Kantine',
+    url: 'https://news.google.com/rss/search?q=Gemeinschaftsverpflegung+Kantine+Ern%C3%A4hrung+OR+Betriebsgastronomie+Gesundheit&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Prävention & Gesundheitsförderung',
+    url: 'https://news.google.com/rss/search?q=Pr%C3%A4vention+Ern%C3%A4hrung+Gesundheitsf%C3%B6rderung+OR+Ern%C3%A4hrungskompetenz+OR+Pr%C3%A4ventionsgesetz&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Adipositas & Gewichtsmanagement',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'PubMed Planetary Health & Nutrition',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/rss/search/?term=(planetary+health+diet+OR+sustainable+food+system)+AND+(health+outcome+OR+nutrition)&limit=10&fc=20250101000000',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'PubMed Schulverpflegung',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/rss/search/?term=(school+meal+OR+school+lunch)+AND+(nutrition+OR+health+outcome)&limit=10&fc=20250101000000',
+    defaultCategory: 'Pädiatrische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
   // LAIENPRESSE — Was Patienten gerade lesen
   // ═══════════════════════════════════════════════
 

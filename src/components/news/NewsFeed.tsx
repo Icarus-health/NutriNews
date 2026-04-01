@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { RefreshCw } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
 import ShareModal from './ShareModal';
 import { loadMoreCards } from '@/lib/actions/news';
@@ -19,15 +21,24 @@ interface Props {
 }
 
 export default function NewsFeed({ initialCards, userId, filters }: Props) {
+  const router = useRouter();
   const [cards, setCards] = useState(initialCards);
   const [hasMore, setHasMore] = useState(initialCards.length >= 15);
   const [shareCardId, setShareCardId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   function handleRequireAuth() {
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
     }
+  }
+
+  function handleRefresh() {
+    setIsRefreshing(true);
+    router.refresh();
+    // Reset state after refresh triggers new server render
+    setTimeout(() => setIsRefreshing(false), 1500);
   }
 
   function handleLoadMore() {
@@ -57,6 +68,16 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
 
   return (
     <div className="px-4 pt-4 pb-4">
+      {/* Refresh button */}
+      <button
+        onClick={handleRefresh}
+        disabled={isRefreshing}
+        className="w-full flex items-center justify-center gap-2 py-2 mb-3 rounded-xl text-[13px] font-semibold text-forest-600 dark:text-forest-400 bg-forest-50 dark:bg-forest-900/20 hover:bg-forest-100 dark:hover:bg-forest-900/30 transition-colors disabled:opacity-50 border border-forest-100 dark:border-forest-800/40"
+      >
+        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+        {isRefreshing ? 'Wird aktualisiert...' : 'Feed aktualisieren'}
+      </button>
+
       {cards.map((card, i) => (
         <div key={card.id} style={{ animationDelay: `${Math.min(i, 14) * 60}ms` }} className="animate-scale-in">
           <NewsCardComponent

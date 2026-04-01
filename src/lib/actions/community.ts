@@ -8,7 +8,7 @@ import type { CardVerificationType } from '@/types/database';
 // Channel Actions
 // ═══════════════════════════════════════════════════════════════
 
-export async function createChannel(name: string, description: string, emoji: string) {
+export async function createChannel(name: string, description: string, emoji: string, isPrivate: boolean = false) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
@@ -29,6 +29,7 @@ export async function createChannel(name: string, description: string, emoji: st
     name: trimmedName,
     description: description.trim() || '',
     emoji: emoji || '💬',
+    is_private: isPrivate,
   }).select('id').single();
 
   if (error?.code === '23505') return { error: 'Eine Gruppe mit diesem Namen existiert bereits' };
