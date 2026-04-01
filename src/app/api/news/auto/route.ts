@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { RSS_SOURCES } from '@/lib/agent/sources';
 import { fetchAllFeeds } from '@/lib/agent/rss';
@@ -37,8 +38,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Alle Artikel sind bereits in der Datenbank.', created: 0 });
     }
 
-    // 3. Curate top 5 new items via AI
-    const toCurate = newItems.slice(0, 10);
+    // 3. Select a diverse mix of items across source types
+    // Group by source_type, pick proportionally to ensure diversity
+    const byType: Record<string, typeof newItems> = {};
+    for (const item of newItems) {
+      const t = item.source.sourceType;
+      if (!byType[t]) byType[t] = [];
+      byType[t].push(item);
+    }
+
+    const toCurate: typeof newItems = [];
+    const targetSize = 20; // Try more items to get a good yield
+    const types = Object.keys(byType);
+
+    // Round-robin across source types for diversity
+    let round = 0;
+    while (toCurate.length < targetSize) {
+      let added = false;
+      for (const type of types) {
+        if (byType[type][round]) {
+          toCurate.push(byType[type][round]);
+          added = true;
+          if (toCurate.length >= targetSize) break;
+        }
+      }
+      if (!added) break;
+      round++;
+    }
+
     let created = 0;
     const errors: string[] = [];
 
@@ -87,10 +114,16 @@ export async function POST(request: Request) {
       }
     }
 
+    // Revalidate admin page so drafts appear immediately
+    revalidatePath('/admin');
+    revalidatePath('/');
+
     return NextResponse.json({
       message: `${created} neue Entwuerfe erstellt.${errors.length > 0 ? ` ${errors.length} uebersprungen.` : ''}`,
       created,
+      total_checked: toCurate.length,
       skipped: errors.length,
+      source_types_checked: types,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {

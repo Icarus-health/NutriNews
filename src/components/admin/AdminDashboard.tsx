@@ -57,21 +57,19 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
       if (data.created > 0) {
         setAgentResult({
           type: 'success',
-          message: `${data.created} neue Entwürfe erstellt${data.skipped > 0 ? `, ${data.skipped} übersprungen` : ''}.`,
+          message: `${data.created} neue Entwürfe erstellt (${data.total_checked ?? '?'} geprüft, ${data.skipped ?? 0} übersprungen).`,
           created: data.created,
           skipped: data.skipped,
         });
-        // Refresh server data + switch to drafts tab
-        setTimeout(() => {
-          router.refresh();
-          setTab('drafts');
-        }, 1200);
+        setTab('drafts');
       } else {
         setAgentResult({
           type: 'info',
           message: data.message ?? 'Alle Artikel sind bereits bekannt oder kein API-Schlüssel konfiguriert.',
         });
       }
+      // Always refresh to show latest drafts
+      router.refresh();
     } catch {
       setAgentResult({ type: 'error', message: 'Netzwerkfehler. Bitte erneut versuchen.' });
     } finally {
