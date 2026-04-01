@@ -262,22 +262,55 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
   return parseResult(content, item);
 }
 
-// --- Main entry: tries Hugging Face first, falls back to OpenAI ---
+// --- Anthropic Claude Provider (primary, fast + reliable) ---
+async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const systemPrompt = buildSystemPrompt(item.source.sourceType);
+
+  // Dynamic import to avoid requiring anthropic package when using other providers
+  const Anthropic = (await import('@anthropic-ai/sdk')).default;
+  const anthropic = new Anthropic({ apiKey });
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1200,
+    temperature: 0.3,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: buildUserPrompt(item) }],
+  });
+
+  const block = response.content[0];
+  if (block.type !== 'text') return null;
+
+  const result = parseResult(block.text, item);
+  if (result) console.log(`Curated with Claude: ${item.title?.slice(0, 60)}`);
+  return result;
+}
+
+// --- Main entry: tries Claude first, then Hugging Face, then OpenAI ---
 export async function curateArticle(item: RSSItem): Promise<CurationResult | null> {
   try {
-    // Try Hugging Face first (free)
+    // Try Claude first (fast, reliable)
+    if (process.env.ANTHROPIC_API_KEY) {
+      const result = await curateWithClaude(item);
+      if (result) return result;
+    }
+
+    // Fallback to Hugging Face (free)
     if (process.env.HUGGINGFACE_API_KEY) {
       const result = await curateWithHuggingFace(item);
       if (result) return result;
     }
 
-    // Fallback to OpenAI (paid)
+    // Final fallback to OpenAI (paid)
     if (process.env.OPENAI_API_KEY) {
       const result = await curateWithOpenAI(item);
       if (result) return result;
     }
 
-    console.error('No AI provider configured. Set HUGGINGFACE_API_KEY or OPENAI_API_KEY.');
+    console.error('No AI provider configured. Set ANTHROPIC_API_KEY, HUGGINGFACE_API_KEY, or OPENAI_API_KEY.');
     return null;
   } catch (error) {
     console.error('AI curation failed:', error);

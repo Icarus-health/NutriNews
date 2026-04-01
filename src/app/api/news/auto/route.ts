@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Curate top 5 new items via AI
-    const toCurate = newItems.slice(0, 5);
+    const toCurate = newItems.slice(0, 10);
     let created = 0;
     const errors: string[] = [];
 
