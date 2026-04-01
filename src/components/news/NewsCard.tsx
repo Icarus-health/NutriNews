@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
-import { Heart, Bookmark, BookmarkPlus, Send, ExternalLink, MessageCircle, RotateCcw, Clock, ChevronRight, CheckCircle2, Link2 } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2 } from 'lucide-react';
 import CommentSection from './CommentSection';
-import CardVerification from './CardVerification';
 import { clsx } from 'clsx';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
 import { toggleLike, toggleBookmark } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
-import type { EvidenceLevel, NewsCard as NewsCardType } from '@/types/database';
+import type { EvidenceLevel, NewsCard as NewsCardType, SourceType } from '@/types/database';
 
 interface Props {
   card: NewsCardType;
@@ -17,6 +16,15 @@ interface Props {
   onRequireAuth?: () => void;
   onShare?: (cardId: string) => void;
 }
+
+const SOURCE_TYPE_ACCENT: Record<string, { color: string; label: string; emoji: string }> = {
+  forschung:     { color: 'from-blue-500 to-indigo-500',   label: 'Forschung',      emoji: '🔬' },
+  fachpresse:    { color: 'from-forest-500 to-emerald-500', label: 'Fachpresse',     emoji: '📋' },
+  laienpresse:   { color: 'from-amber-400 to-orange-500',  label: 'Laienpresse',    emoji: '📰' },
+  berufspolitik: { color: 'from-orange-500 to-red-500',    label: 'Berufspolitik',  emoji: '⚖️' },
+  supplement:    { color: 'from-emerald-400 to-teal-500',  label: 'Supplements',    emoji: '💊' },
+  international: { color: 'from-sky-400 to-blue-500',      label: 'International',  emoji: '🌍' },
+};
 
 const THERAPIST_CHECK_LABELS: Record<string, string> = {
   fachpresse: 'Therapist-Check',
@@ -27,39 +35,6 @@ const THERAPIST_CHECK_LABELS: Record<string, string> = {
   international: 'Relevanz für Deutschland',
 };
 
-const RELEVANCE_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: 'Theoretisch', color: 'text-slate-400' },
-  2: { label: 'Hintergrund', color: 'text-slate-500' },
-  3: { label: 'Relevant', color: 'text-amber-600 dark:text-amber-400' },
-  4: { label: 'Praxisnah', color: 'text-forest-600 dark:text-forest-400' },
-  5: { label: 'Sofort umsetzbar', color: 'text-forest-700 dark:text-forest-300 font-semibold' },
-};
-
-function PracticeRelevanceIndicator({ score }: { score: number | null }) {
-  if (!score) return null;
-  const clamped = Math.min(5, Math.max(1, score));
-  const meta = RELEVANCE_LABELS[clamped];
-  return (
-    <div
-      className="flex items-center gap-1"
-      title={`Praxisrelevanz ${clamped}/5: ${meta.label}`}
-    >
-      {[1, 2, 3, 4, 5].map(i => (
-        <div
-          key={i}
-          className={clsx(
-            'w-1.5 h-1.5 rounded-full transition-colors',
-            i <= clamped
-              ? clamped >= 4 ? 'bg-forest-500' : clamped === 3 ? 'bg-amber-400' : 'bg-slate-400'
-              : 'bg-slate-200 dark:bg-slate-600'
-          )}
-        />
-      ))}
-      <span className={clsx('text-[10px] ml-0.5', meta.color)}>{meta.label}</span>
-    </div>
-  );
-}
-
 export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [flipped, setFlipped] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -68,17 +43,17 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
   const [bookmarked, setBookmarked] = useState(card.user_has_bookmarked ?? false);
   const [isPending, startTransition] = useTransition();
   const [backHeight, setBackHeight] = useState<number | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const ux = useUX();
-  const inReadLater = ux.isInReadLater(card.id);
   const isRead = ux.readHistory.some(e => e.cardId === card.id);
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
   const isLayPress = card.source_type === 'laienpresse';
+  const accent = SOURCE_TYPE_ACCENT[card.source_type] ?? SOURCE_TYPE_ACCENT.forschung;
 
-  // Measure back content to set card height when flipped
   useEffect(() => {
     if (backRef.current) {
       setBackHeight(backRef.current.scrollHeight);
@@ -87,6 +62,11 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
 
   const frontHeight = frontRef.current?.scrollHeight ?? 0;
   const cardHeight = flipped ? (backHeight ?? frontHeight) : frontHeight;
+
+  function getCardUrl() {
+    if (typeof window === 'undefined') return `/card/${card.id}`;
+    return `${window.location.origin}/card/${card.id}`;
+  }
 
   function handleLike(e: React.MouseEvent) {
     e.stopPropagation();
@@ -128,13 +108,6 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
     });
   }
 
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  function getCardUrl() {
-    if (typeof window === 'undefined') return `/card/${card.id}`;
-    return `${window.location.origin}/card/${card.id}`;
-  }
-
   async function handleCopyLink(e: React.MouseEvent) {
     e.stopPropagation();
     try {
@@ -149,15 +122,10 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
     const cardUrl = getCardUrl();
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: card.headline,
-          text: card.therapist_check,
-          url: cardUrl,
-        });
+        await navigator.share({ title: card.headline, text: card.therapist_check, url: cardUrl });
         return;
       } catch { /* fall through */ }
     }
-    // Fallback: open share modal for logged-in users, copy link for others
     if (userId) {
       onShare?.(card.id);
     } else {
@@ -165,13 +133,8 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
     }
   }
 
-  function handleCommentToggle(e: React.MouseEvent) {
-    e.stopPropagation();
-    setShowComments(p => !p);
-  }
-
   return (
-    <div className="flip-card mb-4">
+    <div className="flip-card mb-3">
       <div
         className={clsx('flip-card-inner', flipped && 'flipped')}
         style={{ height: cardHeight || 'auto', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1), height 0.4s ease' }}
@@ -180,181 +143,134 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
         <div ref={frontRef} className="flip-card-front">
           <article
             className={clsx(
-              'rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border overflow-hidden cursor-pointer active:scale-[0.985] transition-transform duration-150',
-              isLayPress
-                ? 'bg-amber-50/50 border-amber-200/60 dark:bg-amber-950/30 dark:border-amber-800/40'
-                : isRead
-                  ? 'bg-slate-50/80 border-slate-100/60 dark:bg-slate-800/70 dark:border-slate-700/50 opacity-90'
-                  : 'bg-white border-slate-100/60 dark:bg-slate-800 dark:border-slate-700/60'
+              'rounded-2xl shadow-sm border overflow-hidden cursor-pointer active:scale-[0.985] transition-transform duration-150',
+              isRead
+                ? 'bg-white/80 dark:bg-slate-800/70 border-slate-100/60 dark:border-slate-700/50 opacity-85'
+                : 'bg-white dark:bg-slate-800 border-slate-100/60 dark:border-slate-700/60'
             )}
             onClick={() => {
               setFlipped(true);
               ux.markAsRead(card.id, card.headline, card.category_main);
             }}
           >
-            {/* Laienpresse-Label */}
-            {isLayPress && (
-              <div className="bg-amber-100 dark:bg-amber-900/40 px-5 py-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
-                  📰 Was Ihre Patienten gerade lesen
+            {/* Source-type accent strip */}
+            <div className={clsx('h-1 bg-gradient-to-r', accent.color)} />
+
+            {/* Header: Source type + Evidence + Time */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px]">{accent.emoji}</span>
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  {accent.label}
+                </span>
+                <span className="text-[10px] text-slate-300 dark:text-slate-600">&middot;</span>
+                <span className={clsx('text-[10px] font-medium px-1.5 py-0.5 rounded-full', evidence.color)}>
+                  {evidence.icon} {evidence.label}
                 </span>
               </div>
-            )}
+              <span className="text-[10px] text-slate-400 tabular-nums">{readMin} Min</span>
+            </div>
 
-            {/* Category + Evidence + Praxisrelevanz bar */}
-            <div className="flex items-center justify-between px-5 pt-4 pb-1">
+            {/* Category badge */}
+            <div className="px-4 pt-1 pb-1">
               <span className={clsx(
-                'text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full',
+                'text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full inline-block',
                 getCategoryStyle(card.category_main)
               )}>
                 {getCategoryLabel(card.category_main)}
               </span>
-              <div className="flex items-center gap-2">
-                <PracticeRelevanceIndicator score={card.practice_relevance_score} />
-                <span className={clsx(
-                  'text-[11px] font-medium px-2.5 py-1 rounded-full',
-                  evidence.color
-                )}>
-                  {evidence.icon} {evidence.label}
-                </span>
-              </div>
             </div>
 
-            {/* Headline */}
-            <div className="px-5 pt-2 pb-3">
-              <h2 className="font-semibold text-[15px] leading-snug text-slate-900 dark:text-slate-100 tracking-[-0.01em]">
+            {/* Headline — bigger, bolder */}
+            <div className="px-4 pt-1.5 pb-2">
+              <h2 className="font-bold text-[16px] leading-snug text-slate-900 dark:text-slate-100 tracking-[-0.01em] line-clamp-3">
                 {card.headline}
               </h2>
             </div>
 
-            {/* Laienpresse: Fact-Check Gegenüberstellung */}
+            {/* Therapist-Check — compact */}
+            <div className="mx-4 mb-3 bg-forest-50/60 dark:bg-forest-900/15 rounded-xl px-3.5 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-0.5">
+                {THERAPIST_CHECK_LABELS[card.source_type] ?? 'Therapist-Check'}
+              </p>
+              <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-3">
+                {card.therapist_check}
+              </p>
+            </div>
+
+            {/* Laienpresse: Fact-Check (compact) */}
             {isLayPress && card.lay_press_fact_check && (
-              <div className="mx-5 mb-3 bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 border border-amber-200 dark:border-amber-700/50">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">
+              <div className="mx-4 mb-3 bg-amber-50/60 dark:bg-amber-900/15 rounded-xl px-3.5 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">
                   Faktencheck
                 </p>
-                <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">
+                <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 line-clamp-2">
                   {card.lay_press_fact_check}
                 </p>
               </div>
             )}
 
-            {/* Therapist-Check */}
-            <div className={clsx(
-              'mx-5 mb-4 rounded-2xl px-4 py-3 border',
-              isLayPress ? 'bg-forest-50/50 border-forest-100 dark:bg-forest-900/20 dark:border-forest-800/40' : 'bg-forest-50/70 border-forest-100 dark:bg-forest-900/20 dark:border-forest-800/40'
-            )}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">
-                {THERAPIST_CHECK_LABELS[card.source_type] ?? 'Therapist-Check'}
-              </p>
-              <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100">
-                {card.therapist_check}
-              </p>
-            </div>
-
-            {/* Flip hint + read indicator */}
-            <div className="flex items-center justify-between px-5 pb-2">
-              {isRead ? (
-                <span className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-                  <CheckCircle2 size={13} className="text-forest-400 dark:text-forest-500" />
-                  Gelesen
-                </span>
-              ) : (
-                <span />
-              )}
-              <span className="flex items-center gap-1 text-[11px] text-forest-600 dark:text-forest-400 font-medium bg-forest-50 dark:bg-forest-900/30 px-3 py-1 rounded-full border border-forest-100 dark:border-forest-800/40">
-                Details
-                <ChevronRight size={13} strokeWidth={2.5} />
+            {/* Tap hint */}
+            <div className="flex items-center justify-end px-4 pb-1.5">
+              <span className="flex items-center gap-1 text-[11px] text-forest-600 dark:text-forest-400 font-medium">
+                Details <ChevronRight size={12} strokeWidth={2.5} />
               </span>
             </div>
 
-            {/* Action bar */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100/80 dark:border-slate-700/60">
+            {/* ── Instagram-style action bar ── */}
+            <div className="flex items-center gap-1 px-3 py-2 border-t border-slate-100/80 dark:border-slate-700/60">
               <button
                 onClick={handleLike}
                 disabled={isPending}
-                title={liked ? 'Gefällt mir entfernen' : 'Gefällt mir'}
                 className={clsx(
-                  'flex items-center gap-1 text-[11px] font-medium transition-all duration-200 px-2 py-1 rounded-lg',
-                  liked ? 'text-red-500' : 'text-slate-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                  'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
+                  liked ? 'text-red-500' : 'text-slate-400 hover:text-red-400'
                 )}
               >
-                <Heart size={15} fill={liked ? 'currentColor' : 'none'} strokeWidth={liked ? 0 : 1.5} />
-                <span>{likeCount > 0 ? likeCount : ''}</span>
+                <Heart size={18} fill={liked ? 'currentColor' : 'none'} strokeWidth={liked ? 0 : 1.5} />
+                {likeCount > 0 && <span className="text-[11px]">{likeCount}</span>}
               </button>
               <button
-                onClick={handleBookmark}
-                disabled={isPending}
-                title={bookmarked ? 'Lesezeichen entfernen' : 'Lesezeichen setzen'}
+                onClick={(e) => { e.stopPropagation(); setShowComments(p => !p); }}
                 className={clsx(
-                  'flex items-center gap-1 text-[11px] font-medium transition-all duration-200 px-2 py-1 rounded-lg',
-                  bookmarked
-                    ? 'text-forest-600 dark:text-forest-400'
-                    : 'text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20'
+                  'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
+                  showComments ? 'text-forest-600 dark:text-forest-400' : 'text-slate-400 hover:text-forest-500'
                 )}
               >
-                <Bookmark size={15} fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={bookmarked ? 0 : 1.5} />
-                <span className="hidden xs:inline">{bookmarked ? 'Gespeichert' : 'Speichern'}</span>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); ux.toggleReadLater(card.id); }}
-                title={inReadLater ? 'Aus Leseliste entfernen' : 'Für später merken'}
-                className={clsx(
-                  'flex items-center gap-1 text-[11px] font-medium transition-all duration-200 px-2 py-1 rounded-lg',
-                  inReadLater
-                    ? 'text-amber-500'
-                    : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-                )}
-              >
-                <Clock size={15} fill={inReadLater ? 'currentColor' : 'none'} strokeWidth={inReadLater ? 0 : 1.5} />
-                <span className="hidden xs:inline">{inReadLater ? 'Merkliste' : 'Später'}</span>
-              </button>
-              <button
-                onClick={handleCommentToggle}
-                title="Kommentare"
-                className={clsx(
-                  'flex items-center gap-1 text-[11px] font-medium transition-colors px-2 py-1 rounded-lg',
-                  showComments
-                    ? 'text-forest-600 dark:text-forest-400 bg-forest-50 dark:bg-forest-900/20'
-                    : 'text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20'
-                )}
-              >
-                <MessageCircle size={15} strokeWidth={1.5} />
-              </button>
-              <button
-                onClick={handleCopyLink}
-                title="Link kopieren"
-                className={clsx(
-                  'flex items-center gap-1 text-[11px] font-medium transition-colors px-2 py-1 rounded-lg',
-                  linkCopied
-                    ? 'text-forest-600 dark:text-forest-400'
-                    : 'text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20'
-                )}
-              >
-                <Link2 size={15} strokeWidth={1.5} />
-                {linkCopied && <span className="text-[10px]">Kopiert</span>}
+                <MessageCircle size={18} strokeWidth={1.5} />
               </button>
               <button
                 onClick={handleShare}
-                title="Kollegen teilen"
-                className="flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20 transition-colors px-2 py-1 rounded-lg"
+                className="flex items-center gap-1 text-[12px] font-medium text-slate-400 hover:text-forest-500 px-2.5 py-1.5 rounded-lg transition-all"
               >
-                <Send size={15} strokeWidth={1.5} />
+                <Send size={18} strokeWidth={1.5} />
               </button>
-              <span className="text-[10px] text-slate-300 dark:text-slate-500 tabular-nums">
-                {readMin} Min
-              </span>
+              <button
+                onClick={handleCopyLink}
+                className={clsx(
+                  'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
+                  linkCopied ? 'text-forest-600' : 'text-slate-400 hover:text-forest-500'
+                )}
+              >
+                <Link2 size={18} strokeWidth={1.5} />
+                {linkCopied && <span className="text-[10px]">Kopiert</span>}
+              </button>
+              {/* Bookmark pushed to right */}
+              <div className="ml-auto">
+                <button
+                  onClick={handleBookmark}
+                  disabled={isPending}
+                  className={clsx(
+                    'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
+                    bookmarked ? 'text-forest-600 dark:text-forest-400' : 'text-slate-400 hover:text-forest-500'
+                  )}
+                >
+                  <Bookmark size={18} fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={bookmarked ? 0 : 1.5} />
+                </button>
+              </div>
             </div>
 
-            {/* Community verification */}
-            <CardVerification
-              newsCardId={card.id}
-              userId={userId}
-              counts={{ praxisrelevant: 0, fachlich_korrekt: 0, korrektur_noetig: 0, quelle_zweifelhaft: 0 }}
-              onRequireAuth={onRequireAuth}
-            />
-
-            {/* Comments (front side, below card visually) */}
+            {/* Comments */}
             {showComments && (
               <div className="animate-fade-in" onClick={e => e.stopPropagation()}>
                 <CommentSection newsCardId={card.id} userId={userId} onRequireAuth={onRequireAuth} />
@@ -366,23 +282,25 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
         {/* ═══ BACK ═══ */}
         <div ref={backRef} className="flip-card-back">
           <article
-            className="bg-white dark:bg-slate-800 rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border border-slate-100/60 dark:border-slate-700/60 overflow-hidden cursor-pointer"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100/60 dark:border-slate-700/60 overflow-hidden cursor-pointer"
             onClick={() => setFlipped(false)}
           >
+            {/* Accent strip */}
+            <div className={clsx('h-1 bg-gradient-to-r', accent.color)} />
+
             {/* Back header */}
-            <div className="flex items-center justify-between px-5 pt-4 pb-2">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex items-center gap-2">
                 <span className={clsx(
-                  'text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full',
+                  'text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full',
                   getCategoryStyle(card.category_main)
                 )}>
                   {getCategoryLabel(card.category_main)}
                 </span>
-                <span className="text-[11px] text-slate-400 font-medium">Details</span>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
-                className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold hover:text-forest-700 dark:hover:text-forest-300 transition-colors"
+                className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
               >
                 <RotateCcw size={13} />
                 Zurück
@@ -390,140 +308,112 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
             </div>
 
             {/* Headline (smaller on back) */}
-            <div className="px-5 pb-3">
+            <div className="px-4 pb-3">
               <h3 className="font-semibold text-[14px] leading-snug text-slate-700 dark:text-slate-200">
                 {card.headline}
               </h3>
             </div>
 
             {/* Detail fields */}
-            <div className="px-5 space-y-3 pb-4">
-              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-2xl px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Was?</p>
+            <div className="px-4 space-y-2.5 pb-4">
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3.5 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Was?</p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.snack_what}</p>
               </div>
 
-              <div className="bg-blue-50/60 dark:bg-blue-900/20 rounded-2xl px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">Ergebnis</p>
+              <div className="bg-blue-50/60 dark:bg-blue-900/20 rounded-xl px-3.5 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-0.5">Ergebnis</p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.snack_result}</p>
               </div>
 
-              <div className="bg-amber-50/60 dark:bg-amber-900/20 rounded-2xl px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-1">Konsequenz</p>
+              <div className="bg-amber-50/60 dark:bg-amber-900/20 rounded-xl px-3.5 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-0.5">Konsequenz</p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.snack_consequence}</p>
               </div>
 
-              {/* Evidenz-Einordnung (NEU) */}
               {card.evidence_summary && (
-                <div className="bg-indigo-50/60 dark:bg-indigo-900/20 rounded-2xl px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-1">
+                <div className="bg-indigo-50/60 dark:bg-indigo-900/20 rounded-xl px-3.5 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-0.5">
                     {evidence.icon} Evidenz-Einordnung
                   </p>
                   <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.evidence_summary}</p>
                 </div>
               )}
 
-              {/* Handlungsempfehlung (NEU) */}
               {card.action_recommendation && (
-                <div className="bg-forest-50/60 dark:bg-forest-900/20 rounded-2xl px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-forest-500 dark:text-forest-400 mb-1">
-                    Handlungsempfehlung
-                  </p>
+                <div className="bg-forest-50/60 dark:bg-forest-900/20 rounded-xl px-3.5 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-forest-500 dark:text-forest-400 mb-0.5">Handlungsempfehlung</p>
                   <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.action_recommendation}</p>
                 </div>
               )}
 
-              {/* Patientenfrage (NEU) */}
               {card.patient_question_anticipation && (
-                <div className="bg-rose-50/60 dark:bg-rose-900/20 rounded-2xl px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-1">
-                    Erwartbare Patientenfrage
-                  </p>
+                <div className="bg-rose-50/60 dark:bg-rose-900/20 rounded-xl px-3.5 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-0.5">Erwartbare Patientenfrage</p>
                   <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 italic">
                     &ldquo;{card.patient_question_anticipation}&rdquo;
                   </p>
                 </div>
               )}
 
-              {/* Berufspolitik: Handlungsbedarf */}
               {card.policy_action_needed && (
-                <div className="bg-orange-50/60 dark:bg-orange-900/20 rounded-2xl px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-1">
-                    Was ist zu tun?
-                  </p>
+                <div className="bg-orange-50/60 dark:bg-orange-900/20 rounded-xl px-3.5 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-0.5">Was ist zu tun?</p>
                   <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.policy_action_needed}</p>
                 </div>
               )}
 
-              {/* International: Relevanz für DE */}
               {card.international_relevance_de && (
-                <div className="bg-sky-50/60 dark:bg-sky-900/20 rounded-2xl px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-1">
-                    Relevanz für Deutschland
-                  </p>
+                <div className="bg-sky-50/60 dark:bg-sky-900/20 rounded-xl px-3.5 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">Relevanz für Deutschland</p>
                   <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.international_relevance_de}</p>
                 </div>
               )}
 
-              {/* KI-Transparenz-Label */}
               {card.curated_by_agent && (
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                     KI-zusammengefasst
                   </span>
-                  <span className="text-[10px] text-slate-300 dark:text-slate-500">
-                    {card.source_name}
-                  </span>
+                  <span className="text-[10px] text-slate-300 dark:text-slate-500">{card.source_name}</span>
                 </div>
               )}
             </div>
 
             {/* Bibliographic references */}
             {(card.doi || card.pubmed_id) && (
-              <div className="px-5 pb-2 flex flex-wrap gap-2">
+              <div className="px-4 pb-2 flex flex-wrap gap-2">
                 {card.doi && (
-                  <a
-                    href={`https://doi.org/${card.doi}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
-                  >
+                  <a href={`https://doi.org/${card.doi}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
                     DOI: {card.doi}
                   </a>
                 )}
                 {card.pubmed_id && (
-                  <a
-                    href={`https://pubmed.ncbi.nlm.nih.gov/${card.pubmed_id}/`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
-                  >
+                  <a href={`https://pubmed.ncbi.nlm.nih.gov/${card.pubmed_id}/`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full hover:bg-emerald-100 transition-colors">
                     PubMed: {card.pubmed_id}
                   </a>
                 )}
               </div>
             )}
 
-            {/* Source + Evidence footer */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100/80 dark:border-slate-700/60">
+            {/* Source footer */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100/80 dark:border-slate-700/60">
               <div className="flex items-center gap-2">
-                <span className={clsx('text-[11px] font-medium px-2.5 py-1 rounded-full', evidence.color)}>
+                <span className={clsx('text-[10px] font-medium px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
-                <PracticeRelevanceIndicator score={card.practice_relevance_score} />
-                <span className="text-[11px] text-slate-400">{readMin} Min</span>
+                <span className="text-[10px] text-slate-400">{readMin} Min</span>
               </div>
               <a
                 href={card.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold hover:text-forest-700 dark:hover:text-forest-300 transition-colors"
+                className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
               >
-                Quelle
-                <ExternalLink size={13} />
+                Quelle <ExternalLink size={12} />
               </a>
             </div>
           </article>

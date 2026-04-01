@@ -1,14 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
-import LayPressFeed from '@/components/news/LayPressFeed';
-import BerufspolitikMonitor from '@/components/news/BerufspolitikMonitor';
-import InternationalFeed from '@/components/news/InternationalFeed';
 import DailyBriefing from '@/components/briefing/DailyBriefing';
-import { rankCards } from '@/lib/feed-ranking';
+import { rankCards, interleaveBySourceType } from '@/lib/feed-ranking';
 import type { NewsCard, DailyBriefing as DailyBriefingType, Profile } from '@/types/database';
 
-// ISR: revalidate every 60s (no more force-dynamic)
+// ISR: revalidate every 60s
 export const revalidate = 60;
 
 interface PageProps {
@@ -25,7 +22,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const daysFilter = params.days ? parseInt(params.days, 10) : null;
   const minRelevance = params.minRelevance ? parseInt(params.minRelevance, 10) : null;
 
-  // Build query for main feed
+  // Build query — ALL source types in one feed
   let query = supabase
     .from('news_cards')
     .select('*')
@@ -58,23 +55,19 @@ export default async function HomePage({ searchParams }: PageProps) {
     query = query.or(`headline.ilike.%${params.q}%,snack_what.ilike.%${params.q}%,therapist_check.ilike.%${params.q}%`);
   }
 
-  // Parallel: fetch cards + user at the same time
+  // Parallel: fetch cards + user
   const [{ data: newsCards }, { data: { user } }] = await Promise.all([
     query,
     supabase.auth.getUser(),
   ]);
 
-  const allCards: NewsCard[] = newsCards ?? [];
+  let allCards: NewsCard[] = newsCards ?? [];
   const hasFilters = activeCategories.length > 0 || !!params.q || evidenceFilter.length > 0 || !!daysFilter || !!minRelevance;
-  const showSpecialSections = !hasFilters;
 
-  // ── Single batched enrichment for ALL cards ──
-  // Instead of 4 separate enrichCards() calls, we enrich once
-  let enrichedAll = allCards;
+  // ── Batched enrichment ──
   if (allCards.length > 0) {
     const cardIds = allCards.map(c => c.id);
 
-    // Batched: like counts + user interactions in parallel
     const likeCountPromise = supabase
       .from('likes')
       .select('news_card_id')
@@ -108,7 +101,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     const userBookmarkSet = new Set(userBookmarksResult?.data?.map(b => b.news_card_id));
     const profile = profileResult?.data as Profile | null;
 
-    enrichedAll = allCards.map(card => ({
+    allCards = allCards.map(card => ({
       ...card,
       like_count: likeCountMap[card.id] ?? 0,
       ...(user ? {
@@ -117,51 +110,22 @@ export default async function HomePage({ searchParams }: PageProps) {
       } : {}),
     }));
 
-    // Personalized ranking
+    // Personalized ranking (within same day)
     if (profile && (profile.setting || profile.preferred_categories.length > 0)) {
-      const regularOnly = hasFilters
-        ? enrichedAll
-        : enrichedAll.filter(c =>
-            c.source_type !== 'laienpresse' &&
-            c.source_type !== 'berufspolitik' &&
-            c.source_type !== 'international'
-          );
-
-      const ranked = rankCards(regularOnly, {
+      allCards = rankCards(allCards, {
         setting: profile.setting,
         preferredCategories: profile.preferred_categories,
         readCardIds: new Set<string>(),
       });
-
-      // Replace the regular cards with ranked versions in enrichedAll
-      if (!hasFilters) {
-        const specialCards = enrichedAll.filter(c =>
-          c.source_type === 'laienpresse' ||
-          c.source_type === 'berufspolitik' ||
-          c.source_type === 'international'
-        );
-        enrichedAll = [...specialCards, ...ranked];
-      } else {
-        enrichedAll = ranked;
-      }
     }
-  }
 
-  // Split by source type (after enrichment)
-  const enrichedLayPress = showSpecialSections ? enrichedAll.filter(c => c.source_type === 'laienpresse') : [];
-  const enrichedBerufspolitik = showSpecialSections ? enrichedAll.filter(c => c.source_type === 'berufspolitik') : [];
-  const enrichedInternational = showSpecialSections ? enrichedAll.filter(c => c.source_type === 'international') : [];
-  const enrichedRegular = hasFilters
-    ? enrichedAll
-    : enrichedAll.filter(c =>
-        c.source_type !== 'laienpresse' &&
-        c.source_type !== 'berufspolitik' &&
-        c.source_type !== 'international'
-      );
+    // Interleave source types for diversity
+    allCards = interleaveBySourceType(allCards);
+  }
 
   // Load daily briefing (only when no filters)
   let briefingData: { briefing: DailyBriefingType | null; isYesterday: boolean } = { briefing: null, isYesterday: false };
-  if (showSpecialSections) {
+  if (!hasFilters) {
     const today = new Date().toISOString().split('T')[0];
     const { data: todayBriefing } = await supabase
       .from('daily_briefings')
@@ -202,17 +166,8 @@ export default async function HomePage({ searchParams }: PageProps) {
           isYesterday={briefingData.isYesterday}
         />
       )}
-      {showSpecialSections && enrichedBerufspolitik.length > 0 && (
-        <BerufspolitikMonitor cards={enrichedBerufspolitik} />
-      )}
-      {showSpecialSections && enrichedLayPress.length > 0 && (
-        <LayPressFeed cards={enrichedLayPress.slice(0, 3)} userId={user?.id ?? null} />
-      )}
-      {showSpecialSections && enrichedInternational.length > 0 && (
-        <InternationalFeed cards={enrichedInternational} />
-      )}
       <NewsFeed
-        initialCards={enrichedRegular}
+        initialCards={allCards}
         userId={user?.id ?? null}
         filters={{
           categories: activeCategories.length > 0 ? activeCategories : undefined,

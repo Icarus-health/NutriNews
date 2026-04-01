@@ -95,3 +95,40 @@ export function rankCards(cards: NewsCard[], input: RankingInput): NewsCard[] {
 
   return scored.map(s => s.card);
 }
+
+/**
+ * Interleaves cards to ensure source_type diversity.
+ * Prevents long runs of the same source_type by spacing them out.
+ * E.g., ensures a laienpresse or berufspolitik card appears every ~4 cards.
+ */
+export function interleaveBySourceType(cards: NewsCard[]): NewsCard[] {
+  if (cards.length <= 3) return cards;
+
+  // Group by source_type
+  const groups: Record<string, NewsCard[]> = {};
+  for (const card of cards) {
+    const type = card.source_type ?? 'forschung';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(card);
+  }
+
+  const types = Object.keys(groups);
+  if (types.length <= 1) return cards; // Nothing to interleave
+
+  // Primary type (most cards) stays as base, others get inserted at intervals
+  const sorted = types.sort((a, b) => groups[b].length - groups[a].length);
+  const primaryType = sorted[0];
+  const result: NewsCard[] = [...groups[primaryType]];
+  const others: NewsCard[] = sorted.slice(1).flatMap(t => groups[t]);
+
+  // Insert non-primary cards at regular intervals (every 3-4 primary cards)
+  const interval = Math.max(2, Math.floor(result.length / (others.length + 1)));
+  let insertIdx = interval;
+  for (const card of others) {
+    if (insertIdx > result.length) insertIdx = result.length;
+    result.splice(insertIdx, 0, card);
+    insertIdx += interval + 1; // +1 because we just inserted
+  }
+
+  return result;
+}
