@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
@@ -21,6 +22,7 @@ interface AgentResult {
 }
 
 export default function AdminDashboard({ drafts: initialDrafts }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState<'drafts' | 'create' | 'auto'>('drafts');
   const [drafts, setDrafts] = useState(initialDrafts);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -59,8 +61,11 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
           created: data.created,
           skipped: data.skipped,
         });
-        // Auto-switch to drafts tab after successful run
-        setTimeout(() => setTab('drafts'), 1200);
+        // Refresh server data + switch to drafts tab
+        setTimeout(() => {
+          router.refresh();
+          setTab('drafts');
+        }, 1200);
       } else {
         setAgentResult({
           type: 'info',
