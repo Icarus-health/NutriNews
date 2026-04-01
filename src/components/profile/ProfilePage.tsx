@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera } from 'lucide-react';
+import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile } from '@/lib/actions/news';
@@ -160,6 +160,58 @@ export default function ProfilePage({ profile, stats }: Props) {
             <p className="text-xs text-slate-400">{s.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Streak & Badges */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">
+        <div className="flex items-center gap-4">
+          {/* Streak */}
+          <div className="flex items-center gap-2">
+            <div className={clsx(
+              'w-10 h-10 rounded-full flex items-center justify-center',
+              ux.streak.days >= 1 ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-slate-100 dark:bg-slate-700'
+            )}>
+              <Flame size={20} className={ux.streak.days >= 1 ? 'text-orange-500' : 'text-slate-400'} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-none">{ux.streak.days}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Tage in Folge</p>
+            </div>
+          </div>
+
+          <div className="w-px h-10 bg-slate-100 dark:bg-slate-700" />
+
+          {/* Badges */}
+          <div className="flex gap-2">
+            {stats.comments >= 10 && (
+              <div className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-full" title="Aktive Diskutantin">
+                <Award size={12} className="text-indigo-500" />
+                <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">Diskutant</span>
+              </div>
+            )}
+            {stats.likes >= 20 && (
+              <div className="flex items-center gap-1 bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded-full" title="Engagierte Leserin">
+                <Award size={12} className="text-rose-500" />
+                <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400">Engagiert</span>
+              </div>
+            )}
+            {ux.streak.days >= 5 && (
+              <div className="flex items-center gap-1 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full" title="5-Tage-Streak">
+                <Flame size={12} className="text-orange-500" />
+                <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">Streak</span>
+              </div>
+            )}
+            {ux.weeklyStats.count >= 10 && (
+              <div className="flex items-center gap-1 bg-forest-50 dark:bg-forest-900/20 px-2 py-1 rounded-full" title="Vielleserin">
+                <Award size={12} className="text-forest-600" />
+                <span className="text-[10px] font-semibold text-forest-700 dark:text-forest-400">Vielleser</span>
+              </div>
+            )}
+            {stats.comments === 0 && stats.likes < 20 && ux.streak.days < 5 && ux.weeklyStats.count < 10 && (
+              <p className="text-[11px] text-slate-400">Lese regelmäßig, um Badges zu verdienen</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Setting */}

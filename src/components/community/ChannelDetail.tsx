@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { createChannelPost } from '@/lib/actions/community';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
@@ -27,6 +27,10 @@ function timeAgo(dateStr: string): string {
 
 export default function ChannelDetail({ channel, posts, userId, onBack }: Props) {
   const [body, setBody] = useState('');
+  const [replyTo, setReplyTo] = useState<ChannelPost | null>(null);
+  const [replyBody, setReplyBody] = useState('');
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [replies, setReplies] = useState<Record<string, ChannelPost[]>>({});
   const [isPending, startTransition] = useTransition();
   const [localPosts, setLocalPosts] = useState(posts);
 
@@ -51,6 +55,47 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
 
     startTransition(async () => {
       await createChannelPost(channel.id, submittedBody);
+    });
+  }
+
+  function handleReplySubmit(e: React.FormEvent, parentPost: ChannelPost) {
+    e.preventDefault();
+    if (!replyBody.trim() || !userId) return;
+
+    const tempReply: ChannelPost = {
+      id: `temp-reply-${Date.now()}`,
+      channel_id: channel.id,
+      user_id: userId,
+      body: replyBody.trim(),
+      news_card_id: null,
+      parent_post_id: parentPost.id,
+      created_at: new Date().toISOString(),
+      profile: { id: userId, full_name: 'Du', avatar_url: null, role: 'therapist' },
+    };
+
+    setReplies(prev => ({
+      ...prev,
+      [parentPost.id]: [...(prev[parentPost.id] ?? []), tempReply],
+    }));
+    setLocalPosts(prev => prev.map(p =>
+      p.id === parentPost.id ? { ...p, reply_count: (p.reply_count ?? 0) + 1 } : p
+    ));
+    setExpandedReplies(prev => new Set(prev).add(parentPost.id));
+
+    const submittedBody = replyBody.trim();
+    setReplyBody('');
+    setReplyTo(null);
+
+    startTransition(async () => {
+      await createChannelPost(channel.id, submittedBody, undefined, parentPost.id);
+    });
+  }
+
+  function toggleReplies(postId: string) {
+    setExpandedReplies(prev => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId); else next.add(postId);
+      return next;
     });
   }
 
@@ -99,7 +144,6 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
         </p>
       )}
 
-
       {/* Posts */}
       <div className="space-y-3">
         {localPosts.length === 0 && (
@@ -111,6 +155,10 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
           const evidence = post.news_card?.evidence_level
             ? EVIDENCE_CONFIG[post.news_card.evidence_level as EvidenceLevel]
             : null;
+          const postReplies = replies[post.id] ?? [];
+          const replyCount = (post.reply_count ?? 0);
+          const isExpanded = expandedReplies.has(post.id);
+          const isReplying = replyTo?.id === post.id;
 
           return (
             <div key={post.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
@@ -154,11 +202,67 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
                 </div>
               )}
 
-              {/* Reply count */}
-              {(post.reply_count ?? 0) > 0 && (
-                <p className="text-[11px] text-forest-600 font-medium mt-2">
-                  {post.reply_count} Antworten
-                </p>
+              {/* Actions: Reply + Show Replies */}
+              <div className="flex items-center gap-3 mt-2">
+                {userId && (
+                  <button
+                    onClick={() => setReplyTo(isReplying ? null : post)}
+                    className={clsx(
+                      'flex items-center gap-1 text-[11px] font-semibold transition-colors',
+                      isReplying ? 'text-forest-600' : 'text-slate-400 hover:text-forest-600'
+                    )}
+                  >
+                    <Reply size={13} />
+                    Antworten
+                  </button>
+                )}
+                {(replyCount > 0 || postReplies.length > 0) && (
+                  <button
+                    onClick={() => toggleReplies(post.id)}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-forest-600"
+                  >
+                    {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    {Math.max(replyCount, postReplies.length)} Antworten
+                  </button>
+                )}
+              </div>
+
+              {/* Reply form (inline) */}
+              {isReplying && (
+                <form onSubmit={(e) => handleReplySubmit(e, post)} className="flex gap-2 mt-3 animate-fade-in">
+                  <input
+                    type="text"
+                    value={replyBody}
+                    onChange={e => setReplyBody(e.target.value)}
+                    placeholder={`Antwort an ${post.profile?.full_name ?? 'Anonym'}...`}
+                    autoFocus
+                    className="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-[12px] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-forest-500/40"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isPending || !replyBody.trim()}
+                    className="w-8 h-8 rounded-lg bg-forest-700 text-white flex items-center justify-center disabled:opacity-50"
+                  >
+                    <Send size={13} />
+                  </button>
+                </form>
+              )}
+
+              {/* Replies (1 level deep) */}
+              {isExpanded && postReplies.length > 0 && (
+                <div className="mt-3 pl-4 border-l-2 border-forest-100 dark:border-forest-900/40 space-y-2 animate-fade-in">
+                  {postReplies.map(reply => (
+                    <div key={reply.id} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                          {reply.profile?.full_name ?? 'Anonym'}
+                        </span>
+                        <span className="text-[10px] text-slate-300">{timeAgo(reply.created_at)}</span>
+                      </div>
+                      <p className="text-[12px] text-slate-700 dark:text-slate-300">{reply.body}</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           );

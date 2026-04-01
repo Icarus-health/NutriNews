@@ -18,6 +18,15 @@ interface Props {
   onShare?: (cardId: string) => void;
 }
 
+const THERAPIST_CHECK_LABELS: Record<string, string> = {
+  fachpresse: 'Therapist-Check',
+  forschung: 'Was ändert sich in der Beratung?',
+  laienpresse: 'Fachliche Einordnung',
+  berufspolitik: 'Was bedeutet das für meine Arbeit?',
+  supplement: 'Evidenz-Check',
+  international: 'Relevanz für Deutschland',
+};
+
 const RELEVANCE_LABELS: Record<number, { label: string; color: string }> = {
   1: { label: 'Theoretisch', color: 'text-slate-400' },
   2: { label: 'Hintergrund', color: 'text-slate-500' },
@@ -236,7 +245,7 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
               isLayPress ? 'bg-forest-50/50 border-forest-100 dark:bg-forest-900/20 dark:border-forest-800/40' : 'bg-forest-50/70 border-forest-100 dark:bg-forest-900/20 dark:border-forest-800/40'
             )}>
               <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">
-                Therapist-Check
+                {THERAPIST_CHECK_LABELS[card.source_type] ?? 'Therapist-Check'}
               </p>
               <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100">
                 {card.therapist_check}
@@ -468,6 +477,34 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
                 </div>
               )}
             </div>
+
+            {/* Bibliographic references */}
+            {(card.doi || card.pubmed_id) && (
+              <div className="px-5 pb-2 flex flex-wrap gap-2">
+                {card.doi && (
+                  <a
+                    href={`https://doi.org/${card.doi}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                  >
+                    DOI: {card.doi}
+                  </a>
+                )}
+                {card.pubmed_id && (
+                  <a
+                    href={`https://pubmed.ncbi.nlm.nih.gov/${card.pubmed_id}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                  >
+                    PubMed: {card.pubmed_id}
+                  </a>
+                )}
+              </div>
+            )}
 
             {/* Source + Evidence footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100/80 dark:border-slate-700/60">
