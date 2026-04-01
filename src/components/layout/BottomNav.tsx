@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Bookmark, Users, User, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 const navItems = [
   { href: '/',           label: 'Home',       icon: Home },
@@ -12,8 +14,25 @@ const navItems = [
   { href: '/profile',    label: 'Profil',     icon: User },
 ];
 
-export default function BottomNav({ isAdmin = false }: { isAdmin?: boolean }) {
+export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(isAdminProp ?? false);
+
+  useEffect(() => {
+    if (isAdminProp !== undefined) return; // Prop hat Vorrang
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.role === 'admin') setIsAdmin(true);
+        });
+    });
+  }, [isAdminProp]);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 glass border-t border-slate-200/60 dark:border-slate-700/60 safe-bottom max-w-2xl mx-auto">
