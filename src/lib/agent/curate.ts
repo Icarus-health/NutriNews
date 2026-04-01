@@ -205,7 +205,7 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
             { role: 'user', content: buildUserPrompt(item) },
           ],
           temperature: 0.3,
-          max_tokens: 1200,
+          max_tokens: 700,
         }),
         signal: AbortSignal.timeout(60000),
       });
@@ -253,7 +253,7 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
     ],
     response_format: { type: 'json_object' },
     temperature: 0.3,
-    max_tokens: 1200,
+    max_tokens: 700,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -275,7 +275,7 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
 
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1200,
+    max_tokens: 700,
     temperature: 0.3,
     system: systemPrompt,
     messages: [{ role: 'user', content: buildUserPrompt(item) }],
