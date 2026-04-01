@@ -4,7 +4,7 @@ import HomeHeader from '@/components/layout/HomeHeader';
 import DailyBriefing from '@/components/briefing/DailyBriefing';
 import { rankCards, interleaveBySourceType } from '@/lib/feed-ranking';
 import { evidenceKeyToLevel } from '@/lib/evidence';
-import type { NewsCard, DailyBriefing as DailyBriefingType, Profile } from '@/types/database';
+import type { NewsCard, DailyBriefing as DailyBriefingType, Profile, EvidenceLevel } from '@/types/database';
 
 // Dynamic: page uses auth + searchParams, must be rendered per-request
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const activeCategories = params.categories ? params.categories.split(',').filter(Boolean) : [];
   // Decode short keys (meta,rct,review) → full DB enum values (Meta-Analyse,RCT,Systematische Review)
   const evidenceKeys = params.evidence ? params.evidence.split(',').filter(Boolean) : [];
-  const evidenceFilter = evidenceKeys.map(k => evidenceKeyToLevel(k)).filter((v): v is string => v !== null);
+  const evidenceFilter = evidenceKeys.map(k => evidenceKeyToLevel(k)).filter((v): v is EvidenceLevel => v !== null);
   const daysFilter = params.days ? parseInt(params.days, 10) : null;
   const minRelevance = params.minRelevance ? parseInt(params.minRelevance, 10) : null;
 
