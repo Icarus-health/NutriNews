@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
-import { Heart, Bookmark, BookmarkPlus, Send, ExternalLink, MessageCircle, RotateCcw, Clock, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Heart, Bookmark, BookmarkPlus, Send, ExternalLink, MessageCircle, RotateCcw, Clock, ChevronRight, CheckCircle2, Link2 } from 'lucide-react';
 import CommentSection from './CommentSection';
 import CardVerification from './CardVerification';
 import { clsx } from 'clsx';
@@ -119,20 +119,41 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
     });
   }
 
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function getCardUrl() {
+    if (typeof window === 'undefined') return `/card/${card.id}`;
+    return `${window.location.origin}/card/${card.id}`;
+  }
+
+  async function handleCopyLink(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(getCardUrl());
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch { /* ignore */ }
+  }
+
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!userId) { onRequireAuth?.(); return; }
+    const cardUrl = getCardUrl();
     if (navigator.share) {
       try {
         await navigator.share({
           title: card.headline,
-          text: `${card.headline}\n\n${card.therapist_check}`,
-          url: card.source_url,
+          text: card.therapist_check,
+          url: cardUrl,
         });
         return;
       } catch { /* fall through */ }
     }
-    onShare?.(card.id);
+    // Fallback: open share modal for logged-in users, copy link for others
+    if (userId) {
+      onShare?.(card.id);
+    } else {
+      handleCopyLink(e);
+    }
   }
 
   function handleCommentToggle(e: React.MouseEvent) {
@@ -290,6 +311,19 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
                 )}
               >
                 <MessageCircle size={15} strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={handleCopyLink}
+                title="Link kopieren"
+                className={clsx(
+                  'flex items-center gap-1 text-[11px] font-medium transition-colors px-2 py-1 rounded-lg',
+                  linkCopied
+                    ? 'text-forest-600 dark:text-forest-400'
+                    : 'text-slate-400 hover:text-forest-500 hover:bg-forest-50 dark:hover:bg-forest-900/20'
+                )}
+              >
+                <Link2 size={15} strokeWidth={1.5} />
+                {linkCopied && <span className="text-[10px]">Kopiert</span>}
               </button>
               <button
                 onClick={handleShare}
