@@ -205,7 +205,7 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
             { role: 'user', content: buildUserPrompt(item) },
           ],
           temperature: 0.3,
-          max_tokens: 700,
+          max_tokens: 1200,
         }),
         signal: AbortSignal.timeout(60000),
       });
@@ -253,7 +253,7 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
     ],
     response_format: { type: 'json_object' },
     temperature: 0.3,
-    max_tokens: 700,
+    max_tokens: 900,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -262,20 +262,19 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
   return parseResult(content, item);
 }
 
-// --- Anthropic Claude Provider (primary, fast + reliable) ---
+// --- Anthropic Claude Provider (fallback, paid but reliable) ---
 async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
   const systemPrompt = buildSystemPrompt(item.source.sourceType);
 
-  // Dynamic import to avoid requiring anthropic package when using other providers
   const Anthropic = (await import('@anthropic-ai/sdk')).default;
   const anthropic = new Anthropic({ apiKey });
 
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 700,
+    max_tokens: 900,
     temperature: 0.3,
     system: systemPrompt,
     messages: [{ role: 'user', content: buildUserPrompt(item) }],
@@ -285,32 +284,69 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   if (block.type !== 'text') return null;
 
   const result = parseResult(block.text, item);
-  if (result) console.log(`Curated with Claude: ${item.title?.slice(0, 60)}`);
+  if (result) console.log(`Curated with Claude (fallback): ${item.title?.slice(0, 60)}`);
   return result;
 }
 
-// --- Main entry: tries Claude first, then Hugging Face, then OpenAI ---
-export async function curateArticle(item: RSSItem): Promise<CurationResult | null> {
-  try {
-    // Try Claude first (fast, reliable)
-    if (process.env.ANTHROPIC_API_KEY) {
-      const result = await curateWithClaude(item);
-      if (result) return result;
-    }
+// ═══════════════════════════════════════════════════════════════
+// Title-based pre-filter: skip obviously irrelevant items
+// without calling any AI API (saves ~60% of API calls)
+// ═══════════════════════════════════════════════════════════════
 
-    // Fallback to Hugging Face (free)
+const SKIP_PATTERNS = [
+  /^re:\s/i,                    // Email replies
+  /podcast|webinar|anmeldung/i, // Event announcements
+  /stellenangebot|job/i,        // Job listings
+  /^advertisement|^anzeige/i,   // Ads
+  /newsletter.*abonnieren/i,    // Newsletter signup pages
+  /^corrigendum|^erratum/i,     // Corrections to papers
+  /^withdrawn|^retracted/i,     // Retracted papers
+];
+
+const MIN_DESCRIPTION_LENGTH = 40; // Skip items with barely any content
+
+function shouldSkipItem(item: RSSItem): boolean {
+  const title = item.title ?? '';
+  const desc = item.description ?? '';
+
+  // Skip if title matches known irrelevant patterns
+  if (SKIP_PATTERNS.some(p => p.test(title) || p.test(desc))) return true;
+
+  // Skip if no meaningful content to curate
+  if (!title && desc.length < MIN_DESCRIPTION_LENGTH) return true;
+  if (title.length < 10) return true;
+
+  return false;
+}
+
+// --- Main entry: HuggingFace first (free), Claude as fallback ---
+export async function curateArticle(item: RSSItem): Promise<CurationResult | null> {
+  // Pre-filter: skip obviously irrelevant items without calling AI
+  if (shouldSkipItem(item)) {
+    console.log(`Pre-filter skip: ${item.title?.slice(0, 60)}`);
+    return null;
+  }
+
+  try {
+    // 1. Try Hugging Face FIRST (free, no cost)
     if (process.env.HUGGINGFACE_API_KEY) {
       const result = await curateWithHuggingFace(item);
       if (result) return result;
     }
 
-    // Final fallback to OpenAI (paid)
+    // 2. Fallback to Claude (paid, but with prompt caching = cheap)
+    if (process.env.ANTHROPIC_API_KEY) {
+      const result = await curateWithClaude(item);
+      if (result) return result;
+    }
+
+    // 3. Final fallback to OpenAI (paid)
     if (process.env.OPENAI_API_KEY) {
       const result = await curateWithOpenAI(item);
       if (result) return result;
     }
 
-    console.error('No AI provider configured. Set ANTHROPIC_API_KEY, HUGGINGFACE_API_KEY, or OPENAI_API_KEY.');
+    console.error('No AI provider configured. Set HUGGINGFACE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.');
     return null;
   } catch (error) {
     console.error('AI curation failed:', error);

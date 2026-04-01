@@ -39,8 +39,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Alle Artikel bereits bekannt.', created: 0 });
     }
 
-    // Curate up to 15 articles per run (4 runs/day = ~60 articles max)
-    const toCurate = newItems.slice(0, 15);
+    // Diverse selection: round-robin across source types
+    const byType: Record<string, typeof newItems> = {};
+    for (const item of newItems) {
+      const t = item.source.sourceType;
+      if (!byType[t]) byType[t] = [];
+      byType[t].push(item);
+    }
+
+    const toCurate: typeof newItems = [];
+    const types = Object.keys(byType);
+    let round = 0;
+    while (toCurate.length < 20) {
+      let added = false;
+      for (const type of types) {
+        if (byType[type][round]) {
+          toCurate.push(byType[type][round]);
+          added = true;
+          if (toCurate.length >= 20) break;
+        }
+      }
+      if (!added) break;
+      round++;
+    }
+
     let created = 0;
 
     for (const item of toCurate) {
