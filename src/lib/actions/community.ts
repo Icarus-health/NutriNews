@@ -8,6 +8,42 @@ import type { CardVerificationType } from '@/types/database';
 // Channel Actions
 // ═══════════════════════════════════════════════════════════════
 
+export async function createChannel(name: string, description: string, emoji: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const trimmedName = name.trim();
+  if (!trimmedName) return { error: 'Name darf nicht leer sein' };
+  if (trimmedName.length < 3) return { error: 'Name muss mindestens 3 Zeichen lang sein' };
+
+  // Generate slug from name
+  const slug = trimmedName
+    .toLowerCase()
+    .replace(/[äÄ]/g, 'ae').replace(/[öÖ]/g, 'oe').replace(/[üÜ]/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  const { error, data: channel } = await supabase.from('channels').insert({
+    slug,
+    name: trimmedName,
+    description: description.trim() || '',
+    emoji: emoji || '💬',
+  }).select('id').single();
+
+  if (error?.code === '23505') return { error: 'Eine Gruppe mit diesem Namen existiert bereits' };
+  if (error) return { error: 'Fachgruppe konnte nicht erstellt werden' };
+
+  // Auto-join the creator
+  await supabase.from('channel_members').insert({
+    channel_id: channel.id,
+    user_id: user.id,
+  });
+
+  revalidatePath('/community');
+  return { success: true, channelId: channel.id };
+}
+
 export async function joinChannel(channelId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
