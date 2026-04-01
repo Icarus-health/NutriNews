@@ -10,6 +10,7 @@ import type { QuickQuestion, QuickAnswer } from '@/types/database';
 interface Props {
   questions: QuickQuestion[];
   userId: string | null;
+  initialAnswers?: Record<string, QuickAnswer[]>;
 }
 
 function timeAgo(dateStr: string): string {
@@ -23,13 +24,13 @@ function timeAgo(dateStr: string): string {
   return `vor ${days}d`;
 }
 
-export default function QuickQuestions({ questions, userId }: Props) {
+export default function QuickQuestions({ questions, userId, initialAnswers }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [newCategory, setNewCategory] = useState<string>(CATEGORIES[0]?.id ?? '');
   const [newBody, setNewBody] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [answerBody, setAnswerBody] = useState('');
-  const [answers, setAnswers] = useState<Record<string, QuickAnswer[]>>({});
+  const [answers, setAnswers] = useState<Record<string, QuickAnswer[]>>(initialAnswers ?? {});
   const [isPending, startTransition] = useTransition();
   const [localQuestions, setLocalQuestions] = useState(questions);
 

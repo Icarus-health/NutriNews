@@ -5,7 +5,8 @@ import LayPressFeed from '@/components/news/LayPressFeed';
 import BerufspolitikMonitor from '@/components/news/BerufspolitikMonitor';
 import InternationalFeed from '@/components/news/InternationalFeed';
 import DailyBriefing from '@/components/briefing/DailyBriefing';
-import type { NewsCard, DailyBriefing as DailyBriefingType } from '@/types/database';
+import { rankCards } from '@/lib/feed-ranking';
+import type { NewsCard, DailyBriefing as DailyBriefingType, Profile } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -43,6 +44,17 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   const { data: newsCards } = await query;
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Load user profile for personalized ranking
+  let profile: Profile | null = null;
+  if (user) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    profile = data as Profile | null;
+  }
 
   // Separate cards by source type
   const allCards: NewsCard[] = newsCards ?? [];
@@ -112,10 +124,22 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   // When filters active: show ALL matching cards in the main feed (ignore source_type split)
   // When no filters: use the source_type split for special sections
-  const enrichedRegular = await enrichCards(hasFilters ? allCards : regularCards);
+  let enrichedRegular = await enrichCards(hasFilters ? allCards : regularCards);
   const enrichedLayPress = showSpecialSections ? await enrichCards(layPressCards) : [];
   const enrichedBerufspolitik = showSpecialSections ? await enrichCards(berufspolitikCards) : [];
   const enrichedInternational = showSpecialSections ? await enrichCards(internationalCards) : [];
+
+  // Personalized feed ranking when user has a profile with preferences
+  if (profile && (profile.setting || profile.preferred_categories.length > 0)) {
+    // Build read-history set from client cookie/header is not available server-side,
+    // so we pass an empty set — read-history deprioritization happens client-side via UXProvider
+    const rankingInput = {
+      setting: profile.setting,
+      preferredCategories: profile.preferred_categories,
+      readCardIds: new Set<string>(),
+    };
+    enrichedRegular = rankCards(enrichedRegular, rankingInput);
+  }
 
   const showLayPress = showSpecialSections && enrichedLayPress.length > 0;
 

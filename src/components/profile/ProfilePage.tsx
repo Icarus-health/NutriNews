@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, LogOut, Bell, BellOff, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera } from 'lucide-react';
+import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile } from '@/lib/actions/news';
@@ -35,7 +35,6 @@ export default function ProfilePage({ profile, stats }: Props) {
   const [alias, setAlias] = useState(profile?.alias ?? '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url ?? null);
   const [uploading, setUploading] = useState(false);
-  const [notify, setNotify] = useState(profile?.notify_new_news ?? true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(profile?.preferred_categories ?? []);
   const [setting, setSetting] = useState<TherapistSetting | null>(profile?.setting ?? null);
   const [isPending, startTransition] = useTransition();
@@ -78,7 +77,6 @@ export default function ProfilePage({ profile, stats }: Props) {
         full_name: fullName || undefined,
         alias: alias || undefined,
         preferred_categories: selectedCategories,
-        notify_new_news: notify,
         setting: setting ?? undefined,
       });
       setSaved(true);
@@ -195,26 +193,20 @@ export default function ProfilePage({ profile, stats }: Props) {
         </div>
       </div>
 
-      {/* Notifications */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">
+      {/* Notifications — coming soon */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4 opacity-60">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {notify ? <Bell size={18} className="text-forest-600" /> : <BellOff size={18} className="text-slate-400" />}
+            <Bell size={18} className="text-slate-400" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Benachrichtigungen</span>
           </div>
-          <button
-            onClick={() => { setNotify(p => !p); setEditing(true); }}
-            className={clsx(
-              'w-10 h-6 rounded-full transition-colors relative',
-              notify ? 'bg-forest-600' : 'bg-slate-300'
-            )}
-          >
-            <span className={clsx(
-              'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
-              notify ? 'left-[18px]' : 'left-0.5'
-            )} />
-          </button>
+          <span className="text-[11px] font-semibold text-forest-600 bg-forest-50 dark:bg-forest-900/30 px-2 py-0.5 rounded-full">
+            Kommt bald
+          </span>
         </div>
+        <p className="text-[11px] text-slate-400 mt-1.5">
+          Push-Benachrichtigungen und E-Mail-Digest werden in einem zukünftigen Update verfügbar sein.
+        </p>
       </div>
 
       {/* Preferred categories */}

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import CommunityPage from '@/components/community/CommunityPage';
-import type { Channel, ChannelPost, QuickQuestion } from '@/types/database';
+import type { Channel, ChannelPost, QuickQuestion, QuickAnswer } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,12 +111,35 @@ export default async function CommunityRoute() {
     }
   }
 
+  // Load answers for the first 5 questions (server-side pre-fetch)
+  const answersMap: Record<string, QuickAnswer[]> = {};
+  const questionsToLoad = questionList.slice(0, 5);
+  if (questionsToLoad.length > 0) {
+    const questionIds = questionsToLoad.map(q => q.id).filter(id => !id.startsWith('default-'));
+    if (questionIds.length > 0) {
+      const { data: allAnswers } = await supabase
+        .from('quick_answers')
+        .select('*, profile:user_id(id, full_name, avatar_url)')
+        .in('question_id', questionIds)
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+      for (const answer of (allAnswers ?? []) as QuickAnswer[]) {
+        if (!answersMap[answer.question_id]) {
+          answersMap[answer.question_id] = [];
+        }
+        answersMap[answer.question_id].push(answer);
+      }
+    }
+  }
+
   return (
     <CommunityPage
       channels={channelList}
       questions={questionList}
       userId={user?.id ?? null}
       channelPosts={channelPosts}
+      initialAnswers={answersMap}
     />
   );
 }

@@ -17,23 +17,38 @@ export default function AuthCallbackPage() {
     async function handleCallback() {
       const supabase = createClient();
 
+      let authenticated = false;
+
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
-          window.location.href = next;
-          return;
-        }
+        if (!error) authenticated = true;
       }
 
-      if (tokenHash && type) {
+      if (!authenticated && tokenHash && type) {
         const { error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: type as 'email' | 'recovery' | 'invite' | 'email_change',
         });
-        if (!error) {
-          window.location.href = next;
-          return;
+        if (!error) authenticated = true;
+      }
+
+      if (authenticated) {
+        // Check if new user needs onboarding (no setting configured yet)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('setting')
+            .eq('id', user.id)
+            .single();
+
+          if (!profile?.setting) {
+            window.location.href = '/onboarding';
+            return;
+          }
         }
+        window.location.href = next;
+        return;
       }
 
       setFailed(true);
