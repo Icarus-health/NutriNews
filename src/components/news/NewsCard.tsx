@@ -17,13 +17,13 @@ interface Props {
   onShare?: (cardId: string) => void;
 }
 
-const SOURCE_TYPE_ACCENT: Record<string, { color: string; label: string; emoji: string }> = {
-  forschung:     { color: 'from-blue-500 to-indigo-500',   label: 'Forschung',      emoji: '🔬' },
-  fachpresse:    { color: 'from-forest-500 to-emerald-500', label: 'Fachpresse',     emoji: '📋' },
-  laienpresse:   { color: 'from-amber-400 to-orange-500',  label: 'Laienpresse',    emoji: '📰' },
-  berufspolitik: { color: 'from-orange-500 to-red-500',    label: 'Berufspolitik',  emoji: '⚖️' },
-  supplement:    { color: 'from-emerald-400 to-teal-500',  label: 'Supplements',    emoji: '💊' },
-  international: { color: 'from-sky-400 to-blue-500',      label: 'International',  emoji: '🌍' },
+const SOURCE_TYPE_ACCENT: Record<string, { gradient: string; bgLight: string; bgDark: string; label: string; emoji: string }> = {
+  forschung:     { gradient: 'from-blue-500 to-indigo-500',    bgLight: 'bg-blue-50',    bgDark: 'dark:bg-blue-950/30',    label: 'Forschung',      emoji: '🔬' },
+  fachpresse:    { gradient: 'from-forest-500 to-emerald-500', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-950/30', label: 'Fachpresse',     emoji: '📋' },
+  laienpresse:   { gradient: 'from-amber-400 to-orange-500',   bgLight: 'bg-amber-50',   bgDark: 'dark:bg-amber-950/30',   label: 'Laienpresse',    emoji: '📰' },
+  berufspolitik: { gradient: 'from-orange-500 to-red-500',     bgLight: 'bg-orange-50',  bgDark: 'dark:bg-orange-950/30',  label: 'Berufspolitik',  emoji: '⚖️' },
+  supplement:    { gradient: 'from-emerald-400 to-teal-500',   bgLight: 'bg-teal-50',    bgDark: 'dark:bg-teal-950/30',    label: 'Supplements',    emoji: '💊' },
+  international: { gradient: 'from-sky-400 to-blue-500',       bgLight: 'bg-sky-50',     bgDark: 'dark:bg-sky-950/30',     label: 'International',  emoji: '🌍' },
 };
 
 const THERAPIST_CHECK_LABELS: Record<string, string> = {
@@ -134,7 +134,7 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
   }
 
   return (
-    <div className="flip-card mb-3">
+    <div className="flip-card mb-4">
       <div
         className={clsx('flip-card-inner', flipped && 'flipped')}
         style={{ height: cardHeight || 'auto', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1), height 0.4s ease' }}
@@ -143,54 +143,56 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
         <div ref={frontRef} className="flip-card-front">
           <article
             className={clsx(
-              'rounded-2xl shadow-sm border overflow-hidden cursor-pointer active:scale-[0.985] transition-transform duration-150',
+              'rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border overflow-hidden cursor-pointer active:scale-[0.98] transition-all duration-200',
               isRead
-                ? 'bg-white/80 dark:bg-slate-800/70 border-slate-100/60 dark:border-slate-700/50 opacity-85'
-                : 'bg-white dark:bg-slate-800 border-slate-100/60 dark:border-slate-700/60'
+                ? 'bg-white/80 dark:bg-slate-800/70 border-slate-100/40 dark:border-slate-700/40 opacity-80'
+                : 'bg-white dark:bg-slate-800 border-slate-100/40 dark:border-slate-700/40'
             )}
             onClick={() => {
               setFlipped(true);
               ux.markAsRead(card.id, card.headline, card.category_main);
             }}
           >
-            {/* Source-type accent strip */}
-            <div className={clsx('h-1 bg-gradient-to-r', accent.color)} />
+            {/* ── Visual hero header with gradient + decorative emoji ── */}
+            <div className={clsx('relative px-4 pt-4 pb-3 overflow-hidden', accent.bgLight, accent.bgDark)}>
+              {/* Decorative large emoji (background) */}
+              <span className="absolute -right-2 -top-2 text-[72px] opacity-[0.08] select-none pointer-events-none leading-none">
+                {accent.emoji}
+              </span>
+              {/* Gradient accent bar */}
+              <div className={clsx('absolute top-0 left-0 right-0 h-1 bg-gradient-to-r', accent.gradient)} />
 
-            {/* Header: Source type + Evidence + Time */}
-            <div className="flex items-center justify-between px-4 pt-3 pb-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px]">{accent.emoji}</span>
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              {/* Source type + Evidence row */}
+              <div className="relative flex items-center gap-2 mb-2.5">
+                <span className="text-base">{accent.emoji}</span>
+                <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300">
                   {accent.label}
                 </span>
-                <span className="text-[10px] text-slate-300 dark:text-slate-600">&middot;</span>
-                <span className={clsx('text-[10px] font-medium px-1.5 py-0.5 rounded-full', evidence.color)}>
+                <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
+                <span className="ml-auto text-[10px] text-slate-400 tabular-nums">{readMin} Min</span>
               </div>
-              <span className="text-[10px] text-slate-400 tabular-nums">{readMin} Min</span>
-            </div>
 
-            {/* Category badge */}
-            <div className="px-4 pt-1 pb-1">
+              {/* Category badge */}
               <span className={clsx(
-                'text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full inline-block',
+                'text-[10px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full inline-block',
                 getCategoryStyle(card.category_main)
               )}>
                 {getCategoryLabel(card.category_main)}
               </span>
             </div>
 
-            {/* Headline — bigger, bolder */}
-            <div className="px-4 pt-1.5 pb-2">
-              <h2 className="font-bold text-[16px] leading-snug text-slate-900 dark:text-slate-100 tracking-[-0.01em] line-clamp-3">
+            {/* Headline */}
+            <div className="px-4 pt-3 pb-2">
+              <h2 className="font-bold text-[17px] leading-[1.3] text-slate-900 dark:text-slate-100 tracking-[-0.02em] line-clamp-3">
                 {card.headline}
               </h2>
             </div>
 
-            {/* Therapist-Check — compact */}
-            <div className="mx-4 mb-3 bg-forest-50/60 dark:bg-forest-900/15 rounded-xl px-3.5 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-0.5">
+            {/* Therapist-Check */}
+            <div className="mx-4 mb-3 bg-forest-50/50 dark:bg-forest-900/10 rounded-2xl px-4 py-3 border border-forest-100/60 dark:border-forest-800/30">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">
                 {THERAPIST_CHECK_LABELS[card.source_type] ?? 'Therapist-Check'}
               </p>
               <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-3">
@@ -198,10 +200,10 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
               </p>
             </div>
 
-            {/* Laienpresse: Fact-Check (compact) */}
+            {/* Laienpresse: Fact-Check */}
             {isLayPress && card.lay_press_fact_check && (
-              <div className="mx-4 mb-3 bg-amber-50/60 dark:bg-amber-900/15 rounded-xl px-3.5 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">
+              <div className="mx-4 mb-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl px-4 py-3 border border-amber-200/60 dark:border-amber-800/30">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">
                   Faktencheck
                 </p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 line-clamp-2">
@@ -211,8 +213,8 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
             )}
 
             {/* Tap hint */}
-            <div className="flex items-center justify-end px-4 pb-1.5">
-              <span className="flex items-center gap-1 text-[11px] text-forest-600 dark:text-forest-400 font-medium">
+            <div className="flex items-center justify-end px-4 pb-2">
+              <span className="flex items-center gap-1 text-[11px] text-forest-600 dark:text-forest-400 font-semibold bg-forest-50 dark:bg-forest-900/20 px-3 py-1 rounded-full">
                 Details <ChevronRight size={12} strokeWidth={2.5} />
               </span>
             </div>
@@ -282,11 +284,11 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
         {/* ═══ BACK ═══ */}
         <div ref={backRef} className="flip-card-back">
           <article
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100/60 dark:border-slate-700/60 overflow-hidden cursor-pointer"
+            className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden cursor-pointer"
             onClick={() => setFlipped(false)}
           >
             {/* Accent strip */}
-            <div className={clsx('h-1 bg-gradient-to-r', accent.color)} />
+            <div className={clsx('h-1 bg-gradient-to-r', accent.gradient)} />
 
             {/* Back header */}
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
