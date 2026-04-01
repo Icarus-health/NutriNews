@@ -2,26 +2,42 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, X, Clock, ChevronDown, Check } from 'lucide-react';
+import { Search, X, Clock, ChevronDown, Check, SlidersHorizontal } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
+import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { useUX } from '@/components/providers/UXProvider';
 import type { User } from '@supabase/supabase-js';
+import type { EvidenceLevel } from '@/types/database';
 
+const EVIDENCE_LEVELS = Object.keys(EVIDENCE_CONFIG) as EvidenceLevel[];
+
+const DATE_RANGES = [
+  { value: '7', label: '7 Tage' },
+  { value: '30', label: '30 Tage' },
+  { value: '90', label: '90 Tage' },
+] as const;
 
 interface Props {
   user: User | null;
   activeCategories: string[];
   searchQuery: string;
+  evidenceFilter?: string[];
+  daysFilter?: string;
+  minRelevance?: string;
 }
 
-export default function HomeHeader({ user, activeCategories, searchQuery }: Props) {
+export default function HomeHeader({ user, activeCategories, searchQuery, evidenceFilter = [], daysFilter, minRelevance }: Props) {
   const router = useRouter();
   const ux = useUX();
   const [showSearch, setShowSearch] = useState(!!searchQuery);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showFilters, setShowFilters] = useState(evidenceFilter.length > 0 || !!daysFilter || !!minRelevance);
   const [query, setQuery] = useState(searchQuery);
   const [selected, setSelected] = useState<Set<string>>(new Set(activeCategories));
+  const [selectedEvidence, setSelectedEvidence] = useState<Set<string>>(new Set(evidenceFilter));
+  const [days, setDays] = useState(daysFilter ?? '');
+  const [relevance, setRelevance] = useState(minRelevance ?? '');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -43,10 +59,16 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
     }
   }, [showDropdown]);
 
-  function buildUrl(cats: Set<string>, q: string) {
+  function buildUrl(cats: Set<string>, q: string, ev?: Set<string>, d?: string, r?: string) {
     const params = new URLSearchParams();
     if (cats.size > 0) params.set('categories', Array.from(cats).join(','));
     if (q) params.set('q', q);
+    const evSet = ev ?? selectedEvidence;
+    if (evSet.size > 0) params.set('evidence', Array.from(evSet).join(','));
+    const dVal = d ?? days;
+    if (dVal) params.set('days', dVal);
+    const rVal = r ?? relevance;
+    if (rVal) params.set('minRelevance', rVal);
     const qs = params.toString();
     return qs ? `/?${qs}` : '/';
   }
@@ -277,6 +299,128 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
                 Fertig {categoryCount > 0 && `(${categoryCount})`}
               </button>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Extended filters toggle */}
+      <div className="px-5 pb-3">
+        <button
+          onClick={() => setShowFilters(f => !f)}
+          className={clsx(
+            'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+            showFilters || selectedEvidence.size > 0 || days || relevance
+              ? 'text-forest-700 dark:text-forest-400'
+              : 'text-slate-400 hover:text-slate-600'
+          )}
+        >
+          <SlidersHorizontal size={14} />
+          Erweiterte Filter
+          {(selectedEvidence.size > 0 || days || relevance) && (
+            <span className="w-4 h-4 rounded-full bg-forest-700 text-white text-[9px] flex items-center justify-center font-bold">
+              {(selectedEvidence.size > 0 ? 1 : 0) + (days ? 1 : 0) + (relevance ? 1 : 0)}
+            </span>
+          )}
+        </button>
+
+        {showFilters && (
+          <div className="mt-3 space-y-3 animate-fade-in">
+            {/* Evidence Level multi-select */}
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Evidenz-Level</p>
+              <div className="flex flex-wrap gap-1.5">
+                {EVIDENCE_LEVELS.map(level => {
+                  const config = EVIDENCE_CONFIG[level];
+                  const isActive = selectedEvidence.has(level);
+                  return (
+                    <button
+                      key={level}
+                      onClick={() => {
+                        setSelectedEvidence(prev => {
+                          const next = new Set(prev);
+                          if (next.has(level)) next.delete(level); else next.add(level);
+                          router.push(buildUrl(selected, query, next));
+                          return next;
+                        });
+                      }}
+                      className={clsx(
+                        'px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border',
+                        isActive
+                          ? 'bg-forest-700 text-white border-forest-700'
+                          : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300'
+                      )}
+                    >
+                      {config.icon} {config.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Date range + Min relevance row */}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Zeitraum</p>
+                <div className="flex gap-1.5">
+                  {DATE_RANGES.map(dr => (
+                    <button
+                      key={dr.value}
+                      onClick={() => {
+                        const next = days === dr.value ? '' : dr.value;
+                        setDays(next);
+                        router.push(buildUrl(selected, query, undefined, next));
+                      }}
+                      className={clsx(
+                        'flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all border text-center',
+                        days === dr.value
+                          ? 'bg-forest-700 text-white border-forest-700'
+                          : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
+                      )}
+                    >
+                      {dr.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="w-28">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Min. Relevanz</p>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map(score => (
+                    <button
+                      key={score}
+                      onClick={() => {
+                        const next = relevance === String(score) ? '' : String(score);
+                        setRelevance(next);
+                        router.push(buildUrl(selected, query, undefined, undefined, next));
+                      }}
+                      className={clsx(
+                        'flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all border text-center',
+                        Number(relevance) >= 1 && score <= Number(relevance)
+                          ? 'bg-forest-700 text-white border-forest-700'
+                          : 'bg-white dark:bg-slate-700 text-slate-400 border-slate-200 dark:border-slate-600'
+                      )}
+                    >
+                      {score}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Clear extended filters */}
+            {(selectedEvidence.size > 0 || days || relevance) && (
+              <button
+                onClick={() => {
+                  setSelectedEvidence(new Set());
+                  setDays('');
+                  setRelevance('');
+                  router.push(buildUrl(selected, query, new Set(), '', ''));
+                }}
+                className="text-[11px] text-slate-400 hover:text-red-400 transition-colors"
+              >
+                Erweiterte Filter zurücksetzen
+              </button>
+            )}
           </div>
         )}
       </div>

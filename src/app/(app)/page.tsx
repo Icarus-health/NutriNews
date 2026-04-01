@@ -12,15 +12,18 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 interface PageProps {
-  searchParams: Promise<{ categories?: string; q?: string }>;
+  searchParams: Promise<{ categories?: string; q?: string; evidence?: string; days?: string; minRelevance?: string }>;
 }
 
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const supabase = await createClient();
 
-  // Parse multi-category filter
+  // Parse filters
   const activeCategories = params.categories ? params.categories.split(',').filter(Boolean) : [];
+  const evidenceFilter = params.evidence ? params.evidence.split(',').filter(Boolean) : [];
+  const daysFilter = params.days ? parseInt(params.days, 10) : null;
+  const minRelevance = params.minRelevance ? parseInt(params.minRelevance, 10) : null;
 
   // Build query for main feed
   let query = supabase
@@ -28,13 +31,31 @@ export default async function HomePage({ searchParams }: PageProps) {
     .select('*')
     .eq('status', 'published')
     .order('published_at', { ascending: false })
-    .limit(30);
+    .limit(15);
 
   // Category filter (multi-select)
   if (activeCategories.length === 1) {
     query = query.eq('category_main', activeCategories[0]);
   } else if (activeCategories.length > 1) {
     query = query.in('category_main', activeCategories);
+  }
+
+  // Evidence level filter
+  if (evidenceFilter.length === 1) {
+    query = query.eq('evidence_level', evidenceFilter[0]);
+  } else if (evidenceFilter.length > 1) {
+    query = query.in('evidence_level', evidenceFilter);
+  }
+
+  // Date range filter
+  if (daysFilter && daysFilter > 0) {
+    const cutoff = new Date(Date.now() - daysFilter * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('published_at', cutoff);
+  }
+
+  // Minimum practice relevance filter
+  if (minRelevance && minRelevance >= 1 && minRelevance <= 5) {
+    query = query.gte('practice_relevance_score', minRelevance);
   }
 
   // Search filter
@@ -117,8 +138,8 @@ export default async function HomePage({ searchParams }: PageProps) {
     }));
   }
 
-  // Don't show special sections when filtering by category or searching
-  const hasFilters = activeCategories.length > 0 || !!params.q;
+  // Don't show special sections when any filter is active
+  const hasFilters = activeCategories.length > 0 || !!params.q || evidenceFilter.length > 0 || !!daysFilter || !!minRelevance;
   const showSpecialSections = !hasFilters;
   const showBriefing = showSpecialSections;
 
@@ -175,6 +196,9 @@ export default async function HomePage({ searchParams }: PageProps) {
         user={user}
         activeCategories={activeCategories}
         searchQuery={params.q ?? ''}
+        evidenceFilter={evidenceFilter}
+        daysFilter={params.days}
+        minRelevance={params.minRelevance}
       />
       {briefingData.briefing && (
         <DailyBriefing
@@ -192,7 +216,17 @@ export default async function HomePage({ searchParams }: PageProps) {
       {showSpecialSections && enrichedInternational.length > 0 && (
         <InternationalFeed cards={enrichedInternational} />
       )}
-      <NewsFeed initialCards={enrichedRegular} userId={user?.id ?? null} />
+      <NewsFeed
+        initialCards={enrichedRegular}
+        userId={user?.id ?? null}
+        filters={{
+          categories: activeCategories.length > 0 ? activeCategories : undefined,
+          q: params.q || undefined,
+          evidence: evidenceFilter.length > 0 ? evidenceFilter : undefined,
+          days: daysFilter ?? undefined,
+          minRelevance: minRelevance ?? undefined,
+        }}
+      />
     </div>
   );
 }

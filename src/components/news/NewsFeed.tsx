@@ -1,17 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import NewsCardComponent from './NewsCard';
 import ShareModal from './ShareModal';
+import { loadMoreCards } from '@/lib/actions/news';
 import type { NewsCard } from '@/types/database';
 
 interface Props {
   initialCards: NewsCard[];
   userId: string | null;
+  filters?: {
+    categories?: string[];
+    q?: string;
+    evidence?: string[];
+    days?: number;
+    minRelevance?: number;
+  };
 }
 
-export default function NewsFeed({ initialCards, userId }: Props) {
+export default function NewsFeed({ initialCards, userId, filters }: Props) {
+  const [cards, setCards] = useState(initialCards);
+  const [hasMore, setHasMore] = useState(initialCards.length >= 15);
   const [shareCardId, setShareCardId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   function handleRequireAuth() {
     if (typeof window !== 'undefined') {
@@ -19,7 +30,18 @@ export default function NewsFeed({ initialCards, userId }: Props) {
     }
   }
 
-  if (initialCards.length === 0) {
+  function handleLoadMore() {
+    const lastCard = cards[cards.length - 1];
+    if (!lastCard?.published_at) return;
+
+    startTransition(async () => {
+      const result = await loadMoreCards(lastCard.published_at!, filters);
+      setCards(prev => [...prev, ...result.cards]);
+      setHasMore(result.hasMore);
+    });
+  }
+
+  if (cards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-400 px-5">
         <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
@@ -35,8 +57,8 @@ export default function NewsFeed({ initialCards, userId }: Props) {
 
   return (
     <div className="px-4 pt-4 pb-4">
-      {initialCards.map((card, i) => (
-        <div key={card.id} style={{ animationDelay: `${i * 60}ms` }} className="animate-scale-in">
+      {cards.map((card, i) => (
+        <div key={card.id} style={{ animationDelay: `${Math.min(i, 14) * 60}ms` }} className="animate-scale-in">
           <NewsCardComponent
             card={card}
             userId={userId}
@@ -45,6 +67,23 @@ export default function NewsFeed({ initialCards, userId }: Props) {
           />
         </div>
       ))}
+
+      {hasMore && (
+        <button
+          onClick={handleLoadMore}
+          disabled={isPending}
+          className="w-full py-3 mt-2 mb-4 rounded-xl text-[14px] font-semibold transition-colors bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 border border-slate-200 dark:border-slate-700"
+        >
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              Wird geladen...
+            </span>
+          ) : (
+            'Mehr laden'
+          )}
+        </button>
+      )}
 
       {shareCardId && (
         <ShareModal
