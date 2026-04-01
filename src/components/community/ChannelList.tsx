@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Users, MessageSquare, ChevronRight, LogIn, LogOut, Plus, X } from 'lucide-react';
+import { Users, MessageSquare, ChevronRight, LogIn, LogOut, Plus, X, Lock } from 'lucide-react';
 import { clsx } from 'clsx';
 import { joinChannel, leaveChannel, createChannel } from '@/lib/actions/community';
 import type { Channel } from '@/types/database';
@@ -21,6 +21,7 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newEmoji, setNewEmoji] = useState('💬');
+  const [newIsPrivate, setNewIsPrivate] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   function handleJoinLeave(e: React.MouseEvent, channel: Channel) {
@@ -47,7 +48,7 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
     setCreateError(null);
 
     startTransition(async () => {
-      const result = await createChannel(newName, newDescription, newEmoji);
+      const result = await createChannel(newName, newDescription, newEmoji, newIsPrivate);
       if (result.error) {
         setCreateError(result.error);
         return;
@@ -59,6 +60,7 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
         name: newName.trim(),
         description: newDescription.trim(),
         emoji: newEmoji,
+        is_private: newIsPrivate,
         member_count: 1,
         post_count: 0,
         is_member: true,
@@ -131,6 +133,21 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
             className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-[13px] text-slate-900 dark:text-slate-100 mb-2 focus:outline-none focus:ring-2 focus:ring-forest-500/40 resize-none"
           />
 
+          {/* Private toggle */}
+          <button
+            type="button"
+            onClick={() => setNewIsPrivate(p => !p)}
+            className={clsx(
+              'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors mb-2 border',
+              newIsPrivate
+                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                : 'bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400'
+            )}
+          >
+            <Lock size={14} />
+            {newIsPrivate ? 'Geschlossene Gruppe — nur Mitglieder sehen Inhalte' : 'Öffentliche Gruppe — alle können lesen'}
+          </button>
+
           {createError && (
             <p className="text-[12px] text-red-500 mb-2">{createError}</p>
           )}
@@ -145,24 +162,42 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
         </form>
       )}
 
-      {localChannels.map(channel => (
+      {localChannels.map(channel => {
+        const isPrivateAndNotMember = channel.is_private && !channel.is_member;
+        return (
         <button
           key={channel.id}
-          onClick={() => onSelectChannel(channel.id)}
-          className="w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 text-left hover:border-slate-200 dark:hover:border-slate-600 transition-colors active:scale-[0.99]"
+          onClick={() => {
+            if (isPrivateAndNotMember) return; // Can't view private channels without joining
+            onSelectChannel(channel.id);
+          }}
+          className={clsx(
+            'w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 text-left transition-colors active:scale-[0.99]',
+            isPrivateAndNotMember ? 'opacity-70' : 'hover:border-slate-200 dark:hover:border-slate-600'
+          )}
         >
           <div className="flex items-start gap-3">
             <span className="text-2xl">{channel.emoji}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-[14px] text-slate-800 dark:text-slate-200 truncate">
-                  {channel.name}
-                </h3>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <h3 className="font-semibold text-[14px] text-slate-800 dark:text-slate-200 truncate">
+                    {channel.name}
+                  </h3>
+                  {channel.is_private && (
+                    <Lock size={12} className="text-amber-500 flex-shrink-0" />
+                  )}
+                </div>
                 <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />
               </div>
               <p className="text-[12px] text-slate-500 mt-0.5 line-clamp-2">
                 {channel.description}
               </p>
+              {isPrivateAndNotMember && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
+                  Geschlossene Gruppe — tritt bei, um Inhalte zu sehen
+                </p>
+              )}
               <div className="flex items-center gap-3 mt-2">
                 <span className="flex items-center gap-1 text-[11px] text-slate-400">
                   <Users size={12} /> {channel.member_count ?? 0}
@@ -192,7 +227,8 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
             </div>
           </div>
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }

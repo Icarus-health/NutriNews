@@ -38,13 +38,14 @@ export interface RankingInput {
 
 /**
  * Ranks news cards for a specific user profile.
- * Score formula:
+ * Primary sort: published_at descending (newest first, always).
+ * Within same-day articles, boost by preference score:
  *   +3  if card category matches user's setting context
  *   +2  if card category is in user's preferred_categories
- *   +N  practice_relevance_score (1–5) as direct additive bonus
  *   -2  if card was already read
  *
- * Cards are sorted by score descending, then by published_at descending (recency tiebreak).
+ * This ensures newest articles always appear at the top,
+ * with personalization only reordering within the same day.
  */
 export function rankCards(cards: NewsCard[], input: RankingInput): NewsCard[] {
   const settingCategories = input.setting
@@ -66,7 +67,7 @@ export function rankCards(cards: NewsCard[], input: RankingInput): NewsCard[] {
       score += 2;
     }
 
-    // Practice relevance as multiplier-like additive
+    // Practice relevance as additive bonus
     score += card.practice_relevance_score ?? 0;
 
     // Deprioritize already-read cards
@@ -74,12 +75,19 @@ export function rankCards(cards: NewsCard[], input: RankingInput): NewsCard[] {
       score -= 2;
     }
 
-    return { card, score };
+    // Day bucket for grouping (articles from same day compete on score)
+    const dayBucket = (card.published_at ?? card.created_at).slice(0, 10);
+
+    return { card, score, dayBucket };
   });
 
-  // Sort: highest score first, then newest first for same score
+  // Sort: by day (newest day first), then by score within same day, then by time within same score
   scored.sort((a, b) => {
+    // Different days → newest day first
+    if (a.dayBucket !== b.dayBucket) return b.dayBucket.localeCompare(a.dayBucket);
+    // Same day → highest score first
     if (b.score !== a.score) return b.score - a.score;
+    // Same score → newest first
     const dateA = a.card.published_at ?? a.card.created_at;
     const dateB = b.card.published_at ?? b.card.created_at;
     return dateB.localeCompare(dateA);

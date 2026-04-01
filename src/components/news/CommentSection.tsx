@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { Send, Trash2, Reply } from 'lucide-react';
 import { addComment, deleteComment, getComments } from '@/lib/actions/news';
 
@@ -24,17 +24,27 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
   const [replyTo, setReplyTo] = useState<CommentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const mountedRef = useRef(true);
+  // Track pending comments that haven't been confirmed by the server yet
+  const pendingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    let cancelled = false;
-    getComments(newsCardId).then((data) => {
-      if (!cancelled) {
+    mountedRef.current = true;
+    loadComments();
+    return () => { mountedRef.current = false; };
+  }, [newsCardId]);
+
+  async function loadComments() {
+    try {
+      const data = await getComments(newsCardId);
+      if (mountedRef.current) {
         setComments(data as unknown as CommentData[]);
         setLoading(false);
       }
-    });
-    return () => { cancelled = true; };
-  }, [newsCardId]);
+    } catch {
+      if (mountedRef.current) setLoading(false);
+    }
+  }
 
   function handleSubmit() {
     if (!userId) { onRequireAuth?.(); return; }
@@ -45,27 +55,45 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
       ? `@${replyTo.profiles?.full_name ?? 'Anonym'} ${body.trim()}`
       : body.trim();
 
+    const tempId = `temp-${Date.now()}`;
     const optimisticComment: CommentData = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       body: finalBody,
       created_at: new Date().toISOString(),
       user_id: userId,
       profiles: { full_name: 'Du', avatar_url: null },
     };
+
+    pendingRef.current.add(tempId);
     setComments(prev => [...prev, optimisticComment]);
     const savedBody = finalBody;
     setBody('');
     setReplyTo(null);
 
-    startTransition(async () => {
-      const result = await addComment(newsCardId, savedBody);
-      if (result.error) {
-        setComments(prev => prev.filter(c => c.id !== optimisticComment.id));
-      } else {
-        const fresh = await getComments(newsCardId);
-        setComments(fresh as unknown as CommentData[]);
+    // Fire-and-forget with retry: save comment, then refresh
+    (async () => {
+      try {
+        const result = await addComment(newsCardId, savedBody);
+        pendingRef.current.delete(tempId);
+        if (result.error) {
+          if (mountedRef.current) {
+            setComments(prev => prev.filter(c => c.id !== tempId));
+          }
+          return;
+        }
+        // Small delay to ensure DB write is committed, then refresh
+        await new Promise(r => setTimeout(r, 300));
+        if (mountedRef.current) {
+          const fresh = await getComments(newsCardId);
+          if (mountedRef.current) {
+            setComments(fresh as unknown as CommentData[]);
+          }
+        }
+      } catch {
+        // On error, keep the optimistic comment visible rather than losing it
+        pendingRef.current.delete(tempId);
       }
-    });
+    })();
   }
 
   function handleDelete(commentId: string) {
@@ -133,7 +161,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
                       <Reply size={12} />
                     </button>
                   )}
-                  {c.user_id === userId && (
+                  {c.user_id === userId && !c.id.startsWith('temp-') && (
                     <button
                       onClick={() => handleDelete(c.id)}
                       className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-opacity ml-auto"

@@ -141,6 +141,7 @@ export interface Channel {
   name: string;
   description: string;
   emoji: string;
+  is_private: boolean;
   member_count?: number;
   post_count?: number;
   is_member?: boolean;
