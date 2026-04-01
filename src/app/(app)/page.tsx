@@ -5,8 +5,8 @@ import DailyBriefing from '@/components/briefing/DailyBriefing';
 import { rankCards, interleaveBySourceType } from '@/lib/feed-ranking';
 import type { NewsCard, DailyBriefing as DailyBriefingType, Profile } from '@/types/database';
 
-// ISR: revalidate every 60s
-export const revalidate = 60;
+// Dynamic: page uses auth + searchParams, must be rendered per-request
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<{ categories?: string; q?: string; evidence?: string; days?: string; minRelevance?: string }>;
