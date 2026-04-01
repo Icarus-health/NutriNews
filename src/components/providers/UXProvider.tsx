@@ -37,6 +37,8 @@ interface UXSettings {
   readLaterQueue: string[];
   toggleReadLater: (cardId: string) => void;
   isInReadLater: (cardId: string) => boolean;
+  // Streak
+  streak: { days: number; lastReadDate: string | null };
 }
 
 const UXContext = createContext<UXSettings | null>(null);
@@ -69,6 +71,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   const [readHistory, setReadHistory] = useState<ReadHistoryEntry[]>([]);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [readLaterQueue, setReadLaterQueue] = useState<string[]>([]);
+  const [streakData, setStreakData] = useState<{ days: number; lastReadDate: string | null }>({ days: 0, lastReadDate: null });
   const [systemDark, setSystemDark] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -79,6 +82,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     setReadHistory(getStored('nn-read-history', []));
     setSearchHistory(getStored('nn-search-history', []));
     setReadLaterQueue(getStored('nn-read-later', []));
+    setStreakData(getStored('nn-streak', { days: 0, lastReadDate: null }));
 
     // System dark preference
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -119,6 +123,16 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       if (prev.some(e => e.cardId === cardId)) return prev;
       const next = [{ cardId, headline, category, timestamp: Date.now() }, ...prev].slice(0, 200);
       setStored('nn-read-history', next);
+      return next;
+    });
+    // Update streak
+    setStreakData(prev => {
+      const today = new Date().toISOString().split('T')[0];
+      if (prev.lastReadDate === today) return prev; // Already counted today
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const newDays = prev.lastReadDate === yesterday ? prev.days + 1 : 1;
+      const next = { days: newDays, lastReadDate: today };
+      setStored('nn-streak', next);
       return next;
     });
   }, []);
@@ -169,6 +183,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       readHistory, markAsRead, weeklyStats,
       searchHistory, addSearchQuery, clearSearchHistory,
       readLaterQueue, toggleReadLater, isInReadLater,
+      streak: streakData,
     }}>
       {children}
     </UXContext.Provider>

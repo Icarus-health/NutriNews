@@ -92,6 +92,9 @@ export interface NewsCard {
   policy_impact: PolicyImpactLevel | null;
   policy_action_needed: string | null;
   international_relevance_de: string | null;
+  // Quellen-Metadaten
+  doi: string | null;
+  pubmed_id: string | null;
   // Computed / joined
   like_count?: number;
   user_has_liked?: boolean;
