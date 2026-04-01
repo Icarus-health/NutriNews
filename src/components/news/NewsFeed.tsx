@@ -45,8 +45,9 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     const lastCard = cards[cards.length - 1];
     if (!lastCard?.published_at) return;
 
+    const existingIds = cards.map(c => c.id);
     startTransition(async () => {
-      const result = await loadMoreCards(lastCard.published_at!, filters);
+      const result = await loadMoreCards(lastCard.published_at!, existingIds, filters);
       setCards(prev => [...prev, ...result.cards]);
       setHasMore(result.hasMore);
     });

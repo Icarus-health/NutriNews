@@ -208,7 +208,7 @@ export async function deleteNewsCard(newsCardId: string) {
   return { success: true };
 }
 
-export async function loadMoreCards(cursor: string, filters?: {
+export async function loadMoreCards(cursor: string, excludeIds: string[], filters?: {
   categories?: string[];
   q?: string;
   evidence?: string[];
@@ -222,9 +222,9 @@ export async function loadMoreCards(cursor: string, filters?: {
     .from('news_cards')
     .select('*')
     .eq('status', 'published')
-    .lt('published_at', cursor)
+    .lte('published_at', cursor)
     .order('published_at', { ascending: false })
-    .limit(15);
+    .limit(15 + excludeIds.length); // Fetch extra to account for exclusions
 
   if (filters?.categories?.length === 1) {
     query = query.eq('category_main', filters.categories[0]);
@@ -251,8 +251,13 @@ export async function loadMoreCards(cursor: string, filters?: {
     query = query.or(`headline.ilike.%${filters.q}%,snack_what.ilike.%${filters.q}%,therapist_check.ilike.%${filters.q}%`);
   }
 
-  const { data: cards } = await query;
-  if (!cards || cards.length === 0) return { cards: [], hasMore: false };
+  const { data: rawCards } = await query;
+  if (!rawCards || rawCards.length === 0) return { cards: [], hasMore: false };
+
+  // Exclude already-loaded cards to prevent duplicates
+  const excludeSet = new Set(excludeIds);
+  const cards = rawCards.filter(c => !excludeSet.has(c.id)).slice(0, 15);
+  if (cards.length === 0) return { cards: [], hasMore: false };
 
   // Enrich with like counts
   const cardIds = cards.map(c => c.id);
