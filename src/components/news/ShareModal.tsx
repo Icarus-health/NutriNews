@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { X, Search, Send } from 'lucide-react';
+import { X, Search, Send, Link2, Check } from 'lucide-react';
 import { shareToUser, searchProfiles } from '@/lib/actions/news';
 
 interface ProfileResult {
@@ -22,6 +22,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
   const [selectedEmail, setSelectedEmail] = useState('');
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   async function handleSearch(value: string) {
@@ -49,10 +50,37 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-slate-900">News teilen</h3>
+          <h3 className="font-bold text-slate-900 dark:text-slate-100">News teilen</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X size={20} />
           </button>
+        </div>
+
+        {/* Link kopieren */}
+        <button
+          onClick={async () => {
+            const url = `${window.location.origin}/card/${newsCardId}`;
+            try {
+              await navigator.clipboard.writeText(url);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+            } catch { /* ignore */ }
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 mb-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+        >
+          {linkCopied ? <Check size={18} className="text-forest-600" /> : <Link2 size={18} className="text-slate-400" />}
+          <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
+            {linkCopied ? 'Link kopiert!' : 'Link kopieren'}
+          </span>
+        </button>
+
+        <div className="relative mb-3">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-white dark:bg-slate-800 px-3 text-[11px] text-slate-400">oder an Kolleg:in senden</span>
+          </div>
         </div>
 
         {sent ? (
