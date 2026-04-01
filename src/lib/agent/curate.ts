@@ -276,9 +276,7 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 900,
     temperature: 0.3,
-    // Prompt Caching: system prompt is identical across calls → cached after first call
-    // Reduces input cost by ~90% for repeated calls
-    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+    system: systemPrompt,
     messages: [{ role: 'user', content: buildUserPrompt(item) }],
   });
 
