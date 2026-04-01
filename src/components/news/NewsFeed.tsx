@@ -11,7 +11,6 @@ interface Props {
 }
 
 export default function NewsFeed({ initialCards, userId }: Props) {
-  const [cards] = useState(initialCards);
   const [shareCardId, setShareCardId] = useState<string | null>(null);
 
   function handleRequireAuth() {
@@ -20,7 +19,7 @@ export default function NewsFeed({ initialCards, userId }: Props) {
     }
   }
 
-  if (cards.length === 0) {
+  if (initialCards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-400 px-5">
         <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
@@ -36,7 +35,7 @@ export default function NewsFeed({ initialCards, userId }: Props) {
 
   return (
     <div className="px-4 pt-4 pb-4">
-      {cards.map((card, i) => (
+      {initialCards.map((card, i) => (
         <div key={card.id} style={{ animationDelay: `${i * 60}ms` }} className="animate-scale-in">
           <NewsCardComponent
             card={card}

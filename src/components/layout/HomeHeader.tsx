@@ -8,17 +8,6 @@ import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
 import { useUX } from '@/components/providers/UXProvider';
 import type { User } from '@supabase/supabase-js';
 
-// Die 8 klinisch am häufigsten nachgefragten Kategorien als Schnellfilter
-const QUICK_FILTER_IDS = [
-  'GLP-1 & Adipositastherapie',
-  'Diabetologie & Ernährung',
-  'Onkologische Ernährung',
-  'Gastroenterologie',
-  'Medikament-Nährstoff-Interaktionen',
-  'Mikronährstoffe klinisch',
-  'Geriatrie & Sarkopenie',
-  'Kardiovaskulär',
-];
 
 interface Props {
   user: User | null;
@@ -170,29 +159,6 @@ export default function HomeHeader({ user, activeCategories, searchQuery }: Prop
           )}
         </div>
       )}
-
-      {/* Quick-filter chip strip */}
-      <div className="flex gap-2 px-5 pb-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-        {QUICK_FILTER_IDS.map(catId => {
-          const cat = CATEGORIES.find(c => c.id === catId);
-          if (!cat) return null;
-          const isActive = selected.has(catId);
-          return (
-            <button
-              key={catId}
-              onClick={() => toggleCategory(catId)}
-              className={clsx(
-                'flex-shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all duration-150 whitespace-nowrap',
-                isActive
-                  ? 'bg-forest-700 text-white border-forest-700'
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-forest-300 dark:hover:border-forest-700'
-              )}
-            >
-              {cat.label}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Category dropdown trigger */}
       <div className="px-5 pb-3 relative" ref={dropdownRef}>
