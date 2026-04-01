@@ -39,8 +39,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Alle Artikel bereits bekannt.', created: 0 });
     }
 
-    // Curate up to 8 articles per run
-    const toCurate = newItems.slice(0, 8);
+    // Curate up to 15 articles per run (4 runs/day = ~60 articles max)
+    const toCurate = newItems.slice(0, 15);
     let created = 0;
 
     for (const item of toCurate) {

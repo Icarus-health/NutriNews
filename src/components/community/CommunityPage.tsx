@@ -4,16 +4,17 @@ import { useState } from 'react';
 import ChannelList from './ChannelList';
 import ChannelDetail from './ChannelDetail';
 import QuickQuestions from './QuickQuestions';
-import type { Channel, ChannelPost, QuickQuestion } from '@/types/database';
+import type { Channel, ChannelPost, QuickQuestion, QuickAnswer } from '@/types/database';
 
 interface Props {
   channels: Channel[];
   questions: QuickQuestion[];
   userId: string | null;
   channelPosts: Record<string, ChannelPost[]>;
+  initialAnswers?: Record<string, QuickAnswer[]>;
 }
 
-export default function CommunityPage({ channels, questions, userId, channelPosts }: Props) {
+export default function CommunityPage({ channels, questions, userId, channelPosts, initialAnswers }: Props) {
   const [activeTab, setActiveTab] = useState<'channels' | 'fragen'>('channels');
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
 
@@ -70,6 +71,7 @@ export default function CommunityPage({ channels, questions, userId, channelPost
         <QuickQuestions
           questions={questions}
           userId={userId}
+          initialAnswers={initialAnswers}
         />
       )}
     </div>

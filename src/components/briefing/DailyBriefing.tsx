@@ -19,7 +19,8 @@ function formatDate(dateStr: string): string {
 }
 
 export default function DailyBriefing({ items, date, isYesterday }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Today's briefing starts expanded and is not collapsible by default
+  const [collapsed, setCollapsed] = useState(isYesterday ? true : false);
 
   if (items.length === 0) return null;
 
@@ -35,9 +36,16 @@ export default function DailyBriefing({ items, date, isYesterday }: Props) {
             <Newspaper size={16} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-white font-bold text-[15px] leading-none">
-              {isYesterday ? 'Gestriges Briefing' : 'Morgen-Briefing'}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-white font-bold text-[15px] leading-none">
+                {isYesterday ? 'Gestriges Briefing' : 'Morgen-Briefing'}
+              </h2>
+              {!isYesterday && (
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-400 text-emerald-900 px-1.5 py-0.5 rounded-full leading-none">
+                  Neu
+                </span>
+              )}
+            </div>
             <p className="text-forest-200 text-[11px] mt-0.5">
               {formatDate(date)} &middot; {items.length} Meldungen
             </p>
