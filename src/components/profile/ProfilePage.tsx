@@ -88,7 +88,13 @@ export default function ProfilePage({ profile, stats }: Props) {
   const displayName = profile?.alias || profile?.full_name || profile?.email?.split('@')[0] || '?';
 
   return (
-    <div className="px-4 pt-6 pb-8">
+    <div>
+      <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 dark:border-slate-700/60 safe-top">
+        <div className="px-5 py-3">
+          <h1 className="text-[17px] font-bold text-slate-900 dark:text-slate-100 tracking-tight">Profil</h1>
+        </div>
+      </header>
+      <div className="px-4 pt-4 pb-8">
       {/* Avatar & info */}
       <div className="flex items-center gap-4 mb-6">
         <div className="relative flex-shrink-0">
@@ -406,6 +412,7 @@ export default function ProfilePage({ profile, stats }: Props) {
       <p className="text-center text-[11px] text-slate-300 dark:text-slate-600 mb-4">
         NutriNews v1.0 &middot; Icarus Health GmbH
       </p>
+      </div>
     </div>
   );
 }

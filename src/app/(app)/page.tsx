@@ -126,29 +126,21 @@ export default async function HomePage({ searchParams }: PageProps) {
     allCards = interleaveBySourceType(allCards);
   }
 
-  // Load daily briefing (only when no filters)
+  // Load daily briefing (only when no filters) — single query for today or yesterday
   let briefingData: { briefing: DailyBriefingType | null; isYesterday: boolean } = { briefing: null, isYesterday: false };
   if (!hasFilters) {
     const today = new Date().toISOString().split('T')[0];
-    const { data: todayBriefing } = await supabase
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const { data: recentBriefing } = await supabase
       .from('daily_briefings')
       .select('*')
-      .eq('date', today)
+      .in('date', [today, yesterday])
+      .order('date', { ascending: false })
+      .limit(1)
       .single();
 
-    if (todayBriefing) {
-      briefingData = { briefing: todayBriefing, isYesterday: false };
-    } else {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const { data: yesterdayBriefing } = await supabase
-        .from('daily_briefings')
-        .select('*')
-        .eq('date', yesterday)
-        .single();
-
-      if (yesterdayBriefing) {
-        briefingData = { briefing: yesterdayBriefing, isYesterday: true };
-      }
+    if (recentBriefing) {
+      briefingData = { briefing: recentBriefing, isYesterday: recentBriefing.date !== today };
     }
   }
 

@@ -51,9 +51,13 @@ export default function SavedPage({ cards, collections: initialCollections, user
   }
 
   return (
-    <div className="pt-4">
-      <div className="px-4 mb-4">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-3">Gespeichert</h1>
+    <div>
+      <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 dark:border-slate-700/60 safe-top">
+        <div className="px-5 py-3">
+          <h1 className="text-[17px] font-bold text-slate-900 dark:text-slate-100 tracking-tight">Gespeichert</h1>
+        </div>
+      </header>
+      <div className="px-4 pt-3 mb-4">
         <div className="flex gap-2">
           <button
             onClick={() => setTab('bookmarks')}

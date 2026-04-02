@@ -198,7 +198,6 @@ export async function verifyCard(newsCardId: string, verificationType: CardVerif
   if (existing) {
     // Remove verification (toggle)
     await supabase.from('card_verifications').delete().eq('id', existing.id);
-    revalidatePath('/');
     return { success: true, removed: true };
   }
 
@@ -211,7 +210,6 @@ export async function verifyCard(newsCardId: string, verificationType: CardVerif
 
   if (error) return { error: 'Verifikation fehlgeschlagen' };
 
-  revalidatePath('/');
   return { success: true, removed: false };
 }
 
