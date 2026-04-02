@@ -78,26 +78,30 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
   }
 
   function handlePublish(cardId: string) {
+    const backup = drafts;
     setDrafts(prev => prev.filter(d => d.id !== cardId));
     startTransition(async () => {
-      await publishNewsCard(cardId);
+      const result = await publishNewsCard(cardId);
+      if (result.error) setDrafts(backup);
     });
   }
 
   function handleDelete(cardId: string) {
+    const backup = drafts;
     setDrafts(prev => prev.filter(d => d.id !== cardId));
     startTransition(async () => {
-      await deleteNewsCard(cardId);
+      const result = await deleteNewsCard(cardId);
+      if (result.error) setDrafts(backup);
     });
   }
 
   function handlePublishAll() {
-    const ids = drafts.map(d => d.id);
+    const backup = drafts;
     setDrafts([]);
     startTransition(async () => {
-      for (const id of ids) {
-        await publishNewsCard(id);
-      }
+      const results = await Promise.all(backup.map(d => publishNewsCard(d.id)));
+      const failed = backup.filter((_, i) => results[i].error);
+      if (failed.length > 0) setDrafts(failed);
     });
   }
 

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
-import ShareModal from './ShareModal';
 import { loadMoreCards } from '@/lib/actions/news';
+
+const ShareModal = dynamic(() => import('./ShareModal'), { ssr: false });
 import type { NewsCard } from '@/types/database';
 
 interface Props {
@@ -28,6 +30,12 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Sync state when server re-renders with new initialCards (e.g. after router.refresh())
+  useEffect(() => {
+    setCards(initialCards);
+    setHasMore(initialCards.length >= 15);
+  }, [initialCards]);
+
   function handleRequireAuth() {
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
@@ -45,9 +53,8 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     const lastCard = cards[cards.length - 1];
     if (!lastCard?.published_at) return;
 
-    const existingIds = cards.map(c => c.id);
     startTransition(async () => {
-      const result = await loadMoreCards(lastCard.published_at!, existingIds, filters);
+      const result = await loadMoreCards(lastCard.published_at!, [], filters);
       setCards(prev => [...prev, ...result.cards]);
       setHasMore(result.hasMore);
     });

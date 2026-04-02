@@ -174,48 +174,18 @@ async function generateWithHuggingFace(articles: ArticleForBriefing[]): Promise<
   return [];
 }
 
-async function generateWithOpenAI(articles: ArticleForBriefing[]): Promise<BriefingItem[]> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return [];
-
-  const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey });
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: BRIEFING_SYSTEM_PROMPT },
-      { role: 'user', content: buildBriefingPrompt(articles) },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.2,
-    max_tokens: 1500,
-  });
-
-  const content = response.choices[0]?.message?.content;
-  if (!content) return [];
-
-  return parseBriefingResult(content, articles);
-}
-
 export async function generateDailyBriefing(articles: ArticleForBriefing[]): Promise<BriefingItem[]> {
   if (articles.length === 0) return [];
   if (articles.length <= 5) return fallbackBriefing(articles);
 
   try {
-    // Try HuggingFace first
+    // Try HuggingFace first (free tier friendly)
     if (process.env.HUGGINGFACE_API_KEY) {
       const result = await generateWithHuggingFace(articles);
       if (result.length > 0) return result;
     }
 
-    // Fallback to OpenAI
-    if (process.env.OPENAI_API_KEY) {
-      const result = await generateWithOpenAI(articles);
-      if (result.length > 0) return result;
-    }
-
-    // Ultimate fallback: algorithmic ranking
+    // Fallback: algorithmic ranking (no API costs)
     return fallbackBriefing(articles);
   } catch (error) {
     console.error('Briefing generation failed:', error);

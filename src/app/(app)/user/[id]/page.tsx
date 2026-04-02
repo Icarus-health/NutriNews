@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import { getCategoryLabel } from '@/lib/categories';
 import type { Metadata } from 'next';
 
@@ -65,7 +66,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
       <div className="flex items-center gap-4 mb-6">
         <div className="w-16 h-16 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center overflow-hidden flex-shrink-0">
           {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt={displayName} className="w-full h-full rounded-full object-cover" />
+            <Image src={profile.avatar_url} alt={displayName} className="w-full h-full rounded-full object-cover" width={64} height={64} unoptimized />
           ) : (
             <span className="text-2xl font-bold text-forest-700 dark:text-forest-400">
               {displayName[0].toUpperCase()}

@@ -3,6 +3,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+/** Escape special characters for PostgREST ilike filter strings */
+function sanitizeFilterValue(value: string): string {
+  // Remove characters that have special meaning in PostgREST filter syntax
+  return value.replace(/[,().\\]/g, '').trim();
+}
+
 export async function toggleLike(newsCardId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -16,14 +22,16 @@ export async function toggleLike(newsCardId: string) {
     .single();
 
   if (existing) {
-    await supabase.from('likes').delete()
+    const { error } = await supabase.from('likes').delete()
       .eq('user_id', user.id)
       .eq('news_card_id', newsCardId);
+    if (error) return { error: 'Like konnte nicht entfernt werden' };
   } else {
-    await supabase.from('likes').insert({
+    const { error } = await supabase.from('likes').insert({
       user_id: user.id,
       news_card_id: newsCardId,
     });
+    if (error) return { error: 'Like fehlgeschlagen' };
   }
 
   return { liked: !existing };
@@ -42,14 +50,16 @@ export async function toggleBookmark(newsCardId: string) {
     .single();
 
   if (existing) {
-    await supabase.from('bookmarks').delete()
+    const { error } = await supabase.from('bookmarks').delete()
       .eq('user_id', user.id)
       .eq('news_card_id', newsCardId);
+    if (error) return { error: 'Lesezeichen konnte nicht entfernt werden' };
   } else {
-    await supabase.from('bookmarks').insert({
+    const { error } = await supabase.from('bookmarks').insert({
       user_id: user.id,
       news_card_id: newsCardId,
     });
+    if (error) return { error: 'Lesezeichen fehlgeschlagen' };
   }
 
   return { bookmarked: !existing };
@@ -156,6 +166,10 @@ export async function createNewsCard(data: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
 
+  const { data: profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return { error: 'Keine Berechtigung' };
+
   const { error, data: card } = await supabase.from('news_cards').insert({
     ...data,
     curated_by: user.id,
@@ -178,10 +192,12 @@ export async function publishNewsCard(newsCardId: string) {
     .from('profiles').select('role').eq('id', user.id).single();
   if (profile?.role !== 'admin') return { error: 'Keine Berechtigung' };
 
-  await supabase.from('news_cards').update({
+  const { error: updateError } = await supabase.from('news_cards').update({
     status: 'published',
     published_at: new Date().toISOString(),
   }).eq('id', newsCardId);
+
+  if (updateError) return { error: 'Veröffentlichung fehlgeschlagen' };
 
   revalidatePath('/');
   revalidatePath('/admin');
@@ -210,7 +226,7 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
   evidence?: string[];
   days?: number;
   minRelevance?: number;
-}) {
+}, cursorId?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -218,9 +234,9 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
     .from('news_cards')
     .select('*')
     .eq('status', 'published')
-    .lte('published_at', cursor)
+    .lt('published_at', cursor)
     .order('published_at', { ascending: false })
-    .limit(15 + excludeIds.length); // Fetch extra to account for exclusions
+    .limit(16); // Fetch 1 extra to check hasMore
 
   if (filters?.categories?.length === 1) {
     query = query.eq('category_main', filters.categories[0]);
@@ -244,27 +260,31 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
   }
 
   if (filters?.q) {
-    query = query.or(`headline.ilike.%${filters.q}%,snack_what.ilike.%${filters.q}%,therapist_check.ilike.%${filters.q}%`);
+    const q = sanitizeFilterValue(filters.q);
+    if (q) {
+      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+    }
   }
 
   const { data: rawCards } = await query;
   if (!rawCards || rawCards.length === 0) return { cards: [], hasMore: false };
 
-  // Exclude already-loaded cards to prevent duplicates
-  const excludeSet = new Set(excludeIds);
-  const cards = rawCards.filter(c => !excludeSet.has(c.id)).slice(0, 15);
+  // Take at most 15, use 16th to determine hasMore
+  const cards = rawCards.slice(0, 15);
+  const hasMoreCards = rawCards.length > 15;
   if (cards.length === 0) return { cards: [], hasMore: false };
 
-  // Enrich with like counts
+  // Enrich with like counts - fetch per card to avoid row limit issues
   const cardIds = cards.map(c => c.id);
-  const { data: likeCounts } = await supabase
-    .from('likes')
-    .select('news_card_id')
-    .in('news_card_id', cardIds);
-
   const likeCountMap: Record<string, number> = {};
-  likeCounts?.forEach(l => {
-    likeCountMap[l.news_card_id] = (likeCountMap[l.news_card_id] ?? 0) + 1;
+  // Use individual count queries for accuracy (avoids Supabase default row limit)
+  const countResults = await Promise.all(
+    cardIds.map(id =>
+      supabase.from('likes').select('*', { count: 'exact', head: true }).eq('news_card_id', id)
+    )
+  );
+  cardIds.forEach((id, i) => {
+    likeCountMap[id] = countResults[i].count ?? 0;
   });
 
   let enriched = cards.map(card => ({
@@ -286,7 +306,7 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
     }));
   }
 
-  return { cards: enriched, hasMore: cards.length === 15 };
+  return { cards: enriched, hasMore: hasMoreCards };
 }
 
 export async function updateProfile(data: { full_name?: string; alias?: string; specialties?: string[]; preferred_categories?: string[]; notify_new_news?: boolean; setting?: string }) {
@@ -334,7 +354,7 @@ export async function searchProfiles(query: string) {
     .from('profiles')
     .select('id, email, full_name, avatar_url')
     .neq('id', user.id)
-    .or(`email.ilike.%${query}%,full_name.ilike.%${query}%`)
+    .or(`email.ilike.%${sanitizeFilterValue(query)}%,full_name.ilike.%${sanitizeFilterValue(query)}%`)
     .limit(5);
 
   return data ?? [];

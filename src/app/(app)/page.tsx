@@ -55,7 +55,11 @@ export default async function HomePage({ searchParams }: PageProps) {
   }
 
   if (params.q) {
-    query = query.or(`headline.ilike.%${params.q}%,snack_what.ilike.%${params.q}%,therapist_check.ilike.%${params.q}%`);
+    // Sanitize: remove PostgREST special characters
+    const q = params.q.replace(/[,().\\]/g, '').trim();
+    if (q) {
+      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+    }
   }
 
   // Parallel: fetch cards + user
@@ -71,10 +75,10 @@ export default async function HomePage({ searchParams }: PageProps) {
   if (allCards.length > 0) {
     const cardIds = allCards.map(c => c.id);
 
-    const likeCountPromise = supabase
-      .from('likes')
-      .select('news_card_id')
-      .in('news_card_id', cardIds);
+    // Use exact count queries per card (avoids Supabase default row limit of 1000)
+    const likeCountPromises = cardIds.map(id =>
+      supabase.from('likes').select('*', { count: 'exact', head: true }).eq('news_card_id', id)
+    );
 
     const userLikesPromise = user
       ? supabase.from('likes').select('news_card_id').eq('user_id', user.id).in('news_card_id', cardIds)
@@ -88,16 +92,16 @@ export default async function HomePage({ searchParams }: PageProps) {
       ? supabase.from('profiles').select('*').eq('id', user.id).single()
       : null;
 
-    const [{ data: likeCounts }, userLikesResult, userBookmarksResult, profileResult] = await Promise.all([
-      likeCountPromise,
+    const [likeCountResults, userLikesResult, userBookmarksResult, profileResult] = await Promise.all([
+      Promise.all(likeCountPromises),
       userLikesPromise,
       userBookmarksPromise,
       profilePromise,
     ]);
 
     const likeCountMap: Record<string, number> = {};
-    likeCounts?.forEach(l => {
-      likeCountMap[l.news_card_id] = (likeCountMap[l.news_card_id] ?? 0) + 1;
+    cardIds.forEach((id, i) => {
+      likeCountMap[id] = likeCountResults[i].count ?? 0;
     });
 
     const userLikeSet = new Set(userLikesResult?.data?.map(l => l.news_card_id));

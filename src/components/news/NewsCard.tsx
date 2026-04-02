@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect, memo } from 'react';
+import dynamic from 'next/dynamic';
 import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2 } from 'lucide-react';
-import CommentSection from './CommentSection';
 import { clsx } from 'clsx';
+
+const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false });
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
 import { toggleLike, toggleBookmark } from '@/lib/actions/news';
@@ -98,13 +100,16 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   function handleLike(e: React.MouseEvent) {
     e.stopPropagation();
     if (!userId) { onRequireAuth?.(); return; }
+    // Capture current state before optimistic update
+    const wasLiked = liked;
     setLiked(prev => !prev);
-    setLikeCount(prev => liked ? prev - 1 : prev + 1);
+    setLikeCount(prev => wasLiked ? prev - 1 : prev + 1);
     startTransition(async () => {
       const result = await toggleLike(card.id);
       if (result.error) {
-        setLiked(prev => !prev);
-        setLikeCount(prev => liked ? prev + 1 : prev - 1);
+        // Rollback using captured state
+        setLiked(wasLiked);
+        setLikeCount(prev => wasLiked ? prev + 1 : prev - 1);
       }
     });
   }

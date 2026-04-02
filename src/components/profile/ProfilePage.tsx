@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
@@ -100,7 +101,7 @@ export default function ProfilePage({ profile, stats }: Props) {
         <div className="relative flex-shrink-0">
           <div className="w-16 h-16 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center overflow-hidden">
             {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover"/>
+              <Image src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" width={64} height={64} unoptimized />
             ) : (
               <span className="text-2xl font-bold text-forest-700 dark:text-forest-400">
                 {displayName[0].toUpperCase()}
@@ -213,7 +214,7 @@ export default function ProfilePage({ profile, stats }: Props) {
                 <span className="text-[10px] font-semibold text-forest-700 dark:text-forest-400">Vielleser</span>
               </div>
             )}
-            {stats.comments === 0 && stats.likes < 20 && ux.streak.days < 5 && ux.weeklyStats.count < 10 && (
+            {stats.comments < 10 && stats.likes < 20 && ux.streak.days < 5 && ux.weeklyStats.count < 10 && (
               <p className="text-[11px] text-slate-400">Lese regelmäßig, um Badges zu verdienen</p>
             )}
           </div>

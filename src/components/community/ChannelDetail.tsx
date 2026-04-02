@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ArrowLeft, Send, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { createChannelPost } from '@/lib/actions/community';
@@ -22,10 +24,11 @@ function timeAgo(dateStr: string): string {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `vor ${hours} Std`;
   const days = Math.floor(hours / 24);
-  return `vor ${days} Tagen`;
+  return `vor ${days} Tag${days > 1 ? 'en' : ''}`;
 }
 
 export default function ChannelDetail({ channel, posts, userId, onBack }: Props) {
+  const router = useRouter();
   const [body, setBody] = useState('');
   const [replyTo, setReplyTo] = useState<ChannelPost | null>(null);
   const [replyBody, setReplyBody] = useState('');
@@ -33,6 +36,11 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
   const [replies, setReplies] = useState<Record<string, ChannelPost[]>>({});
   const [isPending, startTransition] = useTransition();
   const [localPosts, setLocalPosts] = useState(posts);
+
+  // Sync with server data when props change (e.g. after router.refresh())
+  useEffect(() => {
+    setLocalPosts(posts);
+  }, [posts]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +63,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
 
     startTransition(async () => {
       await createChannelPost(channel.id, submittedBody);
+      router.refresh();
     });
   }
 
@@ -88,6 +97,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
 
     startTransition(async () => {
       await createChannelPost(channel.id, submittedBody, undefined, parentPost.id);
+      router.refresh();
     });
   }
 
@@ -166,7 +176,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center flex-shrink-0">
                   {post.profile?.avatar_url ? (
-                    <img src={post.profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                    <Image src={post.profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" width={28} height={28} unoptimized />
                   ) : (
                     <span className="text-[11px] font-bold text-forest-700 dark:text-forest-400">
                       {(post.profile?.full_name || '?')[0].toUpperCase()}
@@ -206,7 +216,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
               <div className="flex items-center gap-3 mt-2">
                 {userId && (
                   <button
-                    onClick={() => setReplyTo(isReplying ? null : post)}
+                    onClick={() => { setReplyTo(isReplying ? null : post); if (!isReplying) setReplyBody(''); }}
                     className={clsx(
                       'flex items-center gap-1 text-[11px] font-semibold transition-colors',
                       isReplying ? 'text-forest-600' : 'text-slate-400 hover:text-forest-600'

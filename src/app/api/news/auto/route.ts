@@ -5,9 +5,16 @@ import { RSS_SOURCES } from '@/lib/agent/sources';
 import { fetchAllFeeds } from '@/lib/agent/rss';
 import { curateArticle } from '@/lib/agent/curate';
 import { resolveCategory } from '@/lib/categories';
+import { rateLimit } from '@/lib/rate-limit';
 
 // POST /api/news/auto - startet den News-Kurator-Agenten
 export async function POST(request: Request) {
+  // Rate limit: max 3 runs per 10 minutes
+  const { success: allowed } = rateLimit('auto-agent', 3, 10 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Zu viele Anfragen. Bitte warte einige Minuten.' }, { status: 429 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,14 +31,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Keine neuen Artikel in den RSS-Feeds gefunden.', created: 0 });
     }
 
-    // 2. Filter out URLs already in database
+    // 2. Filter out URLs already in database (batch to avoid URL length limits)
     const urls = allItems.map(item => item.link).filter(Boolean);
-    const { data: existingCards } = await supabase
-      .from('news_cards')
-      .select('source_url')
-      .in('source_url', urls);
-
-    const existingUrls = new Set(existingCards?.map(c => c.source_url) ?? []);
+    const existingUrls = new Set<string>();
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+      const batch = urls.slice(i, i + BATCH_SIZE);
+      const { data: existingCards } = await supabase
+        .from('news_cards')
+        .select('source_url')
+        .in('source_url', batch);
+      existingCards?.forEach(c => existingUrls.add(c.source_url));
+    }
     const newItems = allItems.filter(item => item.link && !existingUrls.has(item.link));
 
     if (newItems.length === 0) {

@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateDailyBriefing } from '@/lib/agent/briefing';
 
+/** Get today's date in Europe/Berlin timezone as YYYY-MM-DD */
+function getTodayBerlin(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+}
+
 // POST /api/briefing - Generiert das tägliche Briefing
 // Kann manuell von Admins oder per Cron-Job aufgerufen werden
 export async function POST(request: Request) {
@@ -21,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayBerlin();
 
     // Check if briefing already exists for today
     const { data: existing } = await supabase
@@ -55,14 +60,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Briefing-Generierung fehlgeschlagen.', created: false });
     }
 
-    // Save to database
+    // Save to database (use upsert to avoid race condition with duplicate dates)
     const { data: briefing, error } = await supabase
       .from('daily_briefings')
-      .insert({
+      .upsert({
         date: today,
         items,
         generated_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'date' })
       .select('id')
       .single();
 
@@ -86,7 +91,11 @@ export async function POST(request: Request) {
 export async function GET() {
   const supabase = await createClient();
 
-  const today = new Date().toISOString().split('T')[0];
+  // Auth check: user must be logged in
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const today = getTodayBerlin();
 
   const { data: briefing } = await supabase
     .from('daily_briefings')
