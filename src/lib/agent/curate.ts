@@ -8,15 +8,36 @@ import type { SourceType } from '@/types/database';
 
 const SYSTEM_PROMPT = `Du bist ein erfahrener Ernaehrungswissenschaftler, der eine Fachnachrichtenplattform fuer Ernaehrungstherapeuten in Deutschland betreibt.
 
-Deine Aufgabe: Erstelle aus einem Quellartikel eine strukturierte NewsCard mit besonderem Fokus auf EVIDENZ-BEWERTUNG.
+Deine Aufgabe: Erstelle aus einem Quellartikel eine strukturierte NewsCard. Die Zielgruppe sind praktizierende Ernaehrungstherapeuten — sie wollen KONKRETE FACHINHALTE, keine Zusammenfassung, dass "ein Artikel etwas diskutiert".
 
-WICHTIGE REGELN:
+═══ ABSOLUT WICHTIGSTE REGEL: KONKRETHEIT ═══
+
+FALSCH (generisch, nutzlos):
+- "Die Leitlinie empfiehlt eine angepasste Ernaehrungstherapie bei Krebspatienten."
+- "Der Artikel diskutiert die Bedeutung von Ernaehrung in der Onkologie."
+- "Es wird empfohlen, auf die Naehrstoffzufuhr zu achten."
+- "Therapeuten sollten mehr Fokus auf Ernaehrungsberatung legen."
+
+RICHTIG (konkret, handlungsrelevant):
+- "Laut S3-Leitlinie: Bei onkologischen Patienten Energie 25-30 kcal/kg/d, Protein 1.2-1.5 g/kg/d. Krebsdiaeten (ketogen, basisch) werden mangels Evidenz NICHT empfohlen."
+- "Xerostomie-Management: Haeufige kleine Mahlzeiten, weiche/feuchte Konsistenz, saure Geschmackstraeger zur Speichelanregung. Supplementierung mit EPA/DHA (2g/d) bei Gewichtsverlust >5% in 3 Monaten."
+- "Neue RCT (n=420): 30g Walnuesse/Tag ueber 12 Wochen senkte LDL-C um 5.4% (95%-KI: -7.2 bis -3.6%) vs. Kontrolle."
+
+SCHREIBSTIL-REGELN:
+- Nenne IMMER die konkreten Ergebnisse: Zahlen, Dosierungen, Grenzwerte, Empfehlungen, Naehrstoffe, Lebensmittel
+- Bei Leitlinien: Was GENAU wird empfohlen? Welche Grenzwerte? Was wird NICHT empfohlen?
+- Bei Studien: Studiendesign, n=?, Intervention, konkretes Ergebnis mit Effektstaerke
+- Bei Berufspolitik: Was GENAU aendert sich? Ab wann? Welche Abrechnungsziffer?
+- NIEMALS schreiben: "der Artikel bespricht...", "es wird diskutiert...", "Therapeuten sollten darauf achten..."
+- STATTDESSEN: Die konkreten Inhalte direkt wiedergeben, als wuerdest du einer Kollegin die wichtigsten Punkte nennen
+- Jeder Satz muss einen KONKRETEN Informationsgehalt haben, den der Therapeut vorher nicht wusste
+
+WEITERE REGELN:
 1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel. Erfinde NICHTS hinzu.
-2. Antworte NUR mit {"insufficient": true} wenn der Artikel KOMPLETT irrelevant fuer Ernaehrungstherapeuten ist (z.B. reine Werbung, Stellenanzeige, oder voellig themenfremder Inhalt). Bei Laienpresse, Berufspolitik und allgemeinen Ernaehrungsnachrichten: IMMER eine Card erstellen, auch wenn die Informationslage duenn ist — gerade diese Artikel sind wertvoll fuer die Berufsgruppe.
+2. Antworte NUR mit {"insufficient": true} wenn der Artikel KOMPLETT irrelevant fuer Ernaehrungstherapeuten ist (z.B. reine Werbung, Stellenanzeige, oder voellig themenfremder Inhalt). Bei Laienpresse, Berufspolitik und allgemeinen Ernaehrungsnachrichten: IMMER eine Card erstellen, auch wenn die Informationslage duenn ist.
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
-5. Der Therapist-Check soll die praktische Relevanz fuer Ernaehrungstherapeuten hervorheben.
-6. Die Evidenz-Einordnung ist PFLICHT: Bewerte Studiendesign, Stichprobengroesse, Limitationen und Uebertragbarkeit auf deutsche Ernaehrungstherapie-Praxis.
+5. Die Evidenz-Einordnung ist PFLICHT: Bewerte Studiendesign, Stichprobengroesse, Limitationen und Uebertragbarkeit.
 
 EVIDENZ-LEVEL (waehle basierend auf der Studienart im Artikel):
 - "Meta-Analyse" - Zusammenfassung mehrerer Studien
@@ -43,16 +64,16 @@ const LAY_PRESS_ADDITION = `
 
 ZUSAETZLICH fuer Laienpresse-Artikel:
 Erstelle eine fachliche Gegenueberstellung im Feld "lay_press_fact_check".
-Format: "MEDIEN: [Was behauptet wird] → FACH: [Fachliche Einordnung mit Evidenzlage]"
+Format: "MEDIEN: [KONKRETES Zitat/Claim aus dem Medienbericht] → FACH: [Fachliche Einordnung mit konkreter Evidenzlage, z.B. 'Laut Cochrane-Review 2024 (n=12.000) zeigt sich kein signifikanter Effekt']"
 Setze evidence_level auf "Laienpresse/Trend".
-Bewerte: Ist die Medienmeldung korrekt, uebertrieben, irreführend oder falsch?`;
+Bewerte KONKRET: Welche Behauptung ist korrekt, uebertrieben, oder falsch — und warum? Nenne Gegenbelege mit Studientyp wenn moeglich.`;
 
 const BERUFSPOLITIK_ADDITION = `
 
 ZUSAETZLICH fuer Berufspolitik-Artikel:
 Bewerte die AUSWIRKUNG auf den Berufsalltag von Ernaehrungstherapeuten.
 - "policy_impact": Waehle eines von: "info" (zur Kenntnis), "beobachten" (Entwicklung verfolgen), "handeln" (jetzt aktiv werden)
-- "policy_action_needed": Was muessen Ernaehrungstherapeuten konkret tun? (1-2 Saetze). Bei "info" kann dies leer sein.
+- "policy_action_needed": KONKRET: Was GENAU muessen Ernaehrungstherapeuten tun? Z.B. "Neue Abrechnungsziffer EBM 01474 ab 01.07. fuer ernaehrungstherapeutische Leistungen bei Adipositas Grad II — Formulare aktualisieren." Nicht: "Therapeuten sollten sich informieren." (1-2 Saetze). Bei "info" kann dies leer sein.
 Setze category_main auf "Berufspolitik & Recht".
 Beruecksichtige: G-BA-Beschluesse, Leitlinien-Updates, GKV-Aenderungen, Berufsordnung, Abrechnungsaenderungen.`;
 
@@ -104,7 +125,7 @@ function buildUserPrompt(item: RSSItem): string {
 
   const extraFieldsStr = extraFields.length > 0 ? `,\n${extraFields.join(',\n')}` : '';
 
-  return `Erstelle eine NewsCard aus diesem Artikel:
+  return `Erstelle eine NewsCard aus diesem Artikel. Denke daran: Ernaehrungstherapeuten wollen KONKRETE INHALTE — Zahlen, Dosierungen, Empfehlungen, Grenzwerte — keine generischen Zusammenfassungen.
 
 TITEL: ${item.title}
 QUELLE: ${item.source.name}
@@ -115,17 +136,17 @@ URL: ${item.link}
 
 Antwortformat:
 {
-  "headline": "Praegnante deutsche Ueberschrift (max 100 Zeichen)",
-  "snack_what": "Was ist passiert/wurde untersucht? (1-2 Saetze)",
-  "snack_result": "Was ist das Ergebnis? (1-2 Saetze)",
-  "snack_consequence": "Was bedeutet das fuer die Praxis? (1-2 Saetze)",
-  "therapist_check": "Praktische Einordnung fuer Ernaehrungstherapeuten (2-3 Saetze)",
+  "headline": "Praegnante deutsche Ueberschrift mit konkretem Inhalt, nicht generisch (max 100 Zeichen)",
+  "snack_what": "Was GENAU wurde untersucht/veroeffentlicht? Nenne Studientyp, Population, Intervention. (1-2 Saetze)",
+  "snack_result": "Was GENAU kam heraus? Nenne konkrete Ergebnisse: Zahlen, Effektstaerken, Empfehlungen, Grenzwerte. Kein 'es wurde festgestellt dass...' sondern die Fakten direkt. (1-2 Saetze)",
+  "snack_consequence": "Was GENAU aendert sich fuer die Ernaehrungstherapie-Praxis? Nenne konkrete Handlungen: Welche Naehrstoffe, Dosierungen, Patientengruppen, Beratungsinhalte? (1-2 Saetze)",
+  "therapist_check": "KONKRETE Einordnung: Was bedeutet das fuer MEINE Beratung? Bei welchen Patienten setze ich das um? Was empfehle ich jetzt anders als vorher? Mit konkreten Beispielen. (2-3 Saetze)",
   "category_main": "Eine der oben genannten Kategorien",
   "evidence_level": "Eines der oben genannten Evidenz-Level",
   "practice_relevance_score": 1-5,
-  "action_recommendation": "Was tue ich morgen in der Beratung konkret anders? (1-2 Saetze)",
-  "patient_question_anticipation": "Welche Frage werden Patienten dazu stellen? (1 Satz)",
-  "evidence_summary": "Kurze Evidenz-Einordnung: Studiendesign, Staerken, Limitationen, Uebertragbarkeit (2-3 Saetze)"${extraFieldsStr}
+  "action_recommendation": "KONKRETER Satz: 'Bei Patienten mit X empfehle ich ab sofort Y in Dosierung Z' oder 'In der Beratung zu X ergaenze ich den Hinweis auf Y'. Keine Floskeln wie 'mehr Fokus legen auf'. (1-2 Saetze)",
+  "patient_question_anticipation": "Realistische woertliche Patientenfrage, z.B. 'Soll ich jetzt kein Brot mehr essen wegen der Studie?' (1 Satz)",
+  "evidence_summary": "Studiendesign (z.B. RCT, n=X, Y Wochen), primaerer Endpunkt, Effektstaerke, wichtigste Limitation, Uebertragbarkeit auf DE-Praxis. (2-3 Saetze)"${extraFieldsStr}
 }
 
 Oder falls der Artikel nicht relevant/ausreichend ist:
@@ -204,8 +225,8 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
             { role: 'system', content: systemPrompt },
             { role: 'user', content: buildUserPrompt(item) },
           ],
-          temperature: 0.3,
-          max_tokens: 1200,
+          temperature: 0.2,
+          max_tokens: 1500,
         }),
         signal: AbortSignal.timeout(60000),
       });
@@ -252,8 +273,8 @@ async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
       { role: 'user', content: buildUserPrompt(item) },
     ],
     response_format: { type: 'json_object' },
-    temperature: 0.3,
-    max_tokens: 900,
+    temperature: 0.2,
+    max_tokens: 1500,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -274,8 +295,8 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
 
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 900,
-    temperature: 0.3,
+    max_tokens: 1500,
+    temperature: 0.2,
     system: systemPrompt,
     messages: [{ role: 'user', content: buildUserPrompt(item) }],
   });
