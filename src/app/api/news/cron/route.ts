@@ -49,8 +49,8 @@ export async function GET(request: Request) {
 
     const toCurate: typeof newItems = [];
     const minQuotas: Record<string, number> = {
-      laienpresse: 3, berufspolitik: 2, international: 2,
-      supplement: 2, fachpresse: 3, forschung: 4,
+      laienpresse: 3, berufspolitik: 2, international: 3,
+      supplement: 2, fachpresse: 4, forschung: 6,
     };
 
     // Fill minimum quotas first

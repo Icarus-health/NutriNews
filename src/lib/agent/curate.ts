@@ -198,7 +198,16 @@ function buildUserPrompt(item: RSSItem): string {
 TITEL: ${item.title}
 QUELLE: ${item.source.name}
 QUELLENTYP: ${item.source.sourceType}
-SPRACHE: ${item.source.language === 'en' ? 'Englisch (bitte auf Deutsch zusammenfassen)' : 'Deutsch'}
+SPRACHE: ${(() => {
+    const langMap: Record<string, string> = {
+      de: 'Deutsch',
+      en: 'Englisch (bitte auf Deutsch zusammenfassen)',
+      fr: 'Französisch (bitte auf Deutsch zusammenfassen)',
+      nl: 'Niederländisch (bitte auf Deutsch zusammenfassen)',
+      es: 'Spanisch (bitte auf Deutsch zusammenfassen)',
+    };
+    return langMap[item.source.language] ?? 'Deutsch';
+  })()}
 BESCHREIBUNG: ${item.description || 'Keine Beschreibung verfuegbar'}
 URL: ${item.link}
 

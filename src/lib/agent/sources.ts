@@ -4,7 +4,7 @@ export interface RSSSource {
   name: string;
   url: string;
   defaultCategory: string;
-  language: 'de' | 'en';
+  language: 'de' | 'en' | 'fr' | 'nl' | 'es';
   sourceType: SourceType;
 }
 
