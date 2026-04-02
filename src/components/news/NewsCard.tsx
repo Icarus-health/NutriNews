@@ -56,10 +56,17 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [isPending, startTransition] = useTransition();
   const [backHeight, setBackHeight] = useState<number | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [, setTick] = useState(0);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const ux = useUX();
   const isRead = ux.readHistory.some(e => e.cardId === card.id);
+
+  // Update relative time every 60s
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
@@ -183,11 +190,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
-                <span className="ml-auto flex items-center gap-1.5 text-[10px] text-slate-400 tabular-nums">
-                  {card.published_at && <span>{formatTime(card.published_at)}</span>}
-                  <span>·</span>
-                  <span>{readMin} Min</span>
-                </span>
+                {card.published_at && (
+                  <span className="ml-auto text-[10px] text-slate-400 tabular-nums">
+                    {formatTime(card.published_at)}
+                  </span>
+                )}
               </div>
 
               {/* Category badge */}
@@ -422,7 +429,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 <span className={clsx('text-[10px] font-medium px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
-                <span className="text-[10px] text-slate-400">{readMin} Min</span>
+                {card.published_at && <span className="text-[10px] text-slate-400">{formatTime(card.published_at)}</span>}
               </div>
               <a
                 href={card.source_url}
