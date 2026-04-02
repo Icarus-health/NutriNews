@@ -679,4 +679,713 @@ export const RSS_SOURCES: RSSSource[] = [
     language: 'de',
     sourceType: 'laienpresse',
   },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Clinical Nutrition Journals (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Clinical Nutrition Open Science',
+    url: 'https://rss.sciencedirect.com/publication/science/26672685',
+    defaultCategory: 'Künstliche Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Journal of the Academy of Nutrition and Dietetics',
+    url: 'https://rss.sciencedirect.com/publication/science/22122672',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Journal of Nutrition',
+    url: 'https://rss.sciencedirect.com/publication/science/00223166',
+    defaultCategory: 'Mikronährstoffe klinisch',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Advances in Nutrition',
+    url: 'https://rss.sciencedirect.com/publication/science/21618313',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Nutrition Reviews (OUP)',
+    url: 'https://academic.oup.com/nutritionreviews/rss/current',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Current Opinion in Clinical Nutrition and Metabolic Care',
+    url: 'https://journals.lww.com/co-clinicalnutrition/_layouts/oaks.journals/feed.aspx?FeedType=CurrentIssue',
+    defaultCategory: 'Künstliche Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Nutrition & Metabolism (BMC)',
+    url: 'https://nutritionandmetabolism.biomedcentral.com/articles/most-recent/rss.xml',
+    defaultCategory: 'Mikronährstoffe klinisch',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Nutrition Journal (BMC)',
+    url: 'https://nutritionj.biomedcentral.com/articles/most-recent/rss.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Frontiers in Nutrition',
+    url: 'https://www.frontiersin.org/journals/nutrition/rss',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Frontiers in Nutrition — Clinical Nutrition',
+    url: 'https://www.frontiersin.org/journals/nutrition/sections/clinical-nutrition/rss',
+    defaultCategory: 'Künstliche Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'bioRxiv Nutrition',
+    url: 'http://connect.biorxiv.org/biorxiv_xml.php?subject=nutrition',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'medRxiv Nutrition',
+    url: 'http://connect.medrxiv.org/medrxiv_xml.php?subject=Nutrition',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FACHPRESSE — Deutsche Journals Thieme
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Aktuelle Ernährungsmedizin',
+    url: 'https://www.thieme-connect.de/rss/thieme/en/10.1055-s-00000003.xml',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Ernährung & Medizin',
+    url: 'https://www.thieme-connect.de/rss/thieme/en/10.1055-s-00000093.xml',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Ernährungs Umschau',
+    url: 'https://ernaehrungs-umschau.de/feed/',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Onkologische Ernährung (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Supportive Care in Cancer (full)',
+    url: 'https://link.springer.com/search.rss?facet-journal-id=520&channel-name=Supportive+Care+in+Cancer',
+    defaultCategory: 'Onkologische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Journal of Cachexia, Sarcopenia and Muscle',
+    url: 'https://onlinelibrary.wiley.com/feed/21906009/most-recent',
+    defaultCategory: 'Onkologische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Nutrition and Cancer',
+    url: 'https://www.tandfonline.com/action/showFeed?type=etoc&feed=rss&jc=hnuc20',
+    defaultCategory: 'Onkologische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Diabetologie (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Diabetes Care — Current Issue',
+    url: 'https://diabetesjournals.org/care/issue.rss',
+    defaultCategory: 'Diabetologie & Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Diabetes Care — Advance Articles',
+    url: 'https://diabetesjournals.org/care/advance-article.rss',
+    defaultCategory: 'Diabetologie & Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Diabetologie und Stoffwechsel',
+    url: 'https://www.thieme-connect.de/rss/thieme/en/10.1055-s-00000134.xml',
+    defaultCategory: 'Diabetologie & Ernährung',
+    language: 'de',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Lancet Diabetes & Endocrinology',
+    url: 'https://www.thelancet.com/rssfeed/landia_current.xml',
+    defaultCategory: 'Diabetologie & Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Diabetes, Obesity and Metabolism',
+    url: 'https://dom-pubs.onlinelibrary.wiley.com/action/showFeed?jc=dom&type=etoc&feed=rss',
+    defaultCategory: 'Diabetologie & Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Gastroenterologie (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Gastroenterology (AGA)',
+    url: 'https://www.gastrojournal.org/current.rss',
+    defaultCategory: 'Gastroenterologie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Journal of Crohn\'s and Colitis',
+    url: 'https://academic.oup.com/ecco-jcc/rss/current',
+    defaultCategory: 'Gastroenterologie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Gut Microbes',
+    url: 'https://www.tandfonline.com/action/showFeed?type=etoc&feed=rss&jc=kgmi20',
+    defaultCategory: 'Gastroenterologie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Zeitschrift für Gastroenterologie',
+    url: 'https://www.thieme-connect.de/rss/thieme/en/10.1055-s-00000094.xml',
+    defaultCategory: 'Gastroenterologie',
+    language: 'de',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Nephrologie & Hepatologie
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Nephrology Dialysis Transplantation',
+    url: 'https://academic.oup.com/ndt/rss/current',
+    defaultCategory: 'Nieren & Leber',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Journal of Hepatology',
+    url: 'https://rss.sciencedirect.com/publication/science/01688278',
+    defaultCategory: 'Nieren & Leber',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'JHEP Reports',
+    url: 'https://rss.sciencedirect.com/publication/science/25895559',
+    defaultCategory: 'Nieren & Leber',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Kardiovaskulär
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'European Heart Journal',
+    url: 'https://academic.oup.com/eurheartj/rss/current',
+    defaultCategory: 'Kardiovaskulär',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Circulation (AHA)',
+    url: 'https://www.ahajournals.org/action/showFeed?type=etoc&feed=rss&jc=circ',
+    defaultCategory: 'Kardiovaskulär',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'European Journal of Preventive Cardiology',
+    url: 'https://academic.oup.com/eurjpc/rss/current',
+    defaultCategory: 'Kardiovaskulär',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Geriatrie & Sarkopenie (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Age and Ageing',
+    url: 'https://academic.oup.com/ageing/rss/current',
+    defaultCategory: 'Geriatrie & Sarkopenie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Journal of the American Geriatrics Society',
+    url: 'https://onlinelibrary.wiley.com/feed/15325415/most-recent',
+    defaultCategory: 'Geriatrie & Sarkopenie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'European Geriatric Medicine',
+    url: 'https://link.springer.com/search.rss?facet-content-type=Article&facet-journal-id=41999',
+    defaultCategory: 'Geriatrie & Sarkopenie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Zeitschrift für Gerontologie und Geriatrie',
+    url: 'https://link.springer.com/search.rss?facet-content-type=Article&facet-journal-id=391',
+    defaultCategory: 'Geriatrie & Sarkopenie',
+    language: 'de',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Dysphagia',
+    url: 'https://link.springer.com/search.rss?facet-content-type=Article&facet-journal-id=455',
+    defaultCategory: 'Geriatrie & Sarkopenie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Pädiatrische Ernährung (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Archives of Disease in Childhood',
+    url: 'https://adc.bmj.com/rss/current.xml',
+    defaultCategory: 'Pädiatrische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Maternal & Child Nutrition',
+    url: 'https://onlinelibrary.wiley.com/feed/17408709/most-recent',
+    defaultCategory: 'Pädiatrische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Lancet Child & Adolescent Health',
+    url: 'https://www.thelancet.com/rssfeed/lanchi_current.xml',
+    defaultCategory: 'Pädiatrische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Psychiatrie & Ernährung (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Nutritional Neuroscience',
+    url: 'https://www.tandfonline.com/feed/rss/ynns20',
+    defaultCategory: 'Psychiatrie & Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'International Journal of Eating Disorders',
+    url: 'https://onlinelibrary.wiley.com/feed/1098108x/most-recent',
+    defaultCategory: 'Psychiatrie & Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Adipositas & Gewichtsmanagement (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Obesity (Wiley)',
+    url: 'https://onlinelibrary.wiley.com/feed/1930739x/most-recent',
+    defaultCategory: 'Adipositas & Gewichtsmanagement',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Obesity Surgery',
+    url: 'https://link.springer.com/search.rss?facet-content-type=Article&facet-journal-id=11695',
+    defaultCategory: 'GLP-1 & Adipositastherapie',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // FORSCHUNG — Sport & klinische Ernährung
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'British Journal of Sports Medicine',
+    url: 'https://bjsm.bmj.com/rss/current.xml',
+    defaultCategory: 'Sport & klinische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Journal of the International Society of Sports Nutrition',
+    url: 'https://www.tandfonline.com/feed/rss/rjsn20',
+    defaultCategory: 'Sport & klinische Ernährung',
+    language: 'en',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // BERUFSPOLITIK — Deutsche Institutionen (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'BMLEH — Pressemitteilungen',
+    url: 'https://www.bmleh.de/SiteGlobals/Functions/RSSFeed/RSSNewsfeed/RSSNewsfeed_Pressemitteilungen.xml',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'BMLEH — Neue Beiträge',
+    url: 'https://www.bmleh.de/SiteGlobals/Functions/RSSFeed/RSSNewsfeed/RSSNewsfeed_NeueBeitraege.xml',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'G-BA — Beschlüsse (letzte Änderungen)',
+    url: 'https://www.g-ba.de/beschluesse/letzte-aenderungen/?rss=1',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'G-BA — Nutzenbewertung §35a',
+    url: 'https://www.g-ba.de/bewertungsverfahren/nutzenbewertung/letzte-aenderungen/?rss=1',
+    defaultCategory: 'GLP-1 & Adipositastherapie',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'G-BA — Pressemitteilungen',
+    url: 'https://www.g-ba.de/presse/pressemitteilungen-meldungen/letzte-aenderungen/?rss=1',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'RKI — Publications',
+    url: 'https://edoc.rki.de/feed/atom_1.0/site',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'BfR — Pressemitteilungen',
+    url: 'https://www.bfr.bund.de/SiteGlobals/Functions/RSSFeed/RSSNewsfeed/RSSNewsfeed_Pressemitteilungen.xml',
+    defaultCategory: 'Supplements & NEM',
+    language: 'de',
+    sourceType: 'supplement',
+  },
+  {
+    name: 'BVL — Pressemitteilungen',
+    url: 'https://www.bvl.bund.de/SiteGlobals/Functions/RSSFeed/RSSNewsfeed/RSSNewsfeed_Pressemitteilungen.xml',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'Deutsches Ärzteblatt — News',
+    url: 'https://rss.aerzteblatt.de/rss/news.asp',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Deutsche Apotheker Zeitung',
+    url: 'https://feeds.purplemanager.com/63cea2f6-fc14-445a-b7b3-4e7f2eafeff5/newsletter-news-neu',
+    defaultCategory: 'Medikament-Nährstoff-Interaktionen',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Pharmazeutische Zeitung',
+    url: 'https://www.pharmazeutische-zeitung.de/fileadmin/rss/pz_online_rss.php',
+    defaultCategory: 'Medikament-Nährstoff-Interaktionen',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+
+  // ═══════════════════════════════════════════════
+  // INTERNATIONAL — Europäische & internationale Quellen (Ergänzung)
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'EFSA — Publications',
+    url: 'https://www.efsa.europa.eu/en/publications/rss',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'en',
+    sourceType: 'international',
+  },
+  {
+    name: 'EFSA — Press',
+    url: 'https://www.efsa.europa.eu/en/press/rss',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'en',
+    sourceType: 'international',
+  },
+  {
+    name: 'Lancet — Current Issue',
+    url: 'https://www.thelancet.com/rssfeed/lancet_current.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  {
+    name: 'Lancet Gastroenterology & Hepatology',
+    url: 'https://www.thelancet.com/rssfeed/langas_current.xml',
+    defaultCategory: 'Gastroenterologie',
+    language: 'en',
+    sourceType: 'international',
+  },
+  {
+    name: 'The BMJ — Research',
+    url: 'https://www.bmj.com/rss/research.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  {
+    name: 'Cochrane — New Reviews',
+    url: 'https://www.cochranelibrary.com/rss/reviews/new-reviews.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  {
+    name: 'Cochrane — Updated Reviews',
+    url: 'https://www.cochranelibrary.com/rss/reviews/updated-reviews.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'en',
+    sourceType: 'international',
+  },
+  {
+    name: 'EUR-Lex — All Legislation',
+    url: 'https://eur-lex.europa.eu/EN/display-feed.rss?rssId=162',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'en',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'Buzer.de — Gesetzesänderungen',
+    url: 'https://www.buzer.de/gesetze_feed.xml',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+
+  // ═══════════════════════════════════════════════
+  // LAIENPRESSE — Deutsche Medien Gesundheitsseiten
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Spiegel — Gesundheit',
+    url: 'https://www.spiegel.de/gesundheit/index.rss',
+    defaultCategory: 'Laienpresse & Patientenfragen',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'Focus — Gesundheit',
+    url: 'https://rss.focus.de/gesundheit/rss',
+    defaultCategory: 'Laienpresse & Patientenfragen',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'FAZ — Medizin & Ernährung',
+    url: 'https://www.faz.net/rss/aktuell/wissen/medizin-ernaehrung/',
+    defaultCategory: 'Laienpresse & Patientenfragen',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'ZEIT — Wissen',
+    url: 'https://newsfeed.zeit.de/wissen/index',
+    defaultCategory: 'Laienpresse & Patientenfragen',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'Süddeutsche Zeitung — Gesundheit',
+    url: 'https://rss.sueddeutsche.de/rss/Gesundheit',
+    defaultCategory: 'Laienpresse & Patientenfragen',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'Stern — Gesundheit',
+    url: 'https://www.stern.de/feed/standard/gesundheit/',
+    defaultCategory: 'Laienpresse & Patientenfragen',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'Quarks (WDR)',
+    url: 'https://www.quarks.de/feed/',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'Spektrum der Wissenschaft',
+    url: 'https://www.spektrum.de/alias/rss/spektrum-de-rss-feed/996406',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+
+  // ═══════════════════════════════════════════════
+  // LAIENPRESSE / SUPPLEMENT — Verbraucherschutz
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Stiftung Warentest — Ernährung',
+    url: 'https://www.test.de/rss/thema/ernaehrung/',
+    defaultCategory: 'Supplements & NEM',
+    language: 'de',
+    sourceType: 'laienpresse',
+  },
+  {
+    name: 'Verbraucherzentrale NRW — Lebensmittel',
+    url: 'https://www.verbraucherzentrale.nrw/wissen/lebensmittel/feed',
+    defaultCategory: 'Supplements & NEM',
+    language: 'de',
+    sourceType: 'supplement',
+  },
+  {
+    name: 'Verbraucherzentrale NRW — Gesundheit',
+    url: 'https://www.verbraucherzentrale.nrw/wissen/gesundheit-pflege/feed',
+    defaultCategory: 'Supplements & NEM',
+    language: 'de',
+    sourceType: 'supplement',
+  },
+
+  // ═══════════════════════════════════════════════
+  // INTERNATIONAL — Nachhaltigkeit
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'WWF Deutschland — Presse',
+    url: 'https://www.wwf.de/rss/feed-33779/feed.xml',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'international',
+  },
+  {
+    name: 'WWF Deutschland — Klima',
+    url: 'https://www.wwf.de/rss/feed-33698/feed.xml',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'international',
+  },
+
+  // ═══════════════════════════════════════════════
+  // INTERNATIONAL — Französische Quellen
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'ANSES — Alimentation',
+    url: 'https://www.anses.fr/fr/theme-alimentation.rss',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'fr',
+    sourceType: 'international',
+  },
+  {
+    name: 'Cahiers de Nutrition et de Diététique',
+    url: 'https://rss.sciencedirect.com/publication/science/00079960',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'fr',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Nutrition Clinique et Métabolisme',
+    url: 'https://rss.sciencedirect.com/publication/science/09850562',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'fr',
+    sourceType: 'forschung',
+  },
+
+  // ═══════════════════════════════════════════════
+  // INTERNATIONAL — Niederländische Quellen
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Voedingscentrum',
+    url: 'http://feeds.feedburner.com/voedingscentrum/',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'nl',
+    sourceType: 'international',
+  },
+  {
+    name: 'RIVM News',
+    url: 'https://www.rivm.nl/nieuws/rss.xml',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'nl',
+    sourceType: 'international',
+  },
+
+  // ═══════════════════════════════════════════════
+  // INTERNATIONAL — Spanische Quellen
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Nutrición Hospitalaria',
+    url: 'https://scielo.isciii.es/rss.php?pid=0212-1611&lang=es',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'es',
+    sourceType: 'forschung',
+  },
+  {
+    name: 'Endocrinología, Diabetes y Nutrición',
+    url: 'https://rss.sciencedirect.com/publication/science/25300164',
+    defaultCategory: 'Internationale Perspektive',
+    language: 'es',
+    sourceType: 'forschung',
+  },
 ];
