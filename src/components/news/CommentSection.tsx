@@ -90,8 +90,11 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
           }
         }
       } catch {
-        // On error, keep the optimistic comment visible rather than losing it
+        // On error, remove the optimistic comment to avoid ghost entries
         pendingRef.current.delete(tempId);
+        if (mountedRef.current) {
+          setComments(prev => prev.filter(c => c.id !== tempId));
+        }
       }
     })();
   }

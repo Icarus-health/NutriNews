@@ -12,7 +12,9 @@ export default function AuthCallbackPage() {
     const code = searchParams.get('code');
     const tokenHash = searchParams.get('token_hash');
     const type = searchParams.get('type');
-    const next = searchParams.get('next') ?? '/';
+    const rawNext = searchParams.get('next') ?? '/';
+    // Prevent open redirect: only allow relative paths starting with /
+    const next = (rawNext.startsWith('/') && !rawNext.startsWith('//')) ? rawNext : '/';
 
     async function handleCallback() {
       const supabase = createClient();
@@ -58,7 +60,7 @@ export default function AuthCallbackPage() {
     }
 
     handleCallback();
-  }, []);
+  }, [searchParams]);
 
   if (failed) {
     return (

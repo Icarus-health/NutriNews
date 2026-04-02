@@ -99,7 +99,8 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
       if (value) ux.addSearchQuery(value);
       router.push(buildUrl(selected, value));
     }, 400);
-  }, [selected, router, ux]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, router, ux, selectedEvidence, days, relevance]);
 
   function clearSearch() {
     setQuery('');

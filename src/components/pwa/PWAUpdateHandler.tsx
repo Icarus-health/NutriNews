@@ -8,10 +8,13 @@ export default function PWAUpdateHandler() {
   const initialBuildId = useRef<string | null>(null);
 
   useEffect(() => {
+    let swInterval: ReturnType<typeof setInterval> | null = null;
+    let controllerChangeHandler: (() => void) | null = null;
+
     // ── 1. Service Worker update detection (PWA) ──
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(registration => {
-        const interval = setInterval(() => {
+        swInterval = setInterval(() => {
           registration.update().catch(() => {});
         }, 5 * 60 * 1000);
 
@@ -28,16 +31,15 @@ export default function PWAUpdateHandler() {
         if (registration.waiting && navigator.serviceWorker.controller) {
           setUpdateAvailable(true);
         }
-
-        return () => clearInterval(interval);
       });
 
       let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
+      controllerChangeHandler = () => {
         if (refreshing) return;
         refreshing = true;
         window.location.reload();
-      });
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', controllerChangeHandler);
     }
 
     // ── 2. Build-ID polling (works without PWA) ──
@@ -61,7 +63,14 @@ export default function PWAUpdateHandler() {
     // Check on first load, then every 5 minutes
     checkBuildVersion();
     const pollInterval = setInterval(checkBuildVersion, 5 * 60 * 1000);
-    return () => clearInterval(pollInterval);
+
+    return () => {
+      clearInterval(pollInterval);
+      if (swInterval) clearInterval(swInterval);
+      if (controllerChangeHandler && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('controllerchange', controllerChangeHandler);
+      }
+    };
   }, []);
 
   function handleUpdate() {

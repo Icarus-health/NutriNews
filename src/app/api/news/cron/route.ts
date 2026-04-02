@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   // Verify the request comes from Vercel Cron or a trusted caller
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -25,14 +25,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Keine neuen Artikel in den RSS-Feeds.', created: 0 });
     }
 
-    // Filter already known URLs
+    // Filter already known URLs (batch to avoid URL length limits)
     const urls = allItems.map(item => item.link).filter(Boolean);
-    const { data: existingCards } = await supabase
-      .from('news_cards')
-      .select('source_url')
-      .in('source_url', urls);
-
-    const existingUrls = new Set(existingCards?.map(c => c.source_url) ?? []);
+    const existingUrls = new Set<string>();
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+      const batch = urls.slice(i, i + BATCH_SIZE);
+      const { data: existingCards } = await supabase
+        .from('news_cards')
+        .select('source_url')
+        .in('source_url', batch);
+      existingCards?.forEach(c => existingUrls.add(c.source_url));
+    }
     const newItems = allItems.filter(item => item.link && !existingUrls.has(item.link));
 
     if (newItems.length === 0) {

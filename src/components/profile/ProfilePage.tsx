@@ -213,7 +213,7 @@ export default function ProfilePage({ profile, stats }: Props) {
                 <span className="text-[10px] font-semibold text-forest-700 dark:text-forest-400">Vielleser</span>
               </div>
             )}
-            {stats.comments === 0 && stats.likes < 20 && ux.streak.days < 5 && ux.weeklyStats.count < 10 && (
+            {stats.comments < 10 && stats.likes < 20 && ux.streak.days < 5 && ux.weeklyStats.count < 10 && (
               <p className="text-[11px] text-slate-400">Lese regelmäßig, um Badges zu verdienen</p>
             )}
           </div>

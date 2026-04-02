@@ -97,37 +97,35 @@ export function rankCards(cards: NewsCard[], input: RankingInput): NewsCard[] {
 }
 
 /**
- * Interleaves cards to ensure source_type diversity.
- * Prevents long runs of the same source_type by spacing them out.
- * E.g., ensures a laienpresse or berufspolitik card appears every ~4 cards.
+ * Interleaves cards to prevent long runs of the same source_type.
+ * Preserves the original ranked order as much as possible —
+ * only swaps adjacent cards when the same type appears 3+ times in a row.
  */
 export function interleaveBySourceType(cards: NewsCard[]): NewsCard[] {
   if (cards.length <= 3) return cards;
 
-  // Group by source_type
-  const groups: Record<string, NewsCard[]> = {};
-  for (const card of cards) {
-    const type = card.source_type ?? 'forschung';
-    if (!groups[type]) groups[type] = [];
-    groups[type].push(card);
-  }
+  const result = [...cards];
+  const MAX_RUN = 2; // Allow max 2 consecutive cards of the same type
 
-  const types = Object.keys(groups);
-  if (types.length <= 1) return cards; // Nothing to interleave
+  for (let i = MAX_RUN; i < result.length; i++) {
+    const currentType = result[i].source_type ?? 'forschung';
+    // Check if last MAX_RUN cards have the same type
+    let runLength = 0;
+    for (let j = i - 1; j >= 0 && j >= i - MAX_RUN; j--) {
+      if ((result[j].source_type ?? 'forschung') === currentType) runLength++;
+      else break;
+    }
 
-  // Primary type (most cards) stays as base, others get inserted at intervals
-  const sorted = types.sort((a, b) => groups[b].length - groups[a].length);
-  const primaryType = sorted[0];
-  const result: NewsCard[] = [...groups[primaryType]];
-  const others: NewsCard[] = sorted.slice(1).flatMap(t => groups[t]);
-
-  // Insert non-primary cards at regular intervals (every 3-4 primary cards)
-  const interval = Math.max(2, Math.floor(result.length / (others.length + 1)));
-  let insertIdx = interval;
-  for (const card of others) {
-    if (insertIdx > result.length) insertIdx = result.length;
-    result.splice(insertIdx, 0, card);
-    insertIdx += interval + 1; // +1 because we just inserted
+    if (runLength >= MAX_RUN) {
+      // Find the nearest card ahead with a different type to swap with
+      for (let k = i + 1; k < result.length && k <= i + 5; k++) {
+        if ((result[k].source_type ?? 'forschung') !== currentType) {
+          // Swap
+          [result[i], result[k]] = [result[k], result[i]];
+          break;
+        }
+      }
+    }
   }
 
   return result;

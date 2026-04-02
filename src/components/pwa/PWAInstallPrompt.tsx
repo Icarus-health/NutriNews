@@ -23,9 +23,14 @@ export default function PWAInstallPrompt() {
     setIsStandalone(standalone);
     if (standalone) return;
 
-    // Already dismissed
+    // Already dismissed (with 7-day expiry)
     const dismissed = localStorage.getItem(INSTALL_KEY);
-    if (dismissed) return;
+    if (dismissed) {
+      const dismissedAt = parseInt(dismissed, 10);
+      if (!isNaN(dismissedAt) && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return;
+      // Expired — allow re-show
+      localStorage.removeItem(INSTALL_KEY);
+    }
 
     // Detect platform
     const ua = navigator.userAgent;
@@ -54,7 +59,7 @@ export default function PWAInstallPrompt() {
   }, []);
 
   function dismiss() {
-    localStorage.setItem(INSTALL_KEY, 'true');
+    localStorage.setItem(INSTALL_KEY, String(Date.now()));
     setVisible(false);
   }
 

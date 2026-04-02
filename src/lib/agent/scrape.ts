@@ -55,7 +55,8 @@ async function scrapeDGEM(): Promise<RSSItem[]> {
 
     for (const match of [...headingMatches, ...matches]) {
       const href = match[1];
-      const title = (match[2] ?? match[3] ?? '').replace(/\s+/g, ' ').trim();
+      // For headingPattern: title is in group [2]. For articlePattern: group [2] is the URL path, group [3] is the title.
+      const title = (match[3] ?? match[2] ?? '').replace(/\s+/g, ' ').trim();
 
       if (!title || title.length < 10) continue;
 
@@ -156,7 +157,8 @@ async function scrapeESPEN(): Promise<RSSItem[]> {
 
     for (const match of [...headingMatches, ...articleMatches]) {
       const href = match[1];
-      const title = (match[2] ?? match[3] ?? '').replace(/\s+/g, ' ').trim();
+      // For headingPattern: title is in group [2]. For articlePattern: group [2] is the URL path, group [3] is the title.
+      const title = (match[3] ?? match[2] ?? '').replace(/\s+/g, ' ').trim();
 
       if (!title || title.length < 10) continue;
 

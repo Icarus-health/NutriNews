@@ -187,7 +187,6 @@ async function generateWithOpenAI(articles: ArticleForBriefing[]): Promise<Brief
       { role: 'system', content: BRIEFING_SYSTEM_PROMPT },
       { role: 'user', content: buildBriefingPrompt(articles) },
     ],
-    response_format: { type: 'json_object' },
     temperature: 0.2,
     max_tokens: 1500,
   });

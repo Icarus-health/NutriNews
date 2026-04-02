@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
@@ -27,6 +27,12 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const [shareCardId, setShareCardId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sync state when server re-renders with new initialCards (e.g. after router.refresh())
+  useEffect(() => {
+    setCards(initialCards);
+    setHasMore(initialCards.length >= 15);
+  }, [initialCards]);
 
   function handleRequireAuth() {
     if (typeof window !== 'undefined') {

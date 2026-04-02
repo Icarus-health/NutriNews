@@ -55,7 +55,11 @@ export default async function HomePage({ searchParams }: PageProps) {
   }
 
   if (params.q) {
-    query = query.or(`headline.ilike.%${params.q}%,snack_what.ilike.%${params.q}%,therapist_check.ilike.%${params.q}%`);
+    // Sanitize: remove PostgREST special characters
+    const q = params.q.replace(/[,().\\]/g, '').trim();
+    if (q) {
+      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+    }
   }
 
   // Parallel: fetch cards + user

@@ -15,6 +15,7 @@ interface Props {
     korrektur_noetig: number;
     quelle_zweifelhaft: number;
   };
+  userVotes?: CardVerificationType[];
   onRequireAuth?: () => void;
 }
 
@@ -25,8 +26,9 @@ const ACTIONS: { type: CardVerificationType; icon: typeof CheckCircle2; label: s
   { type: 'quelle_zweifelhaft', icon: ShieldAlert, label: 'Zweifelhaft', activeColor: 'text-red-500', needsReason: true },
 ];
 
-export default function CardVerification({ newsCardId, userId, counts, onRequireAuth }: Props) {
+export default function CardVerification({ newsCardId, userId, counts, userVotes = [], onRequireAuth }: Props) {
   const [localCounts, setLocalCounts] = useState(counts);
+  const [votedTypes, setVotedTypes] = useState<Set<CardVerificationType>>(new Set(userVotes));
   const [showReason, setShowReason] = useState<CardVerificationType | null>(null);
   const [reason, setReason] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -44,14 +46,31 @@ export default function CardVerification({ newsCardId, userId, counts, onRequire
   }
 
   function submitVerification(type: CardVerificationType, reasonText?: string) {
-    setLocalCounts(prev => ({ ...prev, [type]: prev[type] + 1 }));
+    const isToggleOff = votedTypes.has(type);
     setShowReason(null);
     setReason('');
 
+    if (isToggleOff) {
+      // Optimistic: remove vote
+      setLocalCounts(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }));
+      setVotedTypes(prev => { const next = new Set(prev); next.delete(type); return next; });
+    } else {
+      // Optimistic: add vote
+      setLocalCounts(prev => ({ ...prev, [type]: prev[type] + 1 }));
+      setVotedTypes(prev => new Set(prev).add(type));
+    }
+
     startTransition(async () => {
       const result = await verifyCard(newsCardId, type, reasonText);
-      if (result.removed) {
-        setLocalCounts(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 2) }));
+      if (result.error) {
+        // Rollback on error
+        if (isToggleOff) {
+          setLocalCounts(prev => ({ ...prev, [type]: prev[type] + 1 }));
+          setVotedTypes(prev => new Set(prev).add(type));
+        } else {
+          setLocalCounts(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }));
+          setVotedTypes(prev => { const next = new Set(prev); next.delete(type); return next; });
+        }
       }
     });
   }
@@ -92,6 +111,7 @@ export default function CardVerification({ newsCardId, userId, counts, onRequire
         {ACTIONS.map(action => {
           const Icon = action.icon;
           const count = localCounts[action.type];
+          const hasVoted = votedTypes.has(action.type);
           return (
             <button
               key={action.type}
@@ -99,9 +119,11 @@ export default function CardVerification({ newsCardId, userId, counts, onRequire
               disabled={isPending}
               className={clsx(
                 'flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors',
-                count > 0
-                  ? `${action.activeColor} bg-slate-50 dark:bg-slate-700`
-                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                hasVoted
+                  ? `${action.activeColor} bg-slate-100 dark:bg-slate-600 ring-1 ring-current/20`
+                  : count > 0
+                    ? `${action.activeColor} bg-slate-50 dark:bg-slate-700`
+                    : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
               )}
             >
               <Icon size={12} />
