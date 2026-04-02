@@ -1,5 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 import type { RSSSource } from './sources';
+import { fetchScrapedSources } from './scrape';
 
 export interface RSSItem {
   title: string;
@@ -66,14 +67,19 @@ function extractDescription(item: Record<string, unknown>): string {
 }
 
 export async function fetchAllFeeds(sources: RSSSource[]): Promise<RSSItem[]> {
-  const results = await Promise.allSettled(sources.map(fetchRSSFeed));
+  const [rssResults, scrapedItems] = await Promise.all([
+    Promise.allSettled(sources.map(fetchRSSFeed)),
+    fetchScrapedSources(),
+  ]);
 
   const allItems: RSSItem[] = [];
-  for (const result of results) {
+  for (const result of rssResults) {
     if (result.status === 'fulfilled') {
       allItems.push(...result.value);
     }
   }
+
+  allItems.push(...scrapedItems);
 
   return allItems;
 }

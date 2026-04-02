@@ -198,7 +198,16 @@ function buildUserPrompt(item: RSSItem): string {
 TITEL: ${item.title}
 QUELLE: ${item.source.name}
 QUELLENTYP: ${item.source.sourceType}
-SPRACHE: ${item.source.language === 'en' ? 'Englisch (bitte auf Deutsch zusammenfassen)' : 'Deutsch'}
+SPRACHE: ${(() => {
+    const langMap: Record<string, string> = {
+      de: 'Deutsch',
+      en: 'Englisch (bitte auf Deutsch zusammenfassen)',
+      fr: 'Französisch (bitte auf Deutsch zusammenfassen)',
+      nl: 'Niederländisch (bitte auf Deutsch zusammenfassen)',
+      es: 'Spanisch (bitte auf Deutsch zusammenfassen)',
+    };
+    return langMap[item.source.language] ?? 'Deutsch';
+  })()}
 BESCHREIBUNG: ${item.description || 'Keine Beschreibung verfuegbar'}
 URL: ${item.link}
 
@@ -326,35 +335,7 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
   return null;
 }
 
-// --- OpenAI Provider (paid, higher quality) ---
-async function curateWithOpenAI(item: RSSItem): Promise<CurationResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const systemPrompt = buildSystemPrompt(item.source.sourceType);
-
-  // Dynamic import to avoid requiring openai package when using HF
-  const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey });
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: buildUserPrompt(item) },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.2,
-    max_tokens: 1500,
-  });
-
-  const content = response.choices[0]?.message?.content;
-  if (!content) return null;
-
-  return parseResult(content, item);
-}
-
-// --- Anthropic Claude Provider (fallback, paid but reliable) ---
+// --- Anthropic Claude Provider (fallback, paid but cheap with Haiku) ---
 async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
@@ -426,19 +407,13 @@ export async function curateArticle(item: RSSItem): Promise<CurationResult | nul
       if (result) return result;
     }
 
-    // 2. Fallback to Claude (paid, but with prompt caching = cheap)
+    // 2. Fallback to Claude Haiku (paid, ~$0.001/Artikel)
     if (process.env.ANTHROPIC_API_KEY) {
       const result = await curateWithClaude(item);
       if (result) return result;
     }
 
-    // 3. Final fallback to OpenAI (paid)
-    if (process.env.OPENAI_API_KEY) {
-      const result = await curateWithOpenAI(item);
-      if (result) return result;
-    }
-
-    console.error('No AI provider configured. Set HUGGINGFACE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.');
+    console.error('No AI provider configured. Set HUGGINGFACE_API_KEY or ANTHROPIC_API_KEY.');
     return null;
   } catch (error) {
     console.error('AI curation failed:', error);
