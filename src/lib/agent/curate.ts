@@ -89,6 +89,70 @@ Bewerte die UEBERTRAGBARKEIT auf den deutschen Kontext.
 Setze category_main auf "Internationale Perspektive", es sei denn, eine andere Kategorie ist deutlich passender.
 Englische Inhalte muessen auf Deutsch zusammengefasst werden.`;
 
+const FORSCHUNG_ADDITION = `
+
+ZUSAETZLICH fuer Forschungsartikel (Journals, Studien):
+Du berichtest ueber eine wissenschaftliche Studie. Ernaehrungstherapeuten wollen die KONKRETEN DATEN, nicht "die Studie zeigt einen positiven Effekt".
+
+PFLICHTANGABEN in snack_what:
+- Studiendesign (RCT, Kohorte, Meta-Analyse, etc.)
+- Stichprobengroesse (n=X)
+- Population (z.B. "Typ-2-Diabetiker, 55-70 Jahre, BMI >30")
+- Intervention und Kontrolle (z.B. "30g Walnuesse/d vs. isokalorisiche Kontrolle ueber 12 Wochen")
+
+PFLICHTANGABEN in snack_result:
+- Primaerer Endpunkt mit KONKRETER Effektstaerke (z.B. "LDL-C -0.34 mmol/L, 95%-KI: -0.47 bis -0.21, p<0.001")
+- Wenn vorhanden: NNT, Hazard Ratio, Odds Ratio, absolute Risikoreduktion
+- Falls keine Zahlen im Abstract: die KONKRETEN qualitativen Ergebnisse nennen
+
+PFLICHTANGABEN in evidence_summary:
+- Staerken: Randomisierung, Verblindung, Studiendauer, Follow-up-Rate
+- Limitationen: Stichprobengroesse, Selektionsbias, Confounding, Uebertragbarkeit
+- Einordnung: Passt das Ergebnis zur bisherigen Evidenz oder widerspricht es?
+
+PFLICHTANGABEN in action_recommendation:
+- Nur wenn Evidenzlevel ausreicht (mindestens RCT oder konsistente Beobachtungsstudien)
+- Sonst: "Ergebnis abwarten — noch keine Aenderung der Beratungsempfehlung ableitbar."`;
+
+const FACHPRESSE_ADDITION = `
+
+ZUSAETZLICH fuer Fachpresse-Artikel (DGE, DGEM, Berufsverbands-Mitteilungen, Kongressberichte):
+Fachpresse berichtet oft ueber Leitlinien-Updates, Konsensuspapiere, DGE-Stellungnahmen oder Fortbildungsinhalte.
+
+WICHTIG: Extrahiere die KONKRETEN neuen Empfehlungen, nicht nur "es gibt eine neue Leitlinie".
+
+Beispiel FALSCH: "Die DGEM hat ihre Leitlinie zur enteralen Ernaehrung aktualisiert."
+Beispiel RICHTIG: "DGEM-Leitlinie 2025 enterale Ernaehrung: Fruehzeitige enterale Zufuhr (innerhalb 24-48h) bei Intensivpatienten. Zielzufuhr Protein 1.3 g/kg/d, Energie ueber 4-7 Tage steigern. Immunonutrition (Arginin, Omega-3) nur bei elektiven viszeralchirurgischen OPs empfohlen (Evidenzgrad A)."
+
+Bei Leitlinien/Empfehlungen im snack_result IMMER nennen:
+- Welche konkreten Grenzwerte/Dosierungen werden empfohlen?
+- Was hat sich gegenueber der vorherigen Version geaendert?
+- Welcher Empfehlungsgrad (A/B/0, stark/schwach)?
+- Fuer welche Patientengruppe gilt das?
+
+Bei Kongressberichten:
+- Welche konkreten Studienergebnisse wurden praesentiert?
+- Keine Aussagen wie "spannende Vortraege" — sondern was wurde INHALTLICH gesagt?`;
+
+const SUPPLEMENT_ADDITION = `
+
+ZUSAETZLICH fuer Supplement-/NEM-Artikel:
+Ernaehrungstherapeuten brauchen klare Evidenz-Einordnung zu Nahrungsergaenzungsmitteln.
+
+PFLICHTANGABEN:
+- Welches Supplement/welcher Naehrstoff GENAU? (z.B. "Vitamin D3 Cholecalciferol", nicht einfach "Vitamin D")
+- Welche Dosierung wurde untersucht? (z.B. "4000 IE/d" oder "50.000 IE/Woche")
+- Bei welcher Population/Indikation? (z.B. "aeltere Frauen >65 J. mit Osteoporose-Risiko")
+- Was ist das KONKRETE Ergebnis? (z.B. "Frakturrate -18%, NNT=50 ueber 3 Jahre")
+- Gibt es eine Obergrenze/Toxizitaet? (z.B. "EFSA UL: 4000 IE/d; >10.000 IE/d Hyperkalzaemie-Risiko")
+
+Im therapist_check IMMER:
+- Kann ich das in der Beratung empfehlen? Wenn ja: Fuer wen, in welcher Dosis?
+- Gibt es Interaktionen mit haeufigen Medikamenten? (z.B. Marcumar, Metformin, PPI)
+- Ist eine Blutspiegelkontrolle sinnvoll? Welcher Zielwert?
+- Ist Supplementierung noetig oder reicht die Zufuhr ueber Lebensmittel?`;
+
+
 interface CurationResult {
   headline: string;
   snack_what: string;
@@ -203,6 +267,9 @@ const HF_MODELS = [
 // --- Hugging Face Provider (free) ---
 function buildSystemPrompt(sourceType: SourceType): string {
   let prompt = SYSTEM_PROMPT;
+  if (sourceType === 'forschung') prompt += FORSCHUNG_ADDITION;
+  if (sourceType === 'fachpresse') prompt += FACHPRESSE_ADDITION;
+  if (sourceType === 'supplement') prompt += SUPPLEMENT_ADDITION;
   if (sourceType === 'laienpresse') prompt += LAY_PRESS_ADDITION;
   if (sourceType === 'berufspolitik') prompt += BERUFSPOLITIK_ADDITION;
   if (sourceType === 'international') prompt += INTERNATIONAL_ADDITION;
