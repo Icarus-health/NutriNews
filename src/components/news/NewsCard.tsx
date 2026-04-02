@@ -35,6 +35,14 @@ const THERAPIST_CHECK_LABELS: Record<string, string> = {
   international: 'Relevanz für Deutschland',
 };
 
+// Parst "MEDIEN: [...] → FACH: [...]" in zwei Teile
+function parseFactCheck(text: string): { medien: string; fach: string } | null {
+  const match = text.match(/MEDIEN:\s*(.+?)\s*→\s*FACH:\s*(.+)/s);
+  if (match) return { medien: match[1].trim(), fach: match[2].trim() };
+  // Fallback: kein Split möglich
+  return null;
+}
+
 function formatTime(dateStr: string | null) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -223,17 +231,47 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
               </p>
             </div>
 
-            {/* Laienpresse: Fact-Check */}
-            {isLayPress && card.lay_press_fact_check && (
-              <div className="mx-4 mb-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl px-4 py-3 border border-amber-200/60 dark:border-amber-800/30">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">
-                  Faktencheck
-                </p>
-                <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 line-clamp-2">
-                  {card.lay_press_fact_check}
-                </p>
-              </div>
-            )}
+            {/* Laienpresse: Fact-Check — MEDIEN vs. FACH */}
+            {isLayPress && card.lay_press_fact_check && (() => {
+              const parsed = parseFactCheck(card.lay_press_fact_check);
+              if (parsed) {
+                return (
+                  <div className="mx-4 mb-3 rounded-2xl overflow-hidden border border-slate-200/60 dark:border-slate-700/40">
+                    {/* MEDIEN-Teil */}
+                    <div className="bg-amber-50/80 dark:bg-amber-900/20 px-4 py-2.5 flex gap-2">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0 w-12">Medien</span>
+                      <p className="text-[12px] leading-relaxed text-amber-900 dark:text-amber-100 line-clamp-2 italic">
+                        „{parsed.medien}"
+                      </p>
+                    </div>
+                    {/* Trennlinie mit Pfeil */}
+                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700/50 px-4 py-1">
+                      <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Fachliche Einordnung ↓</span>
+                      <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
+                    </div>
+                    {/* FACH-Teil */}
+                    <div className="bg-forest-50/80 dark:bg-forest-900/20 px-4 py-2.5 flex gap-2">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-forest-600 dark:text-forest-400 mt-0.5 flex-shrink-0 w-12">Evidenz</span>
+                      <p className="text-[12px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-2">
+                        {parsed.fach}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              // Fallback wenn Format nicht geparst werden kann
+              return (
+                <div className="mx-4 mb-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl px-4 py-3 border border-amber-200/60 dark:border-amber-800/30">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">
+                    Faktencheck
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 line-clamp-3">
+                    {card.lay_press_fact_check}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Tap hint */}
             <div className="flex items-center justify-end px-4 pb-2">
@@ -341,6 +379,32 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
 
             {/* Detail fields */}
             <div className="px-4 space-y-2.5 pb-4">
+
+              {/* Laienpresse: vollständiger Faktencheck auf Rückseite */}
+              {isLayPress && card.lay_press_fact_check && (() => {
+                const parsed = parseFactCheck(card.lay_press_fact_check);
+                if (parsed) {
+                  return (
+                    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                      <div className="bg-amber-50 dark:bg-amber-900/20 px-3.5 py-2.5">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">📰 Medienbericht</p>
+                        <p className="text-[13px] leading-relaxed text-amber-900 dark:text-amber-100 italic">„{parsed.medien}"</p>
+                      </div>
+                      <div className="bg-forest-50/80 dark:bg-forest-900/20 px-3.5 py-2.5">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">🔬 Fachliche Einordnung</p>
+                        <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100">{parsed.fach}</p>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="bg-amber-50/60 dark:bg-amber-900/20 rounded-xl px-3.5 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-0.5">Faktencheck</p>
+                    <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.lay_press_fact_check}</p>
+                  </div>
+                );
+              })()}
+
               <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3.5 py-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Was?</p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.snack_what}</p>

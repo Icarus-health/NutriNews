@@ -63,10 +63,14 @@ Antworte IMMER als valides JSON.`;
 const LAY_PRESS_ADDITION = `
 
 ZUSAETZLICH fuer Laienpresse-Artikel:
-Erstelle eine fachliche Gegenueberstellung im Feld "lay_press_fact_check".
-Format: "MEDIEN: [KONKRETES Zitat/Claim aus dem Medienbericht] → FACH: [Fachliche Einordnung mit konkreter Evidenzlage, z.B. 'Laut Cochrane-Review 2024 (n=12.000) zeigt sich kein signifikanter Effekt']"
+1. Das Feld "therapist_check" MUSS beginnen mit: "⚠️ Laienpresse-Meldung:" gefolgt von der fachlichen Einordnung. Erklaere kurz was die Meldung behauptet und wie die Evidenzlage tatsaechlich ist. Patienten werden damit in die Praxis kommen.
+
+2. Erstelle im Feld "lay_press_fact_check" eine strukturierte Gegenueberstellung:
+Format GENAU so: "MEDIEN: [KONKRETER Claim des Artikels, ggf. als Zitat] → FACH: [Fachliche Einordnung mit konkreter Evidenzlage, Studientyp, ggf. Gegenbelege]"
+Beispiel: "MEDIEN: 'Ketogene Ernaehrung heilt Krebs' → FACH: Kein RCT-Beleg fuer kurative Wirkung. DGEM 2022: Krebsdiaeten werden nicht empfohlen, da Risiko fuer Mangelzufuhr. Supportive Ernaehrungstherapie fokussiert auf Erhalt des Ernaehrungsstatus."
+
 Setze evidence_level auf "Laienpresse/Trend".
-Bewerte KONKRET: Welche Behauptung ist korrekt, uebertrieben, oder falsch — und warum? Nenne Gegenbelege mit Studientyp wenn moeglich.`;
+Bewerte KONKRET: Behauptung korrekt, uebertrieben, oder falsch — und warum?`;
 
 const BERUFSPOLITIK_ADDITION = `
 
@@ -113,7 +117,7 @@ function buildUserPrompt(item: RSSItem): string {
 
   const extraFields: string[] = [];
   if (isLayPress) {
-    extraFields.push(`  "lay_press_fact_check": "MEDIEN: [Claim der Meldung] → FACH: [Fachliche Einordnung mit Evidenzlage] (2-3 Saetze)"`);
+    extraFields.push(`  "lay_press_fact_check": "MEDIEN: [Konkreter Claim/Behauptung aus dem Artikel] → FACH: [Fachliche Einordnung mit Evidenzlage, Studientypen, Leitlinienempfehlungen]"`);
   }
   if (isBerufspolitik) {
     extraFields.push(`  "policy_impact": "info | beobachten | handeln"`);
