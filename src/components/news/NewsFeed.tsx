@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
-import ShareModal from './ShareModal';
 import { loadMoreCards } from '@/lib/actions/news';
+
+const ShareModal = dynamic(() => import('./ShareModal'), { ssr: false });
 import type { NewsCard } from '@/types/database';
 
 interface Props {

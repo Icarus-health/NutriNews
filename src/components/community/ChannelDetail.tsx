@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ArrowLeft, Send, Reply, ChevronDown, ChevronUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { createChannelPost } from '@/lib/actions/community';
@@ -175,7 +176,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center flex-shrink-0">
                   {post.profile?.avatar_url ? (
-                    <img src={post.profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                    <Image src={post.profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" width={28} height={28} unoptimized />
                   ) : (
                     <span className="text-[11px] font-bold text-forest-700 dark:text-forest-400">
                       {(post.profile?.full_name || '?')[0].toUpperCase()}

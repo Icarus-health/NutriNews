@@ -1,7 +1,6 @@
 'use client';
 
 import BottomNav from '@/components/layout/BottomNav';
-import InstallPrompt from '@/components/pwa/InstallPrompt';
 import { ToastProvider } from '@/components/ui/Toast';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +11,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <BottomNav />
-        <InstallPrompt />
       </div>
     </ToastProvider>
   );

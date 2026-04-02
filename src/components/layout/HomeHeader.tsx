@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Search, X, Clock, ChevronDown, Check, SlidersHorizontal } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
@@ -116,7 +117,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
       <div className="flex items-center justify-between px-5 py-3">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden">
-            <img src="/logo-header.webp" alt="NutriNews" className="w-full h-full object-contain" width={36} height={36} />
+            <Image src="/logo-header.webp" alt="NutriNews" className="w-full h-full object-contain" width={36} height={36} priority />
           </div>
           <div className="flex flex-col justify-center">
             <span className="text-[17px] font-bold text-slate-900 dark:text-slate-100 leading-none tracking-tight">

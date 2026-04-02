@@ -4,9 +4,15 @@ import { RSS_SOURCES } from '@/lib/agent/sources';
 import { fetchAllFeeds } from '@/lib/agent/rss';
 import { curateArticle } from '@/lib/agent/curate';
 import { resolveCategory } from '@/lib/categories';
+import { rateLimit } from '@/lib/rate-limit';
 
 // GET /api/news/cron — called by Vercel Cron every 30 minutes
 export async function GET(request: Request) {
+  // Rate limit: max 4 runs per 30 minutes (slightly above cron frequency)
+  const { success: allowed } = rateLimit('cron', 4, 30 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
   // Verify the request comes from Vercel Cron or a trusted caller
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;

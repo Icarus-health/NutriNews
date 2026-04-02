@@ -5,9 +5,16 @@ import { RSS_SOURCES } from '@/lib/agent/sources';
 import { fetchAllFeeds } from '@/lib/agent/rss';
 import { curateArticle } from '@/lib/agent/curate';
 import { resolveCategory } from '@/lib/categories';
+import { rateLimit } from '@/lib/rate-limit';
 
 // POST /api/news/auto - startet den News-Kurator-Agenten
 export async function POST(request: Request) {
+  // Rate limit: max 3 runs per 10 minutes
+  const { success: allowed } = rateLimit('auto-agent', 3, 10 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Zu viele Anfragen. Bitte warte einige Minuten.' }, { status: 429 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

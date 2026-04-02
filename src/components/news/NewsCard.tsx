@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect, memo } from 'react';
+import dynamic from 'next/dynamic';
 import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2 } from 'lucide-react';
-import CommentSection from './CommentSection';
 import { clsx } from 'clsx';
+
+const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false });
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
 import { toggleLike, toggleBookmark } from '@/lib/actions/news';
