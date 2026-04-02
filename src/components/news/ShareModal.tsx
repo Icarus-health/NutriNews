@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useCallback } from 'react';
 import { X, Search, Send, Link2, Check } from 'lucide-react';
 import { shareToUser, searchProfiles } from '@/lib/actions/news';
 
@@ -24,13 +24,17 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
   const [sent, setSent] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleSearch(value: string) {
+  const handleSearch = useCallback((value: string) => {
     setQuery(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
     if (value.length < 2) { setResults([]); return; }
-    const profiles = await searchProfiles(value);
-    setResults(profiles);
-  }
+    searchTimer.current = setTimeout(async () => {
+      const profiles = await searchProfiles(value);
+      setResults(profiles);
+    }, 300);
+  }, []);
 
   function handleSend() {
     if (!selectedEmail) return;

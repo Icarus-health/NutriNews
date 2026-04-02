@@ -26,7 +26,6 @@ export async function toggleLike(newsCardId: string) {
     });
   }
 
-  revalidatePath('/');
   return { liked: !existing };
 }
 
@@ -53,7 +52,6 @@ export async function toggleBookmark(newsCardId: string) {
     });
   }
 
-  revalidatePath('/');
   return { bookmarked: !existing };
 }
 
@@ -99,7 +97,6 @@ export async function addComment(newsCardId: string, body: string) {
 
   if (error) return { error: 'Kommentar konnte nicht gespeichert werden' };
 
-  revalidatePath('/');
   return { success: true };
 }
 
@@ -112,7 +109,6 @@ export async function deleteComment(commentId: string) {
     .eq('id', commentId)
     .eq('user_id', user.id);
 
-  revalidatePath('/');
   return { success: true };
 }
 

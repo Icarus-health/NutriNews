@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef, useEffect } from 'react';
+import { useState, useTransition, useRef, useEffect, memo } from 'react';
 import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2 } from 'lucide-react';
 import CommentSection from './CommentSection';
 import { clsx } from 'clsx';
@@ -35,7 +35,19 @@ const THERAPIST_CHECK_LABELS: Record<string, string> = {
   international: 'Relevanz für Deutschland',
 };
 
-export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
+function formatTime(dateStr: string | null) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'gerade eben';
+  if (mins < 60) return `vor ${mins} Min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `vor ${hours} Std`;
+  const days = Math.floor(hours / 24);
+  return `vor ${days} Tag${days > 1 ? 'en' : ''}`;
+}
+
+function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [flipped, setFlipped] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(card.user_has_liked ?? false);
@@ -171,7 +183,11 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
                 <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
-                <span className="ml-auto text-[10px] text-slate-400 tabular-nums">{readMin} Min</span>
+                <span className="ml-auto flex items-center gap-1.5 text-[10px] text-slate-400 tabular-nums">
+                  {card.published_at && <span>{formatTime(card.published_at)}</span>}
+                  <span>·</span>
+                  <span>{readMin} Min</span>
+                </span>
               </div>
 
               {/* Category badge */}
@@ -424,3 +440,11 @@ export default function NewsCard({ card, userId, onRequireAuth, onShare }: Props
     </div>
   );
 }
+
+export default memo(NewsCard, (prev, next) =>
+  prev.card.id === next.card.id &&
+  prev.card.like_count === next.card.like_count &&
+  prev.card.user_has_liked === next.card.user_has_liked &&
+  prev.card.user_has_bookmarked === next.card.user_has_bookmarked &&
+  prev.userId === next.userId
+);
