@@ -37,7 +37,7 @@ const THERAPIST_CHECK_LABELS: Record<string, string> = {
 
 // Parst "MEDIEN: [...] → FACH: [...]" in zwei Teile
 function parseFactCheck(text: string): { medien: string; fach: string } | null {
-  const match = text.match(/MEDIEN:\s*(.+?)\s*→\s*FACH:\s*(.+)/s);
+  const match = text.match(/MEDIEN:\s*([\s\S]+?)\s*→\s*FACH:\s*([\s\S]+)/);
   if (match) return { medien: match[1].trim(), fach: match[2].trim() };
   // Fallback: kein Split möglich
   return null;
