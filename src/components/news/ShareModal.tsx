@@ -57,7 +57,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 animate-fade-in" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-lg rounded-t-2xl p-4 animate-slide-up"
+        className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-t-2xl p-4 animate-slide-up"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
@@ -90,7 +90,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
             <div className="w-full border-t border-slate-200 dark:border-slate-700" />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-white dark:bg-slate-800 px-3 text-[11px] text-slate-400">oder an Kolleg:in senden</span>
+            <span className="bg-white dark:bg-slate-800 px-3 text-[11px] text-slate-400 dark:text-slate-500">oder an Kolleg:in senden</span>
           </div>
         </div>
 

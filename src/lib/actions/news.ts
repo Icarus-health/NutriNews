@@ -226,7 +226,7 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
   evidence?: string[];
   days?: number;
   minRelevance?: number;
-}) {
+}, cursorId?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -234,9 +234,9 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
     .from('news_cards')
     .select('*')
     .eq('status', 'published')
-    .lte('published_at', cursor)
+    .lt('published_at', cursor)
     .order('published_at', { ascending: false })
-    .limit(15 + excludeIds.length); // Fetch extra to account for exclusions
+    .limit(16); // Fetch 1 extra to check hasMore
 
   if (filters?.categories?.length === 1) {
     query = query.eq('category_main', filters.categories[0]);
@@ -269,9 +269,9 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
   const { data: rawCards } = await query;
   if (!rawCards || rawCards.length === 0) return { cards: [], hasMore: false };
 
-  // Exclude already-loaded cards to prevent duplicates
-  const excludeSet = new Set(excludeIds);
-  const cards = rawCards.filter(c => !excludeSet.has(c.id)).slice(0, 15);
+  // Take at most 15, use 16th to determine hasMore
+  const cards = rawCards.slice(0, 15);
+  const hasMoreCards = rawCards.length > 15;
   if (cards.length === 0) return { cards: [], hasMore: false };
 
   // Enrich with like counts - fetch per card to avoid row limit issues
@@ -306,7 +306,7 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
     }));
   }
 
-  return { cards: enriched, hasMore: cards.length === 15 };
+  return { cards: enriched, hasMore: hasMoreCards };
 }
 
 export async function updateProfile(data: { full_name?: string; alias?: string; specialties?: string[]; preferred_categories?: string[]; notify_new_news?: boolean; setting?: string }) {

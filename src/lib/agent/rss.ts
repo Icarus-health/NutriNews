@@ -10,10 +10,10 @@ export interface RSSItem {
   source: RSSSource;
 }
 
-const parser = new XMLParser({
+const PARSER_OPTIONS = {
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-});
+} as const;
 
 export async function fetchRSSFeed(source: RSSSource): Promise<RSSItem[]> {
   try {
@@ -25,6 +25,8 @@ export async function fetchRSSFeed(source: RSSSource): Promise<RSSItem[]> {
     if (!res.ok) return [];
 
     const xml = await res.text();
+    // Create a fresh parser per request to avoid shared state in concurrent calls
+    const parser = new XMLParser(PARSER_OPTIONS);
     const parsed = parser.parse(xml);
 
     // Handle both RSS 2.0 and Atom feeds
