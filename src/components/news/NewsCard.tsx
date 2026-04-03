@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect, memo } from 'react';
+import { useMinuteTick } from '@/hooks/useMinuteTick';
 import dynamic from 'next/dynamic';
 import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -66,17 +67,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [isPending, startTransition] = useTransition();
   const [backHeight, setBackHeight] = useState<number | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [, setTick] = useState(0);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const ux = useUX();
   const isRead = ux.readHistory.some(e => e.cardId === card.id);
 
-  // Update relative time every 60s
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000);
-    return () => clearInterval(id);
-  }, []);
+  // Update relative time every 60s via shared singleton timer
+  useMinuteTick();
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);

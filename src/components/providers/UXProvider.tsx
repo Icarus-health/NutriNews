@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 
 // ═══════════════════════════════════════════════════════════════
 // UX Settings: Dark Mode, Textgröße, Lesehistorie, Suchhistorie,
@@ -164,7 +164,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   }, [readLaterQueue]);
 
   // Weekly stats
-  const weeklyStats = (() => {
+  const weeklyStats = useMemo(() => {
     const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const thisWeek = readHistory.filter(e => e.timestamp >= oneWeekAgo);
     const catCounts: Record<string, number> = {};
@@ -174,7 +174,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       .slice(0, 3)
       .map(([cat]) => cat);
     return { count: thisWeek.length, topCategories };
-  })();
+  }, [readHistory]);
 
   return (
     <UXContext.Provider value={{
