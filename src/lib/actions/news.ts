@@ -343,6 +343,24 @@ export async function createCollection(name: string, emoji: string) {
   return { success: true, id: data.id };
 }
 
+export async function submitAppFeedback(type: string, message: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const trimmed = message.trim();
+  if (!trimmed || trimmed.length < 10) return { error: 'Bitte mindestens 10 Zeichen eingeben' };
+  if (trimmed.length > 2000) return { error: 'Nachricht zu lang (max. 2000 Zeichen)' };
+
+  const { error } = await supabase.from('app_feedback').insert({
+    user_id: user?.id ?? null,
+    type,
+    message: trimmed,
+  });
+
+  if (error) return { error: 'Feedback konnte nicht gesendet werden' };
+  return { success: true };
+}
+
 export async function searchProfiles(query: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -3,13 +3,15 @@
 import { useState, useTransition, useRef, useEffect, useCallback, memo } from 'react';
 import { useMinuteTick } from '@/hooks/useMinuteTick';
 import dynamic from 'next/dynamic';
-import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2, PenLine, Printer } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2, PenLine, Printer, EyeOff } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false });
+const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
 import { toggleLike, toggleBookmark } from '@/lib/actions/news';
+import { getCardVerifications } from '@/lib/actions/community';
 import { useUX } from '@/components/providers/UXProvider';
 import type { EvidenceLevel, NewsCard as NewsCardType, SourceType } from '@/types/database';
 
@@ -70,6 +72,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState('');
   const [hasNote, setHasNote] = useState(false);
+  const [verifications, setVerifications] = useState<{ praxisrelevant: number; fachlich_korrekt: number; korrektur_noetig: number; quelle_zweifelhaft: number } | null>(null);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const swipeTouchStartX = useRef(0);
@@ -90,6 +93,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();
+
+  // Lazy-load verifications when card is first flipped
+  useEffect(() => {
+    if (flipped && verifications === null) {
+      getCardVerifications(card.id).then(setVerifications);
+    }
+  }, [flipped, verifications, card.id]);
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
@@ -311,6 +321,14 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                     {formatTime(card.published_at)}
                   </span>
                 )}
+                {/* Hide card button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); ux.hideCard(card.id); }}
+                  title="Nicht mehr anzeigen"
+                  className="ml-1 p-1 rounded-full text-slate-300 hover:text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-700/40 transition-colors"
+                >
+                  <EyeOff size={13} strokeWidth={1.5} />
+                </button>
               </div>
 
               {/* Category badge */}
@@ -381,11 +399,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
               );
             })()}
 
-            {/* Tap hint */}
-            <div className="flex items-center justify-end px-4 pb-2">
-              <span className="flex items-center gap-1 text-[11px] text-forest-600 dark:text-forest-400 font-semibold bg-forest-50 dark:bg-forest-900/20 px-3 py-1 rounded-full">
-                Details <ChevronRight size={12} strokeWidth={2.5} />
-              </span>
+            {/* Tap hint — prominent CTA */}
+            <div className="px-4 pb-2">
+              <div className="flex items-center justify-center gap-1.5 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-2.5 rounded-2xl transition-colors">
+                <span className="text-[13px] font-bold text-white">Alle Details lesen</span>
+                <ChevronRight size={14} strokeWidth={2.5} className="text-white/80" />
+              </div>
             </div>
 
             {/* ── Instagram-style action bar ── */}
@@ -463,8 +482,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
         {/* ═══ BACK ═══ */}
         <div ref={backRef} className="flip-card-back">
           <article
-            className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden cursor-pointer"
-            onClick={() => setFlipped(false)}
+            className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden"
           >
             {/* Reading progress bar — animates over estimated read time */}
             <div className="relative h-1 overflow-hidden">
@@ -614,6 +632,18 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
               </div>
             )}
 
+            {/* Community verification */}
+            {verifications && (
+              <div className="px-4 pb-2" onClick={e => e.stopPropagation()}>
+                <CardVerification
+                  newsCardId={card.id}
+                  userId={userId}
+                  counts={verifications}
+                  onRequireAuth={onRequireAuth}
+                />
+              </div>
+            )}
+
             {/* Personal note */}
             <div className="px-4 pb-3">
               <button
@@ -654,6 +684,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                   className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
                   <Printer size={14} strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
+                  className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-semibold transition-colors"
+                >
+                  <RotateCcw size={13} strokeWidth={1.5} /> Zurück
                 </button>
                 <a
                   href={card.source_url}
