@@ -69,6 +69,8 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [linkCopied, setLinkCopied] = useState(false);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
+  const swipeTouchStartX = useRef(0);
+  const swipeTouchStartY = useRef(0);
   const ux = useUX();
   const isRead = ux.readHistory.some(e => e.cardId === card.id);
 
@@ -146,6 +148,24 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     } catch { /* ignore */ }
   }
 
+  function handleSwipeTouchStart(e: React.TouchEvent) {
+    swipeTouchStartX.current = e.touches[0].clientX;
+    swipeTouchStartY.current = e.touches[0].clientY;
+  }
+
+  function handleSwipeTouchEnd(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - swipeTouchStartY.current);
+    // Only react to mostly-horizontal swipes with enough distance
+    if (Math.abs(dx) < 60 || dy > Math.abs(dx) * 0.75) return;
+    if (!flipped && dx > 0) {
+      setFlipped(true);
+      ux.markAsRead(card.id, card.headline, card.category_main);
+    } else if (flipped && dx < 0) {
+      setFlipped(false);
+    }
+  }
+
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
     const cardUrl = getCardUrl();
@@ -163,7 +183,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   }
 
   return (
-    <div className="flip-card mb-4">
+    <div
+      className="flip-card mb-4"
+      onTouchStart={handleSwipeTouchStart}
+      onTouchEnd={handleSwipeTouchEnd}
+    >
       <div
         className={clsx('flip-card-inner', flipped && 'flipped')}
         style={{ height: cardHeight || 'auto', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1), height 0.4s ease' }}
@@ -350,8 +374,17 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
             className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden cursor-pointer"
             onClick={() => setFlipped(false)}
           >
-            {/* Accent strip */}
-            <div className={clsx('h-1 bg-gradient-to-r', accent.gradient)} />
+            {/* Reading progress bar — animates over estimated read time */}
+            <div className="relative h-1 overflow-hidden">
+              <div className={clsx('absolute inset-0 bg-gradient-to-r opacity-30', accent.gradient)} />
+              {flipped && (
+                <div
+                  key={`progress-${card.id}`}
+                  className={clsx('absolute inset-0 bg-gradient-to-r origin-left', accent.gradient)}
+                  style={{ animation: `read-progress ${card.read_time_sec ?? 45}s linear forwards` }}
+                />
+              )}
+            </div>
 
             {/* Back header */}
             <div className="flex items-center justify-between px-4 pt-3 pb-2">

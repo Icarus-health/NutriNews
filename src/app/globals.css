@@ -98,6 +98,12 @@
   animation: scale-in 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* ── Reading progress bar ── */
+@keyframes read-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
 /* ── Tap feedback ── */
 .tap-highlight {
   transition: transform 0.15s ease, opacity 0.15s ease;
