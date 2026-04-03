@@ -58,7 +58,8 @@ export async function POST(request: Request) {
     }
 
     const toCurate: typeof newItems = [];
-    const targetSize = 20;
+    const TARGET = 20;
+    const CANDIDATE_POOL = 25; // over-select to compensate for curation failures
 
     // Minimum quotas: guarantee diversity even when forschung dominates
     const minQuotas: Record<string, number> = {
@@ -87,14 +88,14 @@ export async function POST(request: Request) {
 
     const types = Object.keys(byType);
     let round = 0;
-    while (toCurate.length < targetSize) {
+    while (toCurate.length < CANDIDATE_POOL) {
       let added = false;
       for (const type of types) {
         const startIdx = usedPerType[type] ?? 0;
         if (byType[type][startIdx + round]) {
           toCurate.push(byType[type][startIdx + round]);
           added = true;
-          if (toCurate.length >= targetSize) break;
+          if (toCurate.length >= CANDIDATE_POOL) break;
         }
       }
       if (!added) break;
@@ -104,15 +105,15 @@ export async function POST(request: Request) {
     let created = 0;
     const errors: string[] = [];
 
-    // Process in parallel batches of 4 (like cron route) to fit within Vercel Hobby 60s timeout
-    // Save each batch immediately to avoid losing work on timeout
-    const CURATE_BATCH_SIZE = 4;
-    for (let i = 0; i < toCurate.length; i += CURATE_BATCH_SIZE) {
+    // Process in parallel batches of 5, stop once we reach 20 created
+    const CURATE_BATCH_SIZE = 5;
+    for (let i = 0; i < toCurate.length && created < TARGET; i += CURATE_BATCH_SIZE) {
       const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
       const results = await Promise.all(batch.map(item => curateArticle(item)));
 
       // Save each result immediately
       for (let j = 0; j < results.length; j++) {
+        if (created >= TARGET) break;
         const result = results[j];
         if (!result) {
           errors.push(`Uebersprungen: ${batch[j].title}`);
