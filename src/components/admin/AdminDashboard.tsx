@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info } from 'lucide-react';
+import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { createNewsCard, publishNewsCard, deleteNewsCard } from '@/lib/actions/news';
+import { createClient } from '@/lib/supabase/client';
 import { getCategoryStyle } from '@/lib/categories';
 import type { NewsCard, EvidenceLevel } from '@/types/database';
 
@@ -21,9 +22,19 @@ interface AgentResult {
   skipped?: number;
 }
 
+interface FeedbackEntry {
+  id: string;
+  type: string;
+  message: string;
+  created_at: string;
+  user_id: string | null;
+}
+
 export default function AdminDashboard({ drafts: initialDrafts }: Props) {
   const router = useRouter();
-  const [tab, setTab] = useState<'drafts' | 'create' | 'auto'>('drafts');
+  const [tab, setTab] = useState<'drafts' | 'create' | 'auto' | 'feedback'>('drafts');
+  const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [drafts, setDrafts] = useState(initialDrafts);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [autoRunning, setAutoRunning] = useState(false);
@@ -141,6 +152,18 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
     });
   }
 
+  async function loadFeedback() {
+    setFeedbackLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('app_feedback')
+      .select('id, type, message, created_at, user_id')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setFeedbackList((data as FeedbackEntry[]) ?? []);
+    setFeedbackLoading(false);
+  }
+
   const inputCls = 'w-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-forest-500 placeholder:text-slate-400';
 
   return (
@@ -148,23 +171,24 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
       <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4">Admin</h1>
 
       {/* Tab navigation */}
-      <div className="flex gap-2 mb-4">
-        {(['drafts', 'create', 'auto'] as const).map(t => (
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {([
+          { id: 'drafts',   label: drafts.length > 0 ? `Entwürfe (${drafts.length})` : 'Entwürfe' },
+          { id: 'create',   label: 'Erstellen' },
+          { id: 'auto',     label: 'Auto-Agent' },
+          { id: 'feedback', label: 'Feedback' },
+        ] as const).map(({ id, label }) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={id}
+            onClick={() => { setTab(id); if (id === 'feedback' && feedbackList.length === 0) loadFeedback(); }}
             className={clsx(
               'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-              tab === t
+              tab === id
                 ? 'bg-forest-700 text-white'
                 : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
             )}
           >
-            {t === 'drafts'
-              ? `Entwürfe${drafts.length > 0 ? ` (${drafts.length})` : ''}`
-              : t === 'create'
-                ? 'Erstellen'
-                : 'Auto-Agent'}
+            {label}
           </button>
         ))}
       </div>
@@ -430,6 +454,54 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
               <li>Karten landen als Entwürfe → du prüfst &amp; veröffentlichst</li>
             </ol>
           </div>
+        </div>
+      )}
+
+      {/* ─── FEEDBACK TAB ─── */}
+      {tab === 'feedback' && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Nutzer-Feedback ({feedbackList.length})
+            </p>
+            <button
+              onClick={loadFeedback}
+              disabled={feedbackLoading}
+              className="flex items-center gap-1.5 text-[12px] text-forest-600 dark:text-forest-400 font-medium"
+            >
+              <RefreshCw size={13} className={feedbackLoading ? 'animate-spin' : ''} />
+              Neu laden
+            </button>
+          </div>
+
+          {feedbackLoading ? (
+            <div className="flex items-center justify-center py-12 text-slate-400">
+              <RefreshCw size={20} className="animate-spin" />
+            </div>
+          ) : feedbackList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <MessageSquare size={28} className="mb-2 opacity-30" />
+              <p className="text-sm">Noch kein Feedback eingegangen</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {feedbackList.map(fb => {
+                const typeEmoji: Record<string, string> = { bug: '🐛', verbesserung: '💡', lob: '👍', sonstiges: '💬' };
+                return (
+                  <div key={fb.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-base">{typeEmoji[fb.type] ?? '💬'}</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{fb.type}</span>
+                      <span className="ml-auto text-[10px] text-slate-400">
+                        {new Date(fb.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed">{fb.message}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

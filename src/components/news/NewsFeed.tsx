@@ -179,7 +179,7 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
         {isRefreshing ? 'Wird aktualisiert...' : 'Feed aktualisieren'}
       </button>
 
-      {cards.map((card, i) => (
+      {cards.filter(card => !ux.isHidden(card.id)).map((card, i) => (
         <div key={card.id} style={{ animationDelay: `${Math.min(i, 14) * 60}ms` }} className="animate-scale-in">
           <NewsCardComponent
             card={card}

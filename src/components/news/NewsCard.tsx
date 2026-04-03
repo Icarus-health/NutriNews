@@ -3,13 +3,15 @@
 import { useState, useTransition, useRef, useEffect, useCallback, memo } from 'react';
 import { useMinuteTick } from '@/hooks/useMinuteTick';
 import dynamic from 'next/dynamic';
-import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2, PenLine, Printer } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2, PenLine, Printer, EyeOff } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false });
+const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
 import { toggleLike, toggleBookmark } from '@/lib/actions/news';
+import { getCardVerifications } from '@/lib/actions/community';
 import { useUX } from '@/components/providers/UXProvider';
 import type { EvidenceLevel, NewsCard as NewsCardType, SourceType } from '@/types/database';
 
@@ -70,6 +72,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState('');
   const [hasNote, setHasNote] = useState(false);
+  const [verifications, setVerifications] = useState<{ praxisrelevant: number; fachlich_korrekt: number; korrektur_noetig: number; quelle_zweifelhaft: number } | null>(null);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const swipeTouchStartX = useRef(0);
@@ -90,6 +93,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();
+
+  // Lazy-load verifications when card is first flipped
+  useEffect(() => {
+    if (flipped && verifications === null) {
+      getCardVerifications(card.id).then(setVerifications);
+    }
+  }, [flipped, verifications, card.id]);
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
@@ -311,6 +321,14 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                     {formatTime(card.published_at)}
                   </span>
                 )}
+                {/* Hide card button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); ux.hideCard(card.id); }}
+                  title="Nicht mehr anzeigen"
+                  className="ml-1 p-1 rounded-full text-slate-300 hover:text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-700/40 transition-colors"
+                >
+                  <EyeOff size={13} strokeWidth={1.5} />
+                </button>
               </div>
 
               {/* Category badge */}
@@ -611,6 +629,18 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                     PubMed: {card.pubmed_id}
                   </a>
                 )}
+              </div>
+            )}
+
+            {/* Community verification */}
+            {verifications && (
+              <div className="px-4 pb-2" onClick={e => e.stopPropagation()}>
+                <CardVerification
+                  newsCardId={card.id}
+                  userId={userId}
+                  counts={verifications}
+                  onRequireAuth={onRequireAuth}
+                />
               </div>
             )}
 

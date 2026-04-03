@@ -37,6 +37,9 @@ interface UXSettings {
   isInReadLater: (cardId: string) => boolean;
   streak: { days: number; lastReadDate: string | null };
   isNewCard: (publishedAt: string | null) => boolean;
+  hiddenCards: string[];
+  hideCard: (cardId: string) => void;
+  isHidden: (cardId: string) => boolean;
 }
 
 const UXContext = createContext<UXSettings | null>(null);
@@ -79,6 +82,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [readLaterQueue, setReadLaterQueue] = useState<string[]>([]);
   const [streakData, setStreakData] = useState<{ days: number; lastReadDate: string | null }>({ days: 0, lastReadDate: null });
+  const [hiddenCards, setHiddenCards] = useState<string[]>([]);
   const [systemDark, setSystemDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [lastVisitTime, setLastVisitTime] = useState<number>(0);
@@ -91,6 +95,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     setSearchHistory(getStored('nn-search-history', []));
     setReadLaterQueue(getStored('nn-read-later', []));
     setStreakData(getStored('nn-streak', { days: 0, lastReadDate: null }));
+    setHiddenCards(getStored('nn-hidden-cards', []));
 
     const stored = localStorage.getItem('nn-last-visit-end');
     setLastVisitTime(stored ? parseInt(stored, 10) : Date.now() - 24 * 60 * 60 * 1000);
@@ -193,6 +198,18 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   const readLaterSet = useMemo(() => new Set(readLaterQueue), [readLaterQueue]);
   const isInReadLater = useCallback((cardId: string) => readLaterSet.has(cardId), [readLaterSet]);
 
+  const hideCard = useCallback((cardId: string) => {
+    setHiddenCards(prev => {
+      if (prev.includes(cardId)) return prev;
+      const next = [cardId, ...prev].slice(0, 500);
+      setStored('nn-hidden-cards', next);
+      return next;
+    });
+  }, []);
+
+  const hiddenSet = useMemo(() => new Set(hiddenCards), [hiddenCards]);
+  const isHidden = useCallback((cardId: string) => hiddenSet.has(cardId), [hiddenSet]);
+
   const isNewCard = useCallback((publishedAt: string | null) => {
     if (!publishedAt || lastVisitTime === 0) return false;
     return new Date(publishedAt).getTime() > lastVisitTime;
@@ -220,6 +237,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       readLaterQueue, toggleReadLater, isInReadLater,
       streak: streakData,
       isNewCard,
+      hiddenCards, hideCard, isHidden,
     }}>
       {children}
     </UXContext.Provider>
