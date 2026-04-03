@@ -324,7 +324,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
 
             {/* Headline */}
             <div className="px-4 pt-3 pb-2">
-              <h2 className="font-bold text-[17px] leading-[1.3] text-slate-900 dark:text-slate-100 tracking-[-0.02em] line-clamp-3">
+              <h2 className="font-bold text-[17px] leading-[1.3] text-slate-900 dark:text-slate-100 tracking-[-0.02em] line-clamp-4">
                 {card.headline}
               </h2>
             </div>
@@ -334,7 +334,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
               <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">
                 {THERAPIST_CHECK_LABELS[card.source_type] ?? 'Therapist-Check'}
               </p>
-              <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-3">
+              <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-5">
                 {card.therapist_check}
               </p>
             </div>
@@ -348,7 +348,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                     {/* MEDIEN-Teil */}
                     <div className="bg-amber-50/80 dark:bg-amber-900/20 px-4 py-2.5 flex gap-2">
                       <span className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0 w-12">Medien</span>
-                      <p className="text-[12px] leading-relaxed text-amber-900 dark:text-amber-100 line-clamp-2 italic">
+                      <p className="text-[12px] leading-relaxed text-amber-900 dark:text-amber-100 line-clamp-3 italic">
                         „{parsed.medien}"
                       </p>
                     </div>
@@ -361,7 +361,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                     {/* FACH-Teil */}
                     <div className="bg-forest-50/80 dark:bg-forest-900/20 px-4 py-2.5 flex gap-2">
                       <span className="text-[9px] font-black uppercase tracking-widest text-forest-600 dark:text-forest-400 mt-0.5 flex-shrink-0 w-12">Evidenz</span>
-                      <p className="text-[12px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-2">
+                      <p className="text-[12px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-3">
                         {parsed.fach}
                       </p>
                     </div>
