@@ -68,7 +68,12 @@ const fetchCachedCards = unstable_cache(
     }
 
     if (filters.q) {
-      const q = filters.q.replace(/[,().\\]/g, '').trim();
+      const q = filters.q
+        .replace(/[,().\\]/g, '')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_')
+        .trim()
+        .slice(0, 200);
       if (q) {
         query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
       }
@@ -112,7 +117,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       .select('setting')
       .eq('id', user.id)
       .single();
-    if (profileCheck && !profileCheck.setting) {
+    if (profileCheck && profileCheck.setting == null) {
       redirect('/onboarding');
     }
   }

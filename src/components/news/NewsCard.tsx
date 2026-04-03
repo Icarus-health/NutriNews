@@ -48,6 +48,16 @@ function parseFactCheck(text: string): { medien: string; fach: string } | null {
   return null;
 }
 
+/** Escapes a string for safe insertion into HTML attribute/content context */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function formatTime(dateStr: string | null) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -215,10 +225,10 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     const noteHtml = note.trim()
       ? `<div style="margin-top:16px;padding:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
           <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#b45309;margin:0 0 6px;">Meine Notiz</p>
-          <p style="font-size:13px;color:#1e293b;white-space:pre-wrap;margin:0;">${note.replace(/</g, '&lt;')}</p>
+          <p style="font-size:13px;color:#1e293b;white-space:pre-wrap;margin:0;">${escapeHtml(note)}</p>
         </div>`
       : '';
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${card.headline}</title>
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${escapeHtml(card.headline)}</title>
     <style>body{font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 24px;color:#1e293b}
     h1{font-size:20px;font-weight:700;line-height:1.3;margin:0 0 12px}
     .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin:0 0 4px}
@@ -226,15 +236,15 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     .cat{display:inline-block;font-size:11px;font-weight:600;background:#f1f5f9;padding:2px 8px;border-radius:99px;margin-bottom:8px}
     .footer{font-size:10px;color:#94a3b8;margin-top:16px;padding-top:10px;border-top:1px solid #e2e8f0}
     @media print{body{margin:20px}}</style></head><body>
-    <p class="cat">${card.category_main}</p>
-    <h1>${card.headline}</h1>
-    <div class="box"><p class="label">Therapist-Check</p><p style="font-size:13px;margin:0">${card.therapist_check ?? ''}</p></div>
-    <div class="box"><p class="label">Was?</p><p style="font-size:13px;margin:0">${card.snack_what ?? ''}</p></div>
-    <div class="box"><p class="label">Ergebnis</p><p style="font-size:13px;margin:0">${card.snack_result ?? ''}</p></div>
-    <div class="box"><p class="label">Konsequenz</p><p style="font-size:13px;margin:0">${card.snack_consequence ?? ''}</p></div>
-    ${card.action_recommendation ? `<div class="box"><p class="label">Handlungsempfehlung</p><p style="font-size:13px;margin:0">${card.action_recommendation}</p></div>` : ''}
+    <p class="cat">${escapeHtml(card.category_main)}</p>
+    <h1>${escapeHtml(card.headline)}</h1>
+    <div class="box"><p class="label">Therapist-Check</p><p style="font-size:13px;margin:0">${escapeHtml(card.therapist_check ?? '')}</p></div>
+    <div class="box"><p class="label">Was?</p><p style="font-size:13px;margin:0">${escapeHtml(card.snack_what ?? '')}</p></div>
+    <div class="box"><p class="label">Ergebnis</p><p style="font-size:13px;margin:0">${escapeHtml(card.snack_result ?? '')}</p></div>
+    <div class="box"><p class="label">Konsequenz</p><p style="font-size:13px;margin:0">${escapeHtml(card.snack_consequence ?? '')}</p></div>
+    ${card.action_recommendation ? `<div class="box"><p class="label">Handlungsempfehlung</p><p style="font-size:13px;margin:0">${escapeHtml(card.action_recommendation)}</p></div>` : ''}
     ${noteHtml}
-    <div class="footer">Quelle: ${card.source_name ?? ''} · NutriNews</div>
+    <div class="footer">Quelle: ${escapeHtml(card.source_name ?? '')} · NutriNews</div>
     <script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
