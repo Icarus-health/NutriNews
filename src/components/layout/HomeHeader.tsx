@@ -135,9 +135,16 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             <Image src="/logo-header.webp" alt="NutriNews" className="w-full h-full object-contain" width={36} height={36} priority />
           </div>
           <div className="flex flex-col justify-center">
-            <span className="text-[17px] font-bold text-slate-900 dark:text-slate-100 leading-none tracking-tight">
-              NutriNews
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[17px] font-bold text-slate-900 dark:text-slate-100 leading-none tracking-tight">
+                NutriNews
+              </span>
+              {ux.streak.days >= 2 && (
+                <span className="text-[11px] font-bold bg-gradient-to-r from-orange-400 to-amber-400 text-white px-1.5 py-0.5 rounded-full leading-none">
+                  🔥 {ux.streak.days}
+                </span>
+              )}
+            </div>
             <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-none font-medium">
               {user ? user.email?.split('@')[0] : 'Evidenzbasiert · Praxisnah'}
             </span>

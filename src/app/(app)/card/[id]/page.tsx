@@ -1,8 +1,9 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import NewsFeed from '@/components/news/NewsFeed';
-import { getCategoryLabel } from '@/lib/categories';
+import { getCategoryLabel, getCategoryStyle } from '@/lib/categories';
 import type { NewsCard } from '@/types/database';
 import type { Metadata } from 'next';
 
@@ -75,6 +76,16 @@ export default async function CardPage({ params }: PageProps) {
 
   enrichedCard.like_count = likeCounts?.length ?? 0;
 
+  // Fetch similar articles and user data in parallel
+  const similarPromise = supabase
+    .from('news_cards')
+    .select('id, headline, category_main, practice_relevance_score')
+    .eq('status', 'published')
+    .eq('category_main', card.category_main)
+    .neq('id', id)
+    .order('published_at', { ascending: false })
+    .limit(3);
+
   if (user) {
     const [{ data: userLike }, { data: userBookmark }] = await Promise.all([
       supabase.from('likes').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single(),
@@ -83,6 +94,8 @@ export default async function CardPage({ params }: PageProps) {
     enrichedCard.user_has_liked = !!userLike;
     enrichedCard.user_has_bookmarked = !!userBookmark;
   }
+
+  const { data: similarCards } = await similarPromise;
 
   return (
     <div className="pt-2">
@@ -95,6 +108,34 @@ export default async function CardPage({ params }: PageProps) {
         </a>
       </div>
       <NewsFeed initialCards={[enrichedCard]} userId={user?.id ?? null} />
+      {similarCards && similarCards.length > 0 && (
+        <div className="mx-4 mt-2 mb-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/40 overflow-hidden">
+          <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700/40">
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+              Ähnliche Artikel
+            </p>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-700/30">
+            {similarCards.map(similar => (
+              <li key={similar.id}>
+                <Link
+                  href={`/card/${similar.id}`}
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-slate-100/60 dark:hover:bg-slate-700/30 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">
+                      {similar.headline}
+                    </p>
+                    <span className={`inline-block mt-1 text-[9px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${getCategoryStyle(similar.category_main)}`}>
+                      {getCategoryLabel(similar.category_main)}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

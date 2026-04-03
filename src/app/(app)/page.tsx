@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
 import DailyBriefing from '@/components/briefing/DailyBriefing';
+import TopOfWeek from '@/components/news/TopOfWeek';
 import { rankCards, interleaveBySourceType } from '@/lib/feed-ranking';
 import { evidenceKeyToLevel } from '@/lib/evidence';
 import type { NewsCard, DailyBriefing as DailyBriefingType, Profile, EvidenceLevel } from '@/types/database';
@@ -194,6 +195,7 @@ export default async function HomePage({ searchParams }: PageProps) {
           isYesterday={briefingData.isYesterday}
         />
       )}
+      {!hasFilters && <TopOfWeek />}
       <NewsFeed
         initialCards={allCards}
         userId={user?.id ?? null}
