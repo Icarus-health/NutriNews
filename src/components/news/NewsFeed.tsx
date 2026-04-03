@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useTransition, useEffect, useRef } from 'react';
+import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, WifiOff } from 'lucide-react';
+import { RefreshCw, WifiOff, Loader2 } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
 import { loadMoreCards } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
@@ -32,12 +32,12 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Pull-to-refresh state
+  // Pull-to-refresh
   const pullStartY = useRef(0);
   const [pullY, setPullY] = useState(0);
 
-  // Sync when server re-renders with new initialCards
   useEffect(() => {
     setCards(initialCards);
     setHasMore(initialCards.length >= 15);
@@ -56,7 +56,7 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     };
   }, []);
 
-  // App badge: unread card count (Badging API, iOS 16.4+ when installed)
+  // App badge: unread count (Badging API, iOS 16.4+ when installed as PWA)
   useEffect(() => {
     if (!('setAppBadge' in navigator)) return;
     const unread = cards.filter(c => !ux.readHistory.some(h => h.cardId === c.id)).length;
@@ -67,7 +67,6 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     }
   }, [cards, ux.readHistory]);
 
-  // Clear badge when app comes to foreground
   useEffect(() => {
     const clearBadge = () => {
       if (document.visibilityState === 'visible') {
@@ -88,27 +87,37 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     setTimeout(() => setIsRefreshing(false), 1500);
   }
 
-  function handleLoadMore() {
+  const handleLoadMore = useCallback(() => {
     const lastCard = cards[cards.length - 1];
-    if (!lastCard?.published_at) return;
+    if (!lastCard?.published_at || isPending || !hasMore || !isOnline) return;
     startTransition(async () => {
       const result = await loadMoreCards(lastCard.published_at!, [], filters);
       setCards(prev => [...prev, ...result.cards]);
       setHasMore(result.hasMore);
     });
-  }
+  }, [cards, isPending, hasMore, isOnline, filters]);
+
+  // Infinite scroll: trigger load when sentinel enters viewport (300px before)
+  useEffect(() => {
+    if (!hasMore || isPending || !isOnline) return;
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) handleLoadMore(); },
+      { rootMargin: '300px' }
+    );
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, isPending, isOnline, handleLoadMore]);
 
   // Pull-to-refresh touch handlers
   function onTouchStart(e: React.TouchEvent) {
     pullStartY.current = e.touches[0].clientY;
   }
-
   function onTouchMove(e: React.TouchEvent) {
     if (window.scrollY > 5 || isRefreshing) return;
     const delta = e.touches[0].clientY - pullStartY.current;
     if (delta > 0) setPullY(Math.min(delta * 0.45, 80));
   }
-
   function onTouchEnd() {
     if (pullY >= 62) handleRefresh();
     setPullY(0);
@@ -181,23 +190,19 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
         </div>
       ))}
 
+      {/* Infinite scroll sentinel + loading indicator */}
       {hasMore && (
-        <button
-          onClick={handleLoadMore}
-          disabled={isPending || !isOnline}
-          className="w-full py-3 mt-2 mb-4 rounded-xl text-[14px] font-semibold transition-colors bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 border border-slate-200 dark:border-slate-700"
-        >
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-              Wird geladen...
-            </span>
-          ) : !isOnline ? (
-            'Offline — kein Nachladen möglich'
-          ) : (
-            'Mehr laden'
+        <div ref={sentinelRef} className="flex items-center justify-center py-6">
+          {isPending && (
+            <div className="flex items-center gap-2 text-[13px] text-slate-400">
+              <Loader2 size={16} className="animate-spin" />
+              Lädt...
+            </div>
           )}
-        </button>
+          {!isOnline && (
+            <p className="text-[12px] text-slate-400">Offline — kein Nachladen möglich</p>
+          )}
+        </div>
       )}
 
       {shareCardId && (

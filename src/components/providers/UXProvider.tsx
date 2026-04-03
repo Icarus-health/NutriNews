@@ -2,11 +2,6 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 
-// ═══════════════════════════════════════════════════════════════
-// UX Settings: Dark Mode, Textgröße, Lesehistorie, Suchhistorie,
-// Später-Lesen-Queue — alles in localStorage persistiert
-// ═══════════════════════════════════════════════════════════════
-
 type TextSize = 'small' | 'medium' | 'large';
 type Theme = 'light' | 'dark' | 'system';
 
@@ -18,27 +13,23 @@ interface ReadHistoryEntry {
 }
 
 interface UXSettings {
-  // Theme
   theme: Theme;
   setTheme: (t: Theme) => void;
   isDark: boolean;
-  // Text size
   textSize: TextSize;
   setTextSize: (s: TextSize) => void;
-  // Read history
   readHistory: ReadHistoryEntry[];
   markAsRead: (cardId: string, headline: string, category: string) => void;
   weeklyStats: { count: number; topCategories: string[] };
-  // Search history
   searchHistory: string[];
   addSearchQuery: (query: string) => void;
   clearSearchHistory: () => void;
-  // Read later queue
   readLaterQueue: string[];
   toggleReadLater: (cardId: string) => void;
   isInReadLater: (cardId: string) => boolean;
-  // Streak
   streak: { days: number; lastReadDate: string | null };
+  // "Neu seit letztem Besuch"
+  isNewCard: (publishedAt: string | null) => boolean;
 }
 
 const UXContext = createContext<UXSettings | null>(null);
@@ -74,8 +65,9 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   const [streakData, setStreakData] = useState<{ days: number; lastReadDate: string | null }>({ days: 0, lastReadDate: null });
   const [systemDark, setSystemDark] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Timestamp of last session end — used to detect "new" cards
+  const [lastVisitTime, setLastVisitTime] = useState<number>(0);
 
-  // Initialize from localStorage
   useEffect(() => {
     setThemeState(getStored('nn-theme', 'light'));
     setTextSizeState(getStored('nn-text-size', 'medium'));
@@ -84,7 +76,10 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     setReadLaterQueue(getStored('nn-read-later', []));
     setStreakData(getStored('nn-streak', { days: 0, lastReadDate: null }));
 
-    // System dark preference
+    // Last visit: default to 24h ago for first-time users so recent cards show as "Neu"
+    const stored = localStorage.getItem('nn-last-visit-end');
+    setLastVisitTime(stored ? parseInt(stored, 10) : Date.now() - 24 * 60 * 60 * 1000);
+
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     setSystemDark(mq.matches);
     const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
@@ -93,15 +88,24 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
+  // Save visit end time when user leaves
+  useEffect(() => {
+    const save = () => localStorage.setItem('nn-last-visit-end', Date.now().toString());
+    window.addEventListener('pagehide', save);
+    window.addEventListener('beforeunload', save);
+    return () => {
+      window.removeEventListener('pagehide', save);
+      window.removeEventListener('beforeunload', save);
+    };
+  }, []);
+
   const isDark = theme === 'dark' || (theme === 'system' && systemDark);
 
-  // Apply dark class to HTML element
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark, mounted]);
 
-  // Apply text size CSS variable
   useEffect(() => {
     if (!mounted) return;
     const sizes = { small: '0.9', medium: '1', large: '1.15' };
@@ -125,10 +129,9 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       setStored('nn-read-history', next);
       return next;
     });
-    // Update streak
     setStreakData(prev => {
       const today = new Date().toISOString().split('T')[0];
-      if (prev.lastReadDate === today) return prev; // Already counted today
+      if (prev.lastReadDate === today) return prev;
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const newDays = prev.lastReadDate === yesterday ? prev.days + 1 : 1;
       const next = { days: newDays, lastReadDate: today };
@@ -162,7 +165,11 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   const readLaterSet = useMemo(() => new Set(readLaterQueue), [readLaterQueue]);
   const isInReadLater = useCallback((cardId: string) => readLaterSet.has(cardId), [readLaterSet]);
 
-  // Weekly stats
+  const isNewCard = useCallback((publishedAt: string | null) => {
+    if (!publishedAt || lastVisitTime === 0) return false;
+    return new Date(publishedAt).getTime() > lastVisitTime;
+  }, [lastVisitTime]);
+
   const weeklyStats = useMemo(() => {
     const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const thisWeek = readHistory.filter(e => e.timestamp >= oneWeekAgo);
@@ -183,6 +190,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       searchHistory, addSearchQuery, clearSearchHistory,
       readLaterQueue, toggleReadLater, isInReadLater,
       streak: streakData,
+      isNewCard,
     }}>
       {children}
     </UXContext.Provider>

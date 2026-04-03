@@ -41,11 +41,26 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
   const [relevance, setRelevance] = useState(minRelevance ?? '');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [savedFilters, setSavedFilters] = useState<string[] | null>(null);
 
   // Sync selected with URL on prop change
   useEffect(() => {
     setSelected(new Set(activeCategories));
   }, [activeCategories]);
+
+  // Persist last-used categories; offer restore when URL has no active filters
+  useEffect(() => {
+    if (activeCategories.length > 0) {
+      localStorage.setItem('nn-last-categories', JSON.stringify(activeCategories));
+      setSavedFilters(null);
+    } else {
+      try {
+        const saved = localStorage.getItem('nn-last-categories');
+        if (saved) setSavedFilters(JSON.parse(saved));
+      } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategories.join(',')]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -214,6 +229,37 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             <ChevronDown size={16} className={clsx('transition-transform', showDropdown && 'rotate-180')} />
           </div>
         </button>
+
+        {/* Restore last filter suggestion (only when no active filters) */}
+        {!showDropdown && categoryCount === 0 && savedFilters && savedFilters.length > 0 && (
+          <div className="flex items-center gap-2 mt-2 animate-fade-in">
+            <span className="text-[11px] text-slate-400">Zuletzt:</span>
+            {savedFilters.slice(0, 3).map(catId => {
+              const cat = CATEGORIES.find(c => c.id === catId);
+              if (!cat) return null;
+              return (
+                <button
+                  key={catId}
+                  onClick={() => {
+                    const next = new Set(savedFilters);
+                    setSelected(next);
+                    router.push(buildUrl(next, query));
+                    setSavedFilters(null);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] text-slate-500 dark:text-slate-400 hover:bg-forest-50 hover:text-forest-700 dark:hover:bg-forest-900/20 dark:hover:text-forest-400 transition-colors border border-slate-200 dark:border-slate-600"
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setSavedFilters(null)}
+              className="text-[10px] text-slate-300 dark:text-slate-600 hover:text-slate-400 transition-colors ml-auto"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Selected chips (shown when dropdown closed and categories selected) */}
         {!showDropdown && categoryCount > 0 && categoryCount <= 5 && (

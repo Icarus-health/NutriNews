@@ -73,6 +73,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const swipeTouchStartY = useRef(0);
   const ux = useUX();
   const isRead = ux.readHistory.some(e => e.cardId === card.id);
+  const isNew = ux.isNewCard(card.published_at);
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();
@@ -99,7 +100,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   function handleLike(e: React.MouseEvent) {
     e.stopPropagation();
     if (!userId) { onRequireAuth?.(); return; }
-    // Capture current state before optimistic update
+    vibrate(!liked ? [4, 1, 4] : 3);
     const wasLiked = liked;
     setLiked(prev => !prev);
     setLikeCount(prev => wasLiked ? prev - 1 : prev + 1);
@@ -148,6 +149,10 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     } catch { /* ignore */ }
   }
 
+  function vibrate(pattern: number | number[]) {
+    try { navigator.vibrate(pattern); } catch { /* not supported */ }
+  }
+
   function handleSwipeTouchStart(e: React.TouchEvent) {
     swipeTouchStartX.current = e.touches[0].clientX;
     swipeTouchStartY.current = e.touches[0].clientY;
@@ -156,12 +161,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   function handleSwipeTouchEnd(e: React.TouchEvent) {
     const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
     const dy = Math.abs(e.changedTouches[0].clientY - swipeTouchStartY.current);
-    // Only react to mostly-horizontal swipes with enough distance
     if (Math.abs(dx) < 60 || dy > Math.abs(dx) * 0.75) return;
     if (!flipped && dx > 0) {
+      vibrate(5);
       setFlipped(true);
       ux.markAsRead(card.id, card.headline, card.category_main);
     } else if (flipped && dx < 0) {
+      vibrate(3);
       setFlipped(false);
     }
   }
@@ -171,7 +177,19 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     const cardUrl = getCardUrl();
     if (navigator.share) {
       try {
-        await navigator.share({ title: card.headline, text: card.therapist_check, url: cardUrl });
+        const parts = [
+          `${accent.emoji} ${card.headline}`,
+          '',
+          card.therapist_check ? `💡 ${card.therapist_check}` : '',
+          card.snack_what ? `📌 ${card.snack_what}` : '',
+          card.snack_result ? `📊 ${card.snack_result}` : '',
+        ].filter(Boolean);
+        await navigator.share({
+          title: card.headline,
+          text: parts.join('\n'),
+          url: cardUrl,
+        });
+        vibrate(4);
         return;
       } catch { /* fall through */ }
     }
@@ -202,6 +220,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 : 'bg-white dark:bg-slate-800 border-slate-100/40 dark:border-slate-700/40'
             )}
             onClick={() => {
+              vibrate(5);
               setFlipped(true);
               ux.markAsRead(card.id, card.headline, card.category_main);
             }}
@@ -224,6 +243,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
+                {isNew && !isRead && (
+                  <span className="text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-green-500 text-white px-1.5 py-0.5 rounded-full">
+                    Neu
+                  </span>
+                )}
                 {card.published_at && (
                   <span className="ml-auto text-[10px] text-slate-400 tabular-nums">
                     {formatTime(card.published_at)}

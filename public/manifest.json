@@ -18,14 +18,30 @@
   ],
   "shortcuts": [
     {
+      "name": "Forschung",
+      "short_name": "Forschung",
+      "description": "Aktuelle Forschungsergebnisse",
+      "url": "/?categories=Forschung",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Gespeichert",
-      "short_name": "Saved",
+      "short_name": "Gespeichert",
+      "description": "Gespeicherte Artikel",
       "url": "/saved",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Community",
+      "short_name": "Community",
+      "description": "Community & Austausch",
+      "url": "/community",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Posteingang",
       "short_name": "Inbox",
+      "description": "Geteilte Artikel",
       "url": "/inbox",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
