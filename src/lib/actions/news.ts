@@ -371,6 +371,52 @@ export async function submitAppFeedback(type: string, message: string) {
   return { success: true };
 }
 
+export async function upsertNote(newsCardId: string, content: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  if (!content.trim()) {
+    await supabase.from('notes').delete()
+      .eq('user_id', user.id)
+      .eq('news_card_id', newsCardId);
+    return { success: true };
+  }
+
+  await supabase.from('notes').upsert(
+    { user_id: user.id, news_card_id: newsCardId, content: content.trim(), updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,news_card_id' }
+  );
+  return { success: true };
+}
+
+export async function getNote(newsCardId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from('notes')
+    .select('content')
+    .eq('user_id', user.id)
+    .eq('news_card_id', newsCardId)
+    .single();
+  return data?.content ?? null;
+}
+
+export async function getCardsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  // Limit to prevent oversized queries
+  const safeIds = ids.slice(0, 100);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('news_cards')
+    .select('*')
+    .in('id', safeIds)
+    .eq('status', 'published');
+  return data ?? [];
+}
+
 export async function searchProfiles(query: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

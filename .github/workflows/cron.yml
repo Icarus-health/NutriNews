@@ -1,0 +1,35 @@
+name: Feed Curation Cron
+
+# Ersatz für Vercel-Cron (nicht im Free-Tier enthalten).
+# Benötigt zwei GitHub-Repository-Secrets:
+#   APP_URL      → deine Vercel-URL, z.B. https://nutrinews.vercel.app
+#   CRON_SECRET  → identisch mit CRON_SECRET in den Vercel-Umgebungsvariablen
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # 04:00 UTC – Morgen-Durchlauf
+    - cron: '0 12 * * *'  # 12:00 UTC – Mittags-Durchlauf
+  workflow_dispatch:       # erlaubt manuellen Start über GitHub-UI
+
+jobs:
+  curate:
+    name: Artikel kuratieren
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Curation-Endpoint aufrufen
+        run: |
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/news/cron" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --max-time 300)
+
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response:"
+          cat /tmp/response.json
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Cron-Aufruf fehlgeschlagen mit Status $HTTP_STATUS"
+            exit 1
+          fi

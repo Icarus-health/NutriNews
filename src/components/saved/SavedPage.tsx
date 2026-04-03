@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Bookmark, FolderOpen, Plus, X } from 'lucide-react';
+import { useState, useTransition, useEffect } from 'react';
+import { Bookmark, FolderOpen, Plus, X, Clock, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import NewsCardComponent from '@/components/news/NewsCard';
-import { createCollection } from '@/lib/actions/news';
+import { createCollection, getCardsByIds } from '@/lib/actions/news';
+import { useUX } from '@/components/providers/UXProvider';
 import type { NewsCard, Collection } from '@/types/database';
 
 const COLLECTION_EMOJIS = ['📁', '🥗', '💊', '🧪', '🫀', '🧬', '📋', '⭐', '🔬', '🏥', '🌿', '🍎'];
@@ -16,8 +17,21 @@ interface Props {
 }
 
 export default function SavedPage({ cards, collections: initialCollections, userId }: Props) {
-  const [tab, setTab] = useState<'bookmarks' | 'collections'>('bookmarks');
+  const ux = useUX();
+  const [tab, setTab] = useState<'bookmarks' | 'collections' | 'readlater'>('bookmarks');
   const [collections, setCollections] = useState<Collection[]>(initialCollections);
+  const [readLaterCards, setReadLaterCards] = useState<NewsCard[]>([]);
+  const [readLaterLoading, setReadLaterLoading] = useState(false);
+
+  // Fetch read-later cards when tab is activated
+  useEffect(() => {
+    if (tab !== 'readlater' || readLaterCards.length > 0 || ux.readLaterQueue.length === 0) return;
+    setReadLaterLoading(true);
+    getCardsByIds(ux.readLaterQueue).then(data => {
+      setReadLaterCards(data as NewsCard[]);
+      setReadLaterLoading(false);
+    });
+  }, [tab, ux.readLaterQueue, readLaterCards.length]);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmoji, setNewEmoji] = useState('📁');
@@ -58,7 +72,7 @@ export default function SavedPage({ cards, collections: initialCollections, user
         </div>
       </header>
       <div className="px-4 pt-3 mb-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setTab('bookmarks')}
             className={clsx(
@@ -70,6 +84,18 @@ export default function SavedPage({ cards, collections: initialCollections, user
           >
             <Bookmark size={14} />
             Lesezeichen ({cards.length})
+          </button>
+          <button
+            onClick={() => setTab('readlater')}
+            className={clsx(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+              tab === 'readlater'
+                ? 'bg-forest-700 text-white'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+            )}
+          >
+            <Clock size={14} />
+            Später lesen ({ux.readLaterQueue.length})
           </button>
           <button
             onClick={() => setTab('collections')}
@@ -99,6 +125,30 @@ export default function SavedPage({ cards, collections: initialCollections, user
               <NewsCardComponent
                 key={card.id}
                 card={{ ...card, user_has_bookmarked: true }}
+                userId={userId}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {tab === 'readlater' && (
+        <div className="px-3">
+          {readLaterLoading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <Loader2 size={24} className="animate-spin" />
+            </div>
+          ) : ux.readLaterQueue.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <Clock size={40} className="mb-3 opacity-30" />
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Noch nichts in der Leseliste.</p>
+              <p className="text-xs mt-1 text-center">Tippe auf das Lesezeichen-Symbol und halte es gedrückt, oder nutze „Später lesen" auf einer Karte.</p>
+            </div>
+          ) : (
+            readLaterCards.map(card => (
+              <NewsCardComponent
+                key={card.id}
+                card={card}
                 userId={userId}
               />
             ))

@@ -10,7 +10,7 @@ const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false })
 const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
-import { toggleLike, toggleBookmark } from '@/lib/actions/news';
+import { toggleLike, toggleBookmark, upsertNote, getNote } from '@/lib/actions/news';
 import { getCardVerifications } from '@/lib/actions/community';
 import { useUX } from '@/components/providers/UXProvider';
 import type { EvidenceLevel, NewsCard as NewsCardType, SourceType } from '@/types/database';
@@ -20,6 +20,7 @@ interface Props {
   userId: string | null;
   onRequireAuth?: () => void;
   onShare?: (cardId: string) => void;
+  defaultFlipped?: boolean;
 }
 
 const SOURCE_TYPE_ACCENT: Record<string, { gradient: string; bgLight: string; bgDark: string; label: string; emoji: string }> = {
@@ -70,8 +71,8 @@ function formatTime(dateStr: string | null) {
   return `vor ${days} Tag${days > 1 ? 'en' : ''}`;
 }
 
-function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
-  const [flipped, setFlipped] = useState(false);
+function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false }: Props) {
+  const [flipped, setFlipped] = useState(defaultFlipped);
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(card.user_has_liked ?? false);
   const [likeCount, setLikeCount] = useState(card.like_count ?? 0);
@@ -93,13 +94,23 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const isNew = ux.isNewCard(card.published_at);
   const noteKey = `nn-note-${card.id}`;
 
-  // Load note from localStorage on mount
+  // Load note: localStorage first; if empty and user is logged in, try Supabase once
   useEffect(() => {
+    let cancelled = false;
     try {
       const stored = localStorage.getItem(noteKey);
-      if (stored) { setNote(stored); setHasNote(true); }
+      if (stored) { setNote(stored); setHasNote(true); return; }
     } catch { /* ignore */ }
-  }, [noteKey]);
+    if (userId) {
+      getNote(card.id).then(remote => {
+        if (cancelled || !remote) return;
+        setNote(remote);
+        setHasNote(true);
+        try { localStorage.setItem(noteKey, remote); } catch { /* ignore */ }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [noteKey, card.id, userId]);
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();
@@ -210,6 +221,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     setHasNote(value.trim().length > 0);
     if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
     noteTimerRef.current = setTimeout(() => {
+      // Persist to localStorage
       try {
         if (value.trim()) {
           localStorage.setItem(noteKey, value);
@@ -217,8 +229,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
           localStorage.removeItem(noteKey);
         }
       } catch { /* quota */ }
-    }, 500);
-  }, [noteKey]);
+      // Sync to Supabase for cross-device access (only when logged in)
+      if (userId) {
+        upsertNote(card.id, value).catch(() => { /* non-blocking */ });
+      }
+    }, 1500);
+  }, [noteKey, card.id, userId]);
 
   function handlePrint(e: React.MouseEvent) {
     e.stopPropagation();
