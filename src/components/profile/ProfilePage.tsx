@@ -65,8 +65,8 @@ export default function ProfilePage({ profile, stats }: Props) {
     if (!error && data) {
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
       setAvatarUrl(publicUrl);
-      await updateProfile({ full_name: fullName || undefined, alias: alias || undefined });
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile!.id);
+      // Single targeted update — avoids overwriting other profile fields with stale state
+      await supabase.from('profiles').update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', profile!.id);
     }
     setUploading(false);
   }

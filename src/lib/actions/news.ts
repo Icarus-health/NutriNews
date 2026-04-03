@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { rateLimit } from '@/lib/rate-limit';
 
 /** Escape special characters for PostgREST ilike filter strings */
 function sanitizeFilterValue(value: string): string {
@@ -73,6 +74,11 @@ export async function shareToUser(newsCardId: string, receiverEmail: string, mes
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
+
+  // Rate-limit: max 20 share attempts per user per hour
+  // Prevents email enumeration by repeated lookups
+  const rl = rateLimit(`share:${user.id}`, 20, 60 * 60 * 1000);
+  if (!rl.success) return { error: 'Zu viele Anfragen. Bitte später erneut versuchen.' };
 
   // Find receiver by email
   const { data: receiver } = await supabase
