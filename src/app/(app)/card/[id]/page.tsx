@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import NewsFeed from '@/components/news/NewsFeed';
@@ -11,14 +12,21 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+// Deduplicated per-request: generateMetadata and the page share one DB call
+const getPublishedCard = cache(async (id: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('news_cards')
+    .select('*')
+    .eq('id', id)
+    .eq('status', 'published')
+    .single();
+  return data;
+});
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: card } = await supabase
-    .from('news_cards')
-    .select('headline, therapist_check, category_main, source_name')
-    .eq('id', id)
-    .single();
+  const card = await getPublishedCard(id);
 
   if (!card) return { title: 'Nicht gefunden — NutriNews' };
 
@@ -49,17 +57,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CardPage({ params }: PageProps) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const { data: card } = await supabase
-    .from('news_cards')
-    .select('*')
-    .eq('id', id)
-    .eq('status', 'published')
-    .single();
+  const card = await getPublishedCard(id);
 
   if (!card) notFound();
 
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   // Enrich with like/bookmark data

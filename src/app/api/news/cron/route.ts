@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@supabase/supabase-js';
+import { revalidateTag } from 'next/cache';
 import { RSS_SOURCES } from '@/lib/agent/sources';
 import { fetchAllFeeds } from '@/lib/agent/rss';
 import { curateArticle } from '@/lib/agent/curate';
@@ -94,39 +95,45 @@ export async function GET(request: Request) {
 
     let created = 0;
 
-    for (const item of toCurate) {
-      const result = await curateArticle(item);
-      if (!result) continue;
+    // Process in parallel batches of 4 to stay within Vercel timeout
+    const BATCH_SIZE = 4;
+    for (let i = 0; i < toCurate.length; i += BATCH_SIZE) {
+      const batch = toCurate.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(batch.map(item => curateArticle(item)));
 
-      const resolvedCategory = resolveCategory(result.category_main);
-
-      const { error } = await supabase.from('news_cards').insert({
-        headline: result.headline,
-        snack_what: result.snack_what,
-        snack_result: result.snack_result,
-        snack_consequence: result.snack_consequence,
-        therapist_check: result.therapist_check,
-        source_url: item.link,
-        source_name: item.source.name,
-        category_main: resolvedCategory,
-        evidence_level: result.evidence_level,
-        read_time_sec: result.read_time_sec,
-        status: 'published',
-        curated_by_agent: true,
-        practice_relevance_score: result.practice_relevance_score,
-        action_recommendation: result.action_recommendation,
-        patient_question_anticipation: result.patient_question_anticipation,
-        evidence_summary: result.evidence_summary,
-        source_type: item.source.sourceType,
-        lay_press_fact_check: result.lay_press_fact_check,
-        policy_impact: result.policy_impact,
-        policy_action_needed: result.policy_action_needed,
-        international_relevance_de: result.international_relevance_de,
-        published_at: new Date().toISOString(),
-      });
-
-      if (!error) created++;
+      await Promise.all(results.map((result, j) => {
+        if (!result) return Promise.resolve();
+        const item = batch[j];
+        const resolvedCategory = resolveCategory(result.category_main);
+        return supabase.from('news_cards').insert({
+          headline: result.headline,
+          snack_what: result.snack_what,
+          snack_result: result.snack_result,
+          snack_consequence: result.snack_consequence,
+          therapist_check: result.therapist_check,
+          source_url: item.link,
+          source_name: item.source.name,
+          category_main: resolvedCategory,
+          evidence_level: result.evidence_level,
+          read_time_sec: result.read_time_sec,
+          status: 'published',
+          curated_by_agent: true,
+          practice_relevance_score: result.practice_relevance_score,
+          action_recommendation: result.action_recommendation,
+          patient_question_anticipation: result.patient_question_anticipation,
+          evidence_summary: result.evidence_summary,
+          source_type: item.source.sourceType,
+          lay_press_fact_check: result.lay_press_fact_check,
+          policy_impact: result.policy_impact,
+          policy_action_needed: result.policy_action_needed,
+          international_relevance_de: result.international_relevance_de,
+          published_at: new Date().toISOString(),
+        }).then(({ error }) => { if (!error) created++; });
+      }));
     }
+
+    // Invalidate feed cache so next request gets fresh cards
+    revalidateTag('news-cards');
 
     return NextResponse.json({ message: `${created} neue Artikel veröffentlicht.`, created });
   } catch (error) {

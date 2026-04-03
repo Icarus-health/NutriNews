@@ -159,9 +159,8 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const isInReadLater = useCallback((cardId: string) => {
-    return readLaterQueue.includes(cardId);
-  }, [readLaterQueue]);
+  const readLaterSet = useMemo(() => new Set(readLaterQueue), [readLaterQueue]);
+  const isInReadLater = useCallback((cardId: string) => readLaterSet.has(cardId), [readLaterSet]);
 
   // Weekly stats
   const weeklyStats = useMemo(() => {
