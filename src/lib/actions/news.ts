@@ -5,8 +5,12 @@ import { revalidatePath } from 'next/cache';
 
 /** Escape special characters for PostgREST ilike filter strings */
 function sanitizeFilterValue(value: string): string {
-  // Remove characters that have special meaning in PostgREST filter syntax
-  return value.replace(/[,().\\]/g, '').trim();
+  return value
+    .replace(/[,().\\]/g, '')   // remove PostgREST filter-syntax characters
+    .replace(/%/g, '\\%')       // escape SQL LIKE wildcard %
+    .replace(/_/g, '\\_')       // escape SQL LIKE wildcard _
+    .trim()
+    .slice(0, 200);             // cap length to prevent oversized queries
 }
 
 export async function toggleLike(newsCardId: string) {

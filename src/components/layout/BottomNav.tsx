@@ -70,7 +70,8 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
     try {
       const last = localStorage.getItem('nn-last-community-visit');
       const FOUR_HOURS = 4 * 60 * 60 * 1000;
-      if (!last || Date.now() - parseInt(last, 10) > FOUR_HOURS) {
+      const ts = last ? parseInt(last, 10) : NaN;
+      if (isNaN(ts) || Date.now() - ts > FOUR_HOURS) {
         setCommunityDot(true);
       }
     } catch { /* ignore */ }
