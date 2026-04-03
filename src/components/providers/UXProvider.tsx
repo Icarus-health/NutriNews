@@ -1,14 +1,15 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-
-// ═══════════════════════════════════════════════════════════════
-// UX Settings: Dark Mode, Textgröße, Lesehistorie, Suchhistorie,
-// Später-Lesen-Queue — alles in localStorage persistiert
-// ═══════════════════════════════════════════════════════════════
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 
 type TextSize = 'small' | 'medium' | 'large';
 type Theme = 'light' | 'dark' | 'system';
+
+interface DarkSchedule {
+  enabled: boolean;
+  fromHour: number; // 0-23
+  toHour: number;   // 0-23
+}
 
 interface ReadHistoryEntry {
   cardId: string;
@@ -18,27 +19,24 @@ interface ReadHistoryEntry {
 }
 
 interface UXSettings {
-  // Theme
   theme: Theme;
   setTheme: (t: Theme) => void;
   isDark: boolean;
-  // Text size
+  darkSchedule: DarkSchedule;
+  setDarkSchedule: (s: DarkSchedule) => void;
   textSize: TextSize;
   setTextSize: (s: TextSize) => void;
-  // Read history
   readHistory: ReadHistoryEntry[];
   markAsRead: (cardId: string, headline: string, category: string) => void;
   weeklyStats: { count: number; topCategories: string[] };
-  // Search history
   searchHistory: string[];
   addSearchQuery: (query: string) => void;
   clearSearchHistory: () => void;
-  // Read later queue
   readLaterQueue: string[];
   toggleReadLater: (cardId: string) => void;
   isInReadLater: (cardId: string) => boolean;
-  // Streak
   streak: { days: number; lastReadDate: string | null };
+  isNewCard: (publishedAt: string | null) => boolean;
 }
 
 const UXContext = createContext<UXSettings | null>(null);
@@ -65,8 +63,17 @@ function setStored(key: string, value: unknown) {
   } catch { /* quota exceeded */ }
 }
 
+function isDarkBySchedule(hour: number, s: DarkSchedule): boolean {
+  if (!s.enabled) return false;
+  // Overnight schedule (e.g. 20-7): active when hour >= 20 OR hour < 7
+  if (s.fromHour > s.toHour) return hour >= s.fromHour || hour < s.toHour;
+  return hour >= s.fromHour && hour < s.toHour;
+}
+
 export default function UXProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
+  const [darkSchedule, setDarkScheduleState] = useState<DarkSchedule>({ enabled: false, fromHour: 20, toHour: 7 });
+  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
   const [textSize, setTextSizeState] = useState<TextSize>('medium');
   const [readHistory, setReadHistory] = useState<ReadHistoryEntry[]>([]);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -74,17 +81,20 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   const [streakData, setStreakData] = useState<{ days: number; lastReadDate: string | null }>({ days: 0, lastReadDate: null });
   const [systemDark, setSystemDark] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [lastVisitTime, setLastVisitTime] = useState<number>(0);
 
-  // Initialize from localStorage
   useEffect(() => {
     setThemeState(getStored('nn-theme', 'light'));
+    setDarkScheduleState(getStored('nn-dark-schedule', { enabled: false, fromHour: 20, toHour: 7 }));
     setTextSizeState(getStored('nn-text-size', 'medium'));
     setReadHistory(getStored('nn-read-history', []));
     setSearchHistory(getStored('nn-search-history', []));
     setReadLaterQueue(getStored('nn-read-later', []));
     setStreakData(getStored('nn-streak', { days: 0, lastReadDate: null }));
 
-    // System dark preference
+    const stored = localStorage.getItem('nn-last-visit-end');
+    setLastVisitTime(stored ? parseInt(stored, 10) : Date.now() - 24 * 60 * 60 * 1000);
+
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     setSystemDark(mq.matches);
     const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
@@ -93,15 +103,32 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  const isDark = theme === 'dark' || (theme === 'system' && systemDark);
+  // Update current hour every minute for dark schedule
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentHour(new Date().getHours()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // Apply dark class to HTML element
+  // Save visit end time when user leaves
+  useEffect(() => {
+    const save = () => localStorage.setItem('nn-last-visit-end', Date.now().toString());
+    window.addEventListener('pagehide', save);
+    window.addEventListener('beforeunload', save);
+    return () => {
+      window.removeEventListener('pagehide', save);
+      window.removeEventListener('beforeunload', save);
+    };
+  }, []);
+
+  const isDark = theme === 'dark'
+    || (theme === 'system' && systemDark)
+    || isDarkBySchedule(currentHour, darkSchedule);
+
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark, mounted]);
 
-  // Apply text size CSS variable
   useEffect(() => {
     if (!mounted) return;
     const sizes = { small: '0.9', medium: '1', large: '1.15' };
@@ -111,6 +138,11 @@ export default function UXProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
     setStored('nn-theme', t);
+  }, []);
+
+  const setDarkSchedule = useCallback((s: DarkSchedule) => {
+    setDarkScheduleState(s);
+    setStored('nn-dark-schedule', s);
   }, []);
 
   const setTextSize = useCallback((s: TextSize) => {
@@ -125,10 +157,9 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       setStored('nn-read-history', next);
       return next;
     });
-    // Update streak
     setStreakData(prev => {
       const today = new Date().toISOString().split('T')[0];
-      if (prev.lastReadDate === today) return prev; // Already counted today
+      if (prev.lastReadDate === today) return prev;
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const newDays = prev.lastReadDate === yesterday ? prev.days + 1 : 1;
       const next = { days: newDays, lastReadDate: today };
@@ -159,12 +190,15 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const isInReadLater = useCallback((cardId: string) => {
-    return readLaterQueue.includes(cardId);
-  }, [readLaterQueue]);
+  const readLaterSet = useMemo(() => new Set(readLaterQueue), [readLaterQueue]);
+  const isInReadLater = useCallback((cardId: string) => readLaterSet.has(cardId), [readLaterSet]);
 
-  // Weekly stats
-  const weeklyStats = (() => {
+  const isNewCard = useCallback((publishedAt: string | null) => {
+    if (!publishedAt || lastVisitTime === 0) return false;
+    return new Date(publishedAt).getTime() > lastVisitTime;
+  }, [lastVisitTime]);
+
+  const weeklyStats = useMemo(() => {
     const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const thisWeek = readHistory.filter(e => e.timestamp >= oneWeekAgo);
     const catCounts: Record<string, number> = {};
@@ -174,16 +208,18 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       .slice(0, 3)
       .map(([cat]) => cat);
     return { count: thisWeek.length, topCategories };
-  })();
+  }, [readHistory]);
 
   return (
     <UXContext.Provider value={{
       theme, setTheme, isDark,
+      darkSchedule, setDarkSchedule,
       textSize, setTextSize,
       readHistory, markAsRead, weeklyStats,
       searchHistory, addSearchQuery, clearSearchHistory,
       readLaterQueue, toggleReadLater, isInReadLater,
       streak: streakData,
+      isNewCard,
     }}>
       {children}
     </UXContext.Provider>

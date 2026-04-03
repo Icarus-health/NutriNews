@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, WifiOff, Loader2 } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
 import { loadMoreCards } from '@/lib/actions/news';
+import { useUX } from '@/components/providers/UXProvider';
 
 const ShareModal = dynamic(() => import('./ShareModal'), { ssr: false });
 import type { NewsCard } from '@/types/database';
@@ -24,41 +25,105 @@ interface Props {
 
 export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const router = useRouter();
+  const ux = useUX();
   const [cards, setCards] = useState(initialCards);
   const [hasMore, setHasMore] = useState(initialCards.length >= 15);
   const [shareCardId, setShareCardId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Sync state when server re-renders with new initialCards (e.g. after router.refresh())
+  // Pull-to-refresh
+  const pullStartY = useRef(0);
+  const [pullY, setPullY] = useState(0);
+
   useEffect(() => {
     setCards(initialCards);
     setHasMore(initialCards.length >= 15);
   }, [initialCards]);
 
-  function handleRequireAuth() {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+  // Online/offline detection
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  // App badge: unread count (Badging API, iOS 16.4+ when installed as PWA)
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return;
+    const unread = cards.filter(c => !ux.readHistory.some(h => h.cardId === c.id)).length;
+    if (unread > 0) {
+      navigator.setAppBadge(unread).catch(() => {});
+    } else {
+      (navigator as Navigator & { clearAppBadge?: () => Promise<void> }).clearAppBadge?.().catch(() => {});
     }
+  }, [cards, ux.readHistory]);
+
+  useEffect(() => {
+    const clearBadge = () => {
+      if (document.visibilityState === 'visible') {
+        (navigator as Navigator & { clearAppBadge?: () => Promise<void> }).clearAppBadge?.().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', clearBadge);
+    return () => document.removeEventListener('visibilitychange', clearBadge);
+  }, []);
+
+  function handleRequireAuth() {
+    if (typeof window !== 'undefined') window.location.href = '/login';
   }
 
   function handleRefresh() {
     setIsRefreshing(true);
     router.refresh();
-    // Reset state after refresh triggers new server render
     setTimeout(() => setIsRefreshing(false), 1500);
   }
 
-  function handleLoadMore() {
+  const handleLoadMore = useCallback(() => {
     const lastCard = cards[cards.length - 1];
-    if (!lastCard?.published_at) return;
-
+    if (!lastCard?.published_at || isPending || !hasMore || !isOnline) return;
     startTransition(async () => {
       const result = await loadMoreCards(lastCard.published_at!, [], filters);
       setCards(prev => [...prev, ...result.cards]);
       setHasMore(result.hasMore);
     });
+  }, [cards, isPending, hasMore, isOnline, filters]);
+
+  // Infinite scroll: trigger load when sentinel enters viewport (300px before)
+  useEffect(() => {
+    if (!hasMore || isPending || !isOnline) return;
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) handleLoadMore(); },
+      { rootMargin: '300px' }
+    );
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, isPending, isOnline, handleLoadMore]);
+
+  // Pull-to-refresh touch handlers
+  function onTouchStart(e: React.TouchEvent) {
+    pullStartY.current = e.touches[0].clientY;
   }
+  function onTouchMove(e: React.TouchEvent) {
+    if (window.scrollY > 5 || isRefreshing) return;
+    const delta = e.touches[0].clientY - pullStartY.current;
+    if (delta > 0) setPullY(Math.min(delta * 0.45, 80));
+  }
+  function onTouchEnd() {
+    if (pullY >= 62) handleRefresh();
+    setPullY(0);
+  }
+
+  const pullProgress = Math.min(pullY / 62, 1);
 
   if (cards.length === 0) {
     return (
@@ -75,7 +140,35 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   }
 
   return (
-    <div className="px-4 pt-4 pb-4">
+    <div
+      className="px-4 pt-4 pb-4"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {pullY > 0 && (
+        <div
+          className="flex items-center justify-center mb-2 transition-all"
+          style={{ height: pullY, opacity: pullProgress }}
+        >
+          <div
+            className="w-9 h-9 rounded-full bg-forest-100 dark:bg-forest-900/40 flex items-center justify-center shadow-sm"
+            style={{ transform: `rotate(${pullProgress * 180}deg)` }}
+          >
+            <RefreshCw size={16} className="text-forest-600 dark:text-forest-400" />
+          </div>
+        </div>
+      )}
+
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="flex items-center gap-2 px-4 py-2.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/30 text-amber-700 dark:text-amber-400 text-[13px] font-medium animate-fade-in">
+          <WifiOff size={14} />
+          Offline — du siehst zwischengespeicherte Inhalte
+        </div>
+      )}
+
       {/* Refresh button */}
       <button
         onClick={handleRefresh}
@@ -97,21 +190,19 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
         </div>
       ))}
 
+      {/* Infinite scroll sentinel + loading indicator */}
       {hasMore && (
-        <button
-          onClick={handleLoadMore}
-          disabled={isPending}
-          className="w-full py-3 mt-2 mb-4 rounded-xl text-[14px] font-semibold transition-colors bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 border border-slate-200 dark:border-slate-700"
-        >
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-              Wird geladen...
-            </span>
-          ) : (
-            'Mehr laden'
+        <div ref={sentinelRef} className="flex items-center justify-center py-6">
+          {isPending && (
+            <div className="flex items-center gap-2 text-[13px] text-slate-400">
+              <Loader2 size={16} className="animate-spin" />
+              Lädt...
+            </div>
           )}
-        </button>
+          {!isOnline && (
+            <p className="text-[12px] text-slate-400">Offline — kein Nachladen möglich</p>
+          )}
+        </div>
       )}
 
       {shareCardId && (

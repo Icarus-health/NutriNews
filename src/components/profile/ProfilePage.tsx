@@ -333,6 +333,28 @@ export default function ProfilePage({ profile, stats }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Auto-dark schedule */}
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">Automatisch dunkel</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {ux.darkSchedule.fromHour}:00 – {ux.darkSchedule.toHour}:00 Uhr
+            </p>
+          </div>
+          <button
+            onClick={() => ux.setDarkSchedule({ ...ux.darkSchedule, enabled: !ux.darkSchedule.enabled })}
+            className={clsx(
+              'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
+              ux.darkSchedule.enabled ? 'bg-forest-700' : 'bg-slate-200 dark:bg-slate-600'
+            )}
+          >
+            <span className={clsx(
+              'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200',
+              ux.darkSchedule.enabled && 'translate-x-5'
+            )} />
+          </button>
+        </div>
       </div>
 
       {/* Text size */}

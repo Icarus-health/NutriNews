@@ -274,17 +274,15 @@ export async function loadMoreCards(cursor: string, excludeIds: string[], filter
   const hasMoreCards = rawCards.length > 15;
   if (cards.length === 0) return { cards: [], hasMore: false };
 
-  // Enrich with like counts - fetch per card to avoid row limit issues
+  // Enrich with like counts - single batched query
   const cardIds = cards.map(c => c.id);
   const likeCountMap: Record<string, number> = {};
-  // Use individual count queries for accuracy (avoids Supabase default row limit)
-  const countResults = await Promise.all(
-    cardIds.map(id =>
-      supabase.from('likes').select('*', { count: 'exact', head: true }).eq('news_card_id', id)
-    )
-  );
-  cardIds.forEach((id, i) => {
-    likeCountMap[id] = countResults[i].count ?? 0;
+  const { data: allLikesData } = await supabase
+    .from('likes')
+    .select('news_card_id')
+    .in('news_card_id', cardIds);
+  allLikesData?.forEach(l => {
+    likeCountMap[l.news_card_id] = (likeCountMap[l.news_card_id] ?? 0) + 1;
   });
 
   let enriched = cards.map(card => ({

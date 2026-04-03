@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition, useRef, useEffect, memo } from 'react';
+import { useState, useTransition, useRef, useEffect, useCallback, memo } from 'react';
+import { useMinuteTick } from '@/hooks/useMinuteTick';
 import dynamic from 'next/dynamic';
-import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2 } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2, PenLine, Printer } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false });
@@ -66,17 +67,29 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const [isPending, startTransition] = useTransition();
   const [backHeight, setBackHeight] = useState<number | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [, setTick] = useState(0);
+  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState('');
+  const [hasNote, setHasNote] = useState(false);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
+  const swipeTouchStartX = useRef(0);
+  const swipeTouchStartY = useRef(0);
+  const noteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ux = useUX();
   const isRead = ux.readHistory.some(e => e.cardId === card.id);
+  const isNew = ux.isNewCard(card.published_at);
+  const noteKey = `nn-note-${card.id}`;
 
-  // Update relative time every 60s
+  // Load note from localStorage on mount
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000);
-    return () => clearInterval(id);
-  }, []);
+    try {
+      const stored = localStorage.getItem(noteKey);
+      if (stored) { setNote(stored); setHasNote(true); }
+    } catch { /* ignore */ }
+  }, [noteKey]);
+
+  // Update relative time every 60s via shared singleton timer
+  useMinuteTick();
 
   const evidence = EVIDENCE_CONFIG[card.evidence_level as EvidenceLevel] ?? EVIDENCE_CONFIG['Expertenmeinung'];
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
@@ -100,7 +113,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   function handleLike(e: React.MouseEvent) {
     e.stopPropagation();
     if (!userId) { onRequireAuth?.(); return; }
-    // Capture current state before optimistic update
+    vibrate(!liked ? [4, 1, 4] : 3);
     const wasLiked = liked;
     setLiked(prev => !prev);
     setLikeCount(prev => wasLiked ? prev - 1 : prev + 1);
@@ -149,12 +162,92 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     } catch { /* ignore */ }
   }
 
+  function vibrate(pattern: number | number[]) {
+    try { navigator.vibrate(pattern); } catch { /* not supported */ }
+  }
+
+  function handleSwipeTouchStart(e: React.TouchEvent) {
+    swipeTouchStartX.current = e.touches[0].clientX;
+    swipeTouchStartY.current = e.touches[0].clientY;
+  }
+
+  function handleSwipeTouchEnd(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - swipeTouchStartY.current);
+    if (Math.abs(dx) < 60 || dy > Math.abs(dx) * 0.75) return;
+    if (!flipped && dx > 0) {
+      vibrate(5);
+      setFlipped(true);
+      ux.markAsRead(card.id, card.headline, card.category_main);
+    } else if (flipped && dx < 0) {
+      vibrate(3);
+      setFlipped(false);
+    }
+  }
+
+  const handleNoteChange = useCallback((value: string) => {
+    setNote(value);
+    setHasNote(value.trim().length > 0);
+    if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
+    noteTimerRef.current = setTimeout(() => {
+      try {
+        if (value.trim()) {
+          localStorage.setItem(noteKey, value);
+        } else {
+          localStorage.removeItem(noteKey);
+        }
+      } catch { /* quota */ }
+    }, 500);
+  }, [noteKey]);
+
+  function handlePrint(e: React.MouseEvent) {
+    e.stopPropagation();
+    const noteHtml = note.trim()
+      ? `<div style="margin-top:16px;padding:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#b45309;margin:0 0 6px;">Meine Notiz</p>
+          <p style="font-size:13px;color:#1e293b;white-space:pre-wrap;margin:0;">${note.replace(/</g, '&lt;')}</p>
+        </div>`
+      : '';
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${card.headline}</title>
+    <style>body{font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 24px;color:#1e293b}
+    h1{font-size:20px;font-weight:700;line-height:1.3;margin:0 0 12px}
+    .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin:0 0 4px}
+    .box{background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:10px}
+    .cat{display:inline-block;font-size:11px;font-weight:600;background:#f1f5f9;padding:2px 8px;border-radius:99px;margin-bottom:8px}
+    .footer{font-size:10px;color:#94a3b8;margin-top:16px;padding-top:10px;border-top:1px solid #e2e8f0}
+    @media print{body{margin:20px}}</style></head><body>
+    <p class="cat">${card.category_main}</p>
+    <h1>${card.headline}</h1>
+    <div class="box"><p class="label">Therapist-Check</p><p style="font-size:13px;margin:0">${card.therapist_check ?? ''}</p></div>
+    <div class="box"><p class="label">Was?</p><p style="font-size:13px;margin:0">${card.snack_what ?? ''}</p></div>
+    <div class="box"><p class="label">Ergebnis</p><p style="font-size:13px;margin:0">${card.snack_result ?? ''}</p></div>
+    <div class="box"><p class="label">Konsequenz</p><p style="font-size:13px;margin:0">${card.snack_consequence ?? ''}</p></div>
+    ${card.action_recommendation ? `<div class="box"><p class="label">Handlungsempfehlung</p><p style="font-size:13px;margin:0">${card.action_recommendation}</p></div>` : ''}
+    ${noteHtml}
+    <div class="footer">Quelle: ${card.source_name ?? ''} · NutriNews</div>
+    <script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  }
+
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
     const cardUrl = getCardUrl();
     if (navigator.share) {
       try {
-        await navigator.share({ title: card.headline, text: card.therapist_check, url: cardUrl });
+        const parts = [
+          `${accent.emoji} ${card.headline}`,
+          '',
+          card.therapist_check ? `💡 ${card.therapist_check}` : '',
+          card.snack_what ? `📌 ${card.snack_what}` : '',
+          card.snack_result ? `📊 ${card.snack_result}` : '',
+        ].filter(Boolean);
+        await navigator.share({
+          title: card.headline,
+          text: parts.join('\n'),
+          url: cardUrl,
+        });
+        vibrate(4);
         return;
       } catch { /* fall through */ }
     }
@@ -166,7 +259,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   }
 
   return (
-    <div className="flip-card mb-4">
+    <div
+      className="flip-card mb-4"
+      onTouchStart={handleSwipeTouchStart}
+      onTouchEnd={handleSwipeTouchEnd}
+    >
       <div
         className={clsx('flip-card-inner', flipped && 'flipped')}
         style={{ height: cardHeight || 'auto', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1), height 0.4s ease' }}
@@ -181,6 +278,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 : 'bg-white dark:bg-slate-800 border-slate-100/40 dark:border-slate-700/40'
             )}
             onClick={() => {
+              vibrate(5);
               setFlipped(true);
               ux.markAsRead(card.id, card.headline, card.category_main);
             }}
@@ -203,6 +301,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
+                {isNew && !isRead && (
+                  <span className="text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-green-500 text-white px-1.5 py-0.5 rounded-full">
+                    Neu
+                  </span>
+                )}
                 {card.published_at && (
                   <span className="ml-auto text-[10px] text-slate-400 tabular-nums">
                     {formatTime(card.published_at)}
@@ -323,6 +426,16 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 <Link2 size={18} strokeWidth={1.5} />
                 {linkCopied && <span className="text-[10px]">Kopiert</span>}
               </button>
+              {/* Note dot indicator */}
+              {hasNote && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFlipped(true); setTimeout(() => setShowNote(true), 350); }}
+                  className="relative flex items-center justify-center w-8 h-8"
+                >
+                  <PenLine size={16} strokeWidth={1.5} className="text-amber-400" />
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+                </button>
+              )}
               {/* Bookmark pushed to right */}
               <div className="ml-auto">
                 <button
@@ -353,8 +466,17 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
             className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden cursor-pointer"
             onClick={() => setFlipped(false)}
           >
-            {/* Accent strip */}
-            <div className={clsx('h-1 bg-gradient-to-r', accent.gradient)} />
+            {/* Reading progress bar — animates over estimated read time */}
+            <div className="relative h-1 overflow-hidden">
+              <div className={clsx('absolute inset-0 bg-gradient-to-r opacity-30', accent.gradient)} />
+              {flipped && (
+                <div
+                  key={`progress-${card.id}`}
+                  className={clsx('absolute inset-0 bg-gradient-to-r origin-left', accent.gradient)}
+                  style={{ animation: `read-progress ${card.read_time_sec ?? 45}s linear forwards` }}
+                />
+              )}
+            </div>
 
             {/* Back header */}
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
@@ -492,6 +614,32 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
               </div>
             )}
 
+            {/* Personal note */}
+            <div className="px-4 pb-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowNote(n => !n); }}
+                className={clsx(
+                  'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+                  showNote || hasNote ? 'text-amber-500' : 'text-slate-400 hover:text-amber-400'
+                )}
+              >
+                <PenLine size={14} strokeWidth={2} />
+                {showNote ? 'Notiz ausblenden' : hasNote ? 'Notiz bearbeiten' : 'Notiz hinzufügen'}
+                {hasNote && !showNote && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />}
+              </button>
+              {showNote && (
+                <div className="mt-2 animate-fade-in" onClick={e => e.stopPropagation()}>
+                  <textarea
+                    value={note}
+                    onChange={e => handleNoteChange(e.target.value)}
+                    placeholder="Persönliche Notiz zu dieser Karte..."
+                    rows={3}
+                    className="w-full text-[13px] bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-300/50 resize-none"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Source footer */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100/80 dark:border-slate-700/60">
               <div className="flex items-center gap-2">
@@ -500,15 +648,23 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                 </span>
                 {card.published_at && <span className="text-[10px] text-slate-400">{formatTime(card.published_at)}</span>}
               </div>
-              <a
-                href={card.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
-              >
-                Quelle <ExternalLink size={12} />
-              </a>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handlePrint}
+                  className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  <Printer size={14} strokeWidth={1.5} />
+                </button>
+                <a
+                  href={card.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
+                >
+                  Quelle <ExternalLink size={12} />
+                </a>
+              </div>
             </div>
           </article>
         </div>

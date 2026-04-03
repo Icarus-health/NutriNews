@@ -1,6 +1,7 @@
 'use client';
 
 import BottomNav from '@/components/layout/BottomNav';
+import ScrollToTop from '@/components/ui/ScrollToTop';
 import { ToastProvider } from '@/components/ui/Toast';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -11,6 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <BottomNav />
+        <ScrollToTop />
       </div>
     </ToastProvider>
   );
