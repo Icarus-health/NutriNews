@@ -5,10 +5,10 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award } from 'lucide-react';
+import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
-import { updateProfile } from '@/lib/actions/news';
+import { updateProfile, submitAppFeedback } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
 import type { Profile, TherapistSetting } from '@/types/database';
 
@@ -41,6 +41,11 @@ export default function ProfilePage({ profile, stats }: Props) {
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [feedbackType, setFeedbackType] = useState('verbesserung');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackError, setFeedbackError] = useState('');
+  const [isFeedbackPending, startFeedbackTransition] = useTransition();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -70,6 +75,19 @@ export default function ProfilePage({ profile, stats }: Props) {
     setSelectedCategories(prev =>
       prev.includes(catId) ? prev.filter(c => c !== catId) : [...prev, catId]
     );
+  }
+
+  function handleFeedbackSubmit() {
+    setFeedbackError('');
+    startFeedbackTransition(async () => {
+      const result = await submitAppFeedback(feedbackType, feedbackMessage);
+      if (result.error) {
+        setFeedbackError(result.error);
+      } else {
+        setFeedbackSent(true);
+        setFeedbackMessage('');
+      }
+    });
   }
 
   function handleSave() {
@@ -403,6 +421,66 @@ export default function ProfilePage({ profile, stats }: Props) {
           </p>
         </div>
       )}
+
+      {/* Feedback */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageSquare size={18} className="text-forest-600" />
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Feedback senden</p>
+        </div>
+        {feedbackSent ? (
+          <div className="flex flex-col items-center py-3 gap-1">
+            <span className="text-2xl">🙏</span>
+            <p className="text-[13px] font-semibold text-forest-700 dark:text-forest-400">Vielen Dank für dein Feedback!</p>
+            <button
+              onClick={() => setFeedbackSent(false)}
+              className="text-[11px] text-slate-400 hover:text-slate-600 mt-1"
+            >
+              Weiteres Feedback senden
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { id: 'bug', label: '🐛 Bug' },
+                { id: 'verbesserung', label: '💡 Verbesserung' },
+                { id: 'lob', label: '👍 Lob' },
+                { id: 'sonstiges', label: '💬 Sonstiges' },
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setFeedbackType(opt.id)}
+                  className={clsx(
+                    'text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors',
+                    feedbackType === opt.id
+                      ? 'bg-forest-700 text-white'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={feedbackMessage}
+              onChange={e => setFeedbackMessage(e.target.value)}
+              placeholder="Was möchtest du uns mitteilen?"
+              rows={3}
+              className="w-full text-[13px] bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 resize-none"
+            />
+            {feedbackError && <p className="text-[12px] text-red-500">{feedbackError}</p>}
+            <button
+              onClick={handleFeedbackSubmit}
+              disabled={isFeedbackPending || feedbackMessage.trim().length < 10}
+              className="w-full bg-forest-700 hover:bg-forest-800 disabled:opacity-40 text-white rounded-xl py-2.5 text-[13px] font-semibold transition-colors flex items-center justify-center gap-2"
+            >
+              {isFeedbackPending && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              Feedback senden
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Sign out */}
       <button

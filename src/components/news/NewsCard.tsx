@@ -381,11 +381,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
               );
             })()}
 
-            {/* Tap hint */}
-            <div className="flex items-center justify-end px-4 pb-2">
-              <span className="flex items-center gap-1 text-[11px] text-forest-600 dark:text-forest-400 font-semibold bg-forest-50 dark:bg-forest-900/20 px-3 py-1 rounded-full">
-                Details <ChevronRight size={12} strokeWidth={2.5} />
-              </span>
+            {/* Tap hint — prominent CTA */}
+            <div className="px-4 pb-2">
+              <div className="flex items-center justify-center gap-1.5 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-2.5 rounded-2xl transition-colors">
+                <span className="text-[13px] font-bold text-white">Alle Details lesen</span>
+                <ChevronRight size={14} strokeWidth={2.5} className="text-white/80" />
+              </div>
             </div>
 
             {/* ── Instagram-style action bar ── */}
@@ -463,8 +464,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
         {/* ═══ BACK ═══ */}
         <div ref={backRef} className="flip-card-back">
           <article
-            className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden cursor-pointer"
-            onClick={() => setFlipped(false)}
+            className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden"
           >
             {/* Reading progress bar — animates over estimated read time */}
             <div className="relative h-1 overflow-hidden">
@@ -654,6 +654,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
                   className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
                   <Printer size={14} strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
+                  className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-semibold transition-colors"
+                >
+                  <RotateCcw size={13} strokeWidth={1.5} /> Zurück
                 </button>
                 <a
                   href={card.source_url}
