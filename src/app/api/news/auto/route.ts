@@ -50,7 +50,6 @@ export async function POST(request: Request) {
     }
 
     // 3. Select diverse mix with MINIMUM QUOTAS per source type
-    // Ensures every run has laienpresse, berufspolitik, etc. — not just forschung
     const byType: Record<string, typeof newItems> = {};
     for (const item of newItems) {
       const t = item.source.sourceType;
@@ -105,48 +104,54 @@ export async function POST(request: Request) {
     let created = 0;
     const errors: string[] = [];
 
-    for (const item of toCurate) {
-      const result = await curateArticle(item);
-      if (!result) {
-        errors.push(`Uebersprungen: ${item.title}`);
-        continue;
-      }
+    // Process in parallel batches of 4 (like cron route) to fit within Vercel Hobby 60s timeout
+    // Save each batch immediately to avoid losing work on timeout
+    const CURATE_BATCH_SIZE = 4;
+    for (let i = 0; i < toCurate.length; i += CURATE_BATCH_SIZE) {
+      const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
+      const results = await Promise.all(batch.map(item => curateArticle(item)));
 
-      // Resolve category to new system
-      const resolvedCategory = resolveCategory(result.category_main);
+      // Save each result immediately
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
+        if (!result) {
+          errors.push(`Uebersprungen: ${batch[j].title}`);
+          continue;
+        }
 
-      // 4. Save as draft with extended fields
-      const { error } = await supabase.from('news_cards').insert({
-        headline: result.headline,
-        snack_what: result.snack_what,
-        snack_result: result.snack_result,
-        snack_consequence: result.snack_consequence,
-        therapist_check: result.therapist_check,
-        source_url: item.link,
-        source_name: item.source.name,
-        category_main: resolvedCategory,
-        evidence_level: result.evidence_level,
-        read_time_sec: result.read_time_sec,
-        status: 'draft',
-        curated_by: user.id,
-        curated_by_agent: true,
-        // Sprint 1: Erweiterte Felder
-        practice_relevance_score: result.practice_relevance_score,
-        action_recommendation: result.action_recommendation,
-        patient_question_anticipation: result.patient_question_anticipation,
-        evidence_summary: result.evidence_summary,
-        source_type: item.source.sourceType,
-        lay_press_fact_check: result.lay_press_fact_check,
-        // Sprint 5: Berufspolitik & International
-        policy_impact: result.policy_impact,
-        policy_action_needed: result.policy_action_needed,
-        international_relevance_de: result.international_relevance_de,
-      });
+        const item = batch[j];
+        const resolvedCategory = resolveCategory(result.category_main);
 
-      if (error) {
-        errors.push(`DB-Fehler: ${item.title}`);
-      } else {
-        created++;
+        const { error } = await supabase.from('news_cards').insert({
+          headline: result.headline,
+          snack_what: result.snack_what,
+          snack_result: result.snack_result,
+          snack_consequence: result.snack_consequence,
+          therapist_check: result.therapist_check,
+          source_url: item.link,
+          source_name: item.source.name,
+          category_main: resolvedCategory,
+          evidence_level: result.evidence_level,
+          read_time_sec: result.read_time_sec,
+          status: 'draft',
+          curated_by: user.id,
+          curated_by_agent: true,
+          practice_relevance_score: result.practice_relevance_score,
+          action_recommendation: result.action_recommendation,
+          patient_question_anticipation: result.patient_question_anticipation,
+          evidence_summary: result.evidence_summary,
+          source_type: item.source.sourceType,
+          lay_press_fact_check: result.lay_press_fact_check,
+          policy_impact: result.policy_impact,
+          policy_action_needed: result.policy_action_needed,
+          international_relevance_de: result.international_relevance_de,
+        });
+
+        if (error) {
+          errors.push(`DB-Fehler: ${item.title}`);
+        } else {
+          created++;
+        }
       }
     }
 

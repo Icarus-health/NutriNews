@@ -308,7 +308,7 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
           temperature: 0.2,
           max_tokens: 1500,
         }),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(25000),
       });
 
       if (!res.ok) {

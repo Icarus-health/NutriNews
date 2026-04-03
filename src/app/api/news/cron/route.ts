@@ -95,8 +95,9 @@ export async function GET(request: Request) {
 
     let created = 0;
 
-    // Process in parallel batches of 4 to stay within Vercel timeout
-    const CURATE_BATCH_SIZE = 4;
+    // Process in parallel batches of 5 to stay within Vercel Hobby 60s timeout
+    // 20 articles / 5 = 4 batches × ~10s = ~40s total
+    const CURATE_BATCH_SIZE = 5;
     for (let i = 0; i < toCurate.length; i += CURATE_BATCH_SIZE) {
       const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
       const results = await Promise.all(batch.map(item => curateArticle(item)));
