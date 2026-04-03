@@ -34,7 +34,7 @@ SCHREIBSTIL-REGELN:
 
 WEITERE REGELN:
 1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel. Erfinde NICHTS hinzu.
-2. Antworte NUR mit {"insufficient": true} wenn der Artikel KOMPLETT irrelevant fuer Ernaehrungstherapeuten ist (z.B. reine Werbung, Stellenanzeige, oder voellig themenfremder Inhalt). Bei Laienpresse, Berufspolitik und allgemeinen Ernaehrungsnachrichten: IMMER eine Card erstellen, auch wenn die Informationslage duenn ist.
+2. Erstelle IMMER eine Card — auch wenn der Artikel nur am Rande mit Ernaehrung zu tun hat oder die Informationslage duenn ist. Nutze dann Evidenz-Level "Laienpresse/Trend" oder "Expertenmeinung" und einen niedrigen Praxisrelevanz-Score (1-2). Antworte NUR mit {"insufficient": true} bei reiner Werbung oder Stellenanzeigen ohne jeden fachlichen Inhalt.
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
 5. Die Evidenz-Einordnung ist PFLICHT: Bewerte Studiendesign, Stichprobengroesse, Limitationen und Uebertragbarkeit.
@@ -308,7 +308,7 @@ async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | nu
           temperature: 0.2,
           max_tokens: 1500,
         }),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(25000),
       });
 
       if (!res.ok) {
@@ -368,26 +368,21 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
 
 const SKIP_PATTERNS = [
   /^re:\s/i,                    // Email replies
-  /podcast|webinar|anmeldung/i, // Event announcements
-  /stellenangebot|job/i,        // Job listings
+  /stellenangebot|job\s*(offer|posting)/i, // Job listings (narrower match)
   /^advertisement|^anzeige/i,   // Ads
   /newsletter.*abonnieren/i,    // Newsletter signup pages
   /^corrigendum|^erratum/i,     // Corrections to papers
   /^withdrawn|^retracted/i,     // Retracted papers
 ];
 
-const MIN_DESCRIPTION_LENGTH = 40; // Skip items with barely any content
-
 function shouldSkipItem(item: RSSItem): boolean {
   const title = item.title ?? '';
-  const desc = item.description ?? '';
 
   // Skip if title matches known irrelevant patterns
-  if (SKIP_PATTERNS.some(p => p.test(title) || p.test(desc))) return true;
+  if (SKIP_PATTERNS.some(p => p.test(title))) return true;
 
-  // Skip if no meaningful content to curate
-  if (!title && desc.length < MIN_DESCRIPTION_LENGTH) return true;
-  if (title.length < 10) return true;
+  // Skip only if truly empty — no title at all
+  if (!title || title.length < 5) return true;
 
   return false;
 }

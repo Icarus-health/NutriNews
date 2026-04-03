@@ -50,7 +50,6 @@ export async function POST(request: Request) {
     }
 
     // 3. Select diverse mix with MINIMUM QUOTAS per source type
-    // Ensures every run has laienpresse, berufspolitik, etc. — not just forschung
     const byType: Record<string, typeof newItems> = {};
     for (const item of newItems) {
       const t = item.source.sourceType;
@@ -59,7 +58,8 @@ export async function POST(request: Request) {
     }
 
     const toCurate: typeof newItems = [];
-    const targetSize = 20;
+    const TARGET = 20;
+    const CANDIDATE_POOL = 25; // over-select to compensate for curation failures
 
     // Minimum quotas: guarantee diversity even when forschung dominates
     const minQuotas: Record<string, number> = {
@@ -88,14 +88,14 @@ export async function POST(request: Request) {
 
     const types = Object.keys(byType);
     let round = 0;
-    while (toCurate.length < targetSize) {
+    while (toCurate.length < CANDIDATE_POOL) {
       let added = false;
       for (const type of types) {
         const startIdx = usedPerType[type] ?? 0;
         if (byType[type][startIdx + round]) {
           toCurate.push(byType[type][startIdx + round]);
           added = true;
-          if (toCurate.length >= targetSize) break;
+          if (toCurate.length >= CANDIDATE_POOL) break;
         }
       }
       if (!added) break;
@@ -105,48 +105,54 @@ export async function POST(request: Request) {
     let created = 0;
     const errors: string[] = [];
 
-    for (const item of toCurate) {
-      const result = await curateArticle(item);
-      if (!result) {
-        errors.push(`Uebersprungen: ${item.title}`);
-        continue;
-      }
+    // Process in parallel batches of 5, stop once we reach 20 created
+    const CURATE_BATCH_SIZE = 5;
+    for (let i = 0; i < toCurate.length && created < TARGET; i += CURATE_BATCH_SIZE) {
+      const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
+      const results = await Promise.all(batch.map(item => curateArticle(item)));
 
-      // Resolve category to new system
-      const resolvedCategory = resolveCategory(result.category_main);
+      // Save each result immediately
+      for (let j = 0; j < results.length; j++) {
+        if (created >= TARGET) break;
+        const result = results[j];
+        if (!result) {
+          errors.push(`Uebersprungen: ${batch[j].title}`);
+          continue;
+        }
 
-      // 4. Save as draft with extended fields
-      const { error } = await supabase.from('news_cards').insert({
-        headline: result.headline,
-        snack_what: result.snack_what,
-        snack_result: result.snack_result,
-        snack_consequence: result.snack_consequence,
-        therapist_check: result.therapist_check,
-        source_url: item.link,
-        source_name: item.source.name,
-        category_main: resolvedCategory,
-        evidence_level: result.evidence_level,
-        read_time_sec: result.read_time_sec,
-        status: 'draft',
-        curated_by: user.id,
-        curated_by_agent: true,
-        // Sprint 1: Erweiterte Felder
-        practice_relevance_score: result.practice_relevance_score,
-        action_recommendation: result.action_recommendation,
-        patient_question_anticipation: result.patient_question_anticipation,
-        evidence_summary: result.evidence_summary,
-        source_type: item.source.sourceType,
-        lay_press_fact_check: result.lay_press_fact_check,
-        // Sprint 5: Berufspolitik & International
-        policy_impact: result.policy_impact,
-        policy_action_needed: result.policy_action_needed,
-        international_relevance_de: result.international_relevance_de,
-      });
+        const item = batch[j];
+        const resolvedCategory = resolveCategory(result.category_main);
 
-      if (error) {
-        errors.push(`DB-Fehler: ${item.title}`);
-      } else {
-        created++;
+        const { error } = await supabase.from('news_cards').insert({
+          headline: result.headline,
+          snack_what: result.snack_what,
+          snack_result: result.snack_result,
+          snack_consequence: result.snack_consequence,
+          therapist_check: result.therapist_check,
+          source_url: item.link,
+          source_name: item.source.name,
+          category_main: resolvedCategory,
+          evidence_level: result.evidence_level,
+          read_time_sec: result.read_time_sec,
+          status: 'draft',
+          curated_by: user.id,
+          curated_by_agent: true,
+          practice_relevance_score: result.practice_relevance_score,
+          action_recommendation: result.action_recommendation,
+          patient_question_anticipation: result.patient_question_anticipation,
+          evidence_summary: result.evidence_summary,
+          source_type: item.source.sourceType,
+          lay_press_fact_check: result.lay_press_fact_check,
+          policy_impact: result.policy_impact,
+          policy_action_needed: result.policy_action_needed,
+          international_relevance_de: result.international_relevance_de,
+        });
+
+        if (error) {
+          errors.push(`DB-Fehler: ${item.title}`);
+        } else {
+          created++;
+        }
       }
     }
 

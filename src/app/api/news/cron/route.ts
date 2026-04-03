@@ -51,6 +51,7 @@ export async function GET(request: Request) {
     }
 
     // Diverse selection with minimum quotas per source type
+    // Select 25 candidates so we still reach 20 even if some fail curation
     const byType: Record<string, typeof newItems> = {};
     for (const item of newItems) {
       const t = item.source.sourceType;
@@ -58,6 +59,8 @@ export async function GET(request: Request) {
       byType[t].push(item);
     }
 
+    const TARGET = 20;
+    const CANDIDATE_POOL = 25; // over-select to compensate for failures
     const toCurate: typeof newItems = [];
     const minQuotas: Record<string, number> = {
       laienpresse: 3, berufspolitik: 2, international: 3,
@@ -72,21 +75,21 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fill remaining with round-robin
+    // Fill remaining with round-robin up to CANDIDATE_POOL
     const usedPerType: Record<string, number> = {};
     for (const item of toCurate) {
       usedPerType[item.source.sourceType] = (usedPerType[item.source.sourceType] ?? 0) + 1;
     }
     const types = Object.keys(byType);
     let round = 0;
-    while (toCurate.length < 20) {
+    while (toCurate.length < CANDIDATE_POOL) {
       let added = false;
       for (const type of types) {
         const start = usedPerType[type] ?? 0;
         if (byType[type][start + round]) {
           toCurate.push(byType[type][start + round]);
           added = true;
-          if (toCurate.length >= 20) break;
+          if (toCurate.length >= CANDIDATE_POOL) break;
         }
       }
       if (!added) break;
@@ -95,14 +98,15 @@ export async function GET(request: Request) {
 
     let created = 0;
 
-    // Process in parallel batches of 4 to stay within Vercel timeout
-    const CURATE_BATCH_SIZE = 4;
-    for (let i = 0; i < toCurate.length; i += CURATE_BATCH_SIZE) {
+    // Process in parallel batches of 5 to stay within Vercel Hobby 60s timeout
+    // Stop early once we hit 20 successfully created articles
+    const CURATE_BATCH_SIZE = 5;
+    for (let i = 0; i < toCurate.length && created < TARGET; i += CURATE_BATCH_SIZE) {
       const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
       const results = await Promise.all(batch.map(item => curateArticle(item)));
 
       await Promise.all(results.map((result, j) => {
-        if (!result) return Promise.resolve();
+        if (!result || created >= TARGET) return Promise.resolve();
         const item = batch[j];
         const resolvedCategory = resolveCategory(result.category_main);
         return supabase.from('news_cards').insert({
