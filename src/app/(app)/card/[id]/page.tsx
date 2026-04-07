@@ -2,7 +2,7 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import NewsCard from '@/components/news/NewsCard';
+import NewsCardComponent from '@/components/news/NewsCard';
 import { getCategoryLabel, getCategoryStyle } from '@/lib/categories';
 import type { NewsCard } from '@/types/database';
 import type { Metadata } from 'next';
@@ -108,7 +108,7 @@ export default async function CardPage({ params }: PageProps) {
         </a>
       </div>
       <div className="px-4">
-        <NewsCard
+        <NewsCardComponent
           card={enrichedCard}
           userId={user?.id ?? null}
           defaultFlipped={true}
