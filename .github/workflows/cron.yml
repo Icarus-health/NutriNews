@@ -22,8 +22,10 @@ jobs:
     steps:
       - name: Curation-Endpoint aufrufen
         run: |
+          BASE_URL="${{ secrets.APP_URL }}"
+          BASE_URL="${BASE_URL%/}"  # trailing slash entfernen falls vorhanden
           HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -X GET "${{ secrets.APP_URL }}/api/news/cron" \
+            -X GET "${BASE_URL}/api/news/cron" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             --max-time 300)
 
