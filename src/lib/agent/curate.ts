@@ -307,8 +307,6 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
   return result;
 }
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════
 // Title-based pre-filter: skip obviously irrelevant items
