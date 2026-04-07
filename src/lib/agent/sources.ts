@@ -1465,4 +1465,103 @@ export const RSS_SOURCES: RSSSource[] = [
     language: 'es',
     sourceType: 'forschung',
   },
+
+  // ═══════════════════════════════════════════════
+  // LEBENSMITTELINDUSTRIE — Produkte & Reformulierung
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Lebensmittelzeitung',
+    url: 'https://www.lebensmittelzeitung.net/rss/news.xml',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Google News — Lebensmittelindustrie Reformulierung',
+    url: 'https://news.google.com/rss/search?q=Lebensmittelindustrie+Reformulierung+OR+Zuckerreduktion+OR+Nutri-Score+OR+Produktneuheit+Ern%C3%A4hrung&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'BVE — Bundesvereinigung Ernährungsindustrie',
+    url: 'https://www.bve-online.de/presse/pressemitteilungen/feed',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'FoodNavigator',
+    url: 'https://www.foodnavigator.com/rss/news',
+    defaultCategory: 'Nachhaltigkeit & Ernährung',
+    language: 'en',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'NutritionInsight',
+    url: 'https://www.nutritioninsight.com/rss/news.xml',
+    defaultCategory: 'Supplements & NEM',
+    language: 'en',
+    sourceType: 'fachpresse',
+  },
+
+  // ═══════════════════════════════════════════════
+  // KLINIK & KRANKENHAUS — Verpflegung & Management
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Google News — Krankenhausernährung Verpflegung',
+    url: 'https://news.google.com/rss/search?q=Krankenhausern%C3%A4hrung+OR+Klinische+Ern%C3%A4hrung+OR+Verpflegungsmanagement+OR+Mangelern%C3%A4hrung+Klinik&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Künstliche Ernährung',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'kma Online — Klinikmanagement',
+    url: 'https://www.kma-online.de/rss/aktuell.xml',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'Google News — Gemeinschaftsverpflegung Seniorenheim',
+    url: 'https://news.google.com/rss/search?q=Gemeinschaftsverpflegung+OR+Seniorenheim+Ern%C3%A4hrung+OR+Schulverpflegung+OR+Mensa+Qualit%C3%A4t&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Geriatrie & Sarkopenie',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+
+  // ═══════════════════════════════════════════════
+  // DIGITAL HEALTH — Apps, Wearables, Startups
+  // ═══════════════════════════════════════════════
+
+  {
+    name: 'Google News — Digital Health Ernährung',
+    url: 'https://news.google.com/rss/search?q=Digital+Health+Ern%C3%A4hrung+OR+Ern%C3%A4hrungs-App+OR+Food+Tracking+OR+CGM+Glukosemonitor&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'de',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'Healthcare IT News',
+    url: 'https://www.healthcareitnews.com/feed',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'en',
+    sourceType: 'berufspolitik',
+  },
+  {
+    name: 'Google News — Ernährung Startup Foodtech',
+    url: 'https://news.google.com/rss/search?q=FoodTech+Startup+Ern%C3%A4hrung+OR+Personalisierte+Ern%C3%A4hrung+KI+OR+Nutrigenomik&hl=de&gl=DE&ceid=DE:de',
+    defaultCategory: 'Fortbildung & Lehre',
+    language: 'de',
+    sourceType: 'fachpresse',
+  },
+  {
+    name: 'MobiHealthNews',
+    url: 'https://www.mobihealthnews.com/feed',
+    defaultCategory: 'Berufspolitik & Recht',
+    language: 'en',
+    sourceType: 'berufspolitik',
+  },
 ];
