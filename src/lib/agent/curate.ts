@@ -273,8 +273,10 @@ Antwortformat:
   "evidence_summary": "Studiendesign (z.B. RCT, n=X, Y Wochen), primaerer Endpunkt, Effektstaerke, wichtigste Limitation, Uebertragbarkeit auf DE-Praxis. (2-3 Saetze)"${extraFieldsStr}
 }
 
-Oder falls der Artikel nicht relevant/ausreichend ist:
-{"insufficient": true}`;
+NUR bei reiner Werbung oder Stellenanzeigen OHNE JEDEN fachlichen Inhalt:
+{"insufficient": true}
+
+Im Zweifelsfall: ERSTELLE die Card mit niedrigem practice_relevance_score (1-2) und evidence_level "Laienpresse/Trend".`;
 }
 
 function parseResult(content: string, item: RSSItem): CurationResult | null {
