@@ -65,13 +65,14 @@ export async function POST(request: Request) {
     const TARGET = 10;
     const CANDIDATE_POOL = 12;
 
+    // Diversitäts-Quotas: Berufspolitik und Laienpresse stärker gewichten
     const minQuotas: Record<string, number> = {
-      laienpresse: 1,
-      berufspolitik: 1,
+      berufspolitik: 3,
+      laienpresse: 2,
+      fachpresse: 2,
       international: 1,
       supplement: 1,
-      fachpresse: 2,
-      forschung: 3,
+      forschung: 2,
     };
 
     // First pass: fill minimum quotas
