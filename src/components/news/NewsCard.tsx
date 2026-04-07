@@ -368,30 +368,20 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
             {/* Headline */}
             <div className="px-4 pt-3 pb-1.5">
-              <h2 className="font-bold text-[17px] leading-[1.3] text-slate-900 dark:text-slate-100 tracking-[-0.02em] line-clamp-2">
+              <h2 className="font-bold text-[17px] leading-[1.3] text-slate-900 dark:text-slate-100 tracking-[-0.02em]">
                 {card.headline}
               </h2>
             </div>
 
-            {/* Was? — 1-Zeilen-Teaser als schneller Kontext */}
+            {/* Was? — voller Text als schneller Kontext */}
             {card.snack_what && (
-              <div className="mx-4 mb-2 flex items-baseline gap-2">
+              <div className="mx-4 mb-2.5 flex items-baseline gap-2">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex-shrink-0">Was?</span>
-                <p className="text-[12px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   {card.snack_what}
                 </p>
               </div>
             )}
-
-            {/* Therapist-Check — Kern-Einordnung, kompakt auf 2 Zeilen */}
-            <div className="mx-4 mb-2.5 bg-forest-50/50 dark:bg-forest-900/10 rounded-2xl px-4 py-2.5 border border-forest-100/60 dark:border-forest-800/30">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-0.5">
-                {THERAPIST_CHECK_LABELS[card.source_type] ?? 'Therapist-Check'}
-              </p>
-              <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-2">
-                {card.therapist_check}
-              </p>
-            </div>
 
             {/* Praxisrelevanz-Indikator (Punkte 1–5) */}
             {card.practice_relevance_score != null && (
