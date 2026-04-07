@@ -284,23 +284,33 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
 
   const systemPrompt = buildSystemPrompt(item.source.sourceType);
 
-  const Anthropic = (await import('@anthropic-ai/sdk')).default;
-  const anthropic = new Anthropic({ apiKey });
+  try {
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    const anthropic = new Anthropic({ apiKey });
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1500,
-    temperature: 0.2,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: buildUserPrompt(item) }],
-  });
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      temperature: 0.2,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: buildUserPrompt(item) }],
+    });
 
-  const block = response.content[0];
-  if (block.type !== 'text') return null;
+    const block = response.content[0];
+    if (block.type !== 'text') {
+      console.warn(`Claude returned non-text block for: ${item.title?.slice(0, 60)}`);
+      return null;
+    }
 
-  const result = parseResult(block.text, item);
-  if (result) console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
-  return result;
+    const result = parseResult(block.text, item);
+    if (result) console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
+    else console.warn(`Parse failed for: ${item.title?.slice(0, 60)}, response: ${block.text.slice(0, 200)}`);
+    return result;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`Claude API error for "${item.title?.slice(0, 50)}": ${msg}`);
+    return null;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
