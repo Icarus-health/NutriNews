@@ -39,19 +39,6 @@ export default function LoginForm() {
     if (error) {
       setError('E-Mail oder Passwort falsch. Noch kein Passwort? Nutze „Code per E-Mail" unten.');
     } else {
-      // Check if user needs onboarding
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('setting')
-          .eq('id', user.id)
-          .single();
-        if (!profile?.setting) {
-          window.location.href = '/onboarding';
-          return;
-        }
-      }
       window.location.href = '/';
     }
   }
@@ -106,19 +93,6 @@ export default function LoginForm() {
     if (error) {
       setError('Passwort konnte nicht gesetzt werden.');
     } else {
-      // Check if user needs onboarding
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('setting')
-          .eq('id', user.id)
-          .single();
-        if (!profile?.setting) {
-          window.location.href = '/onboarding';
-          return;
-        }
-      }
       window.location.href = '/';
     }
   }

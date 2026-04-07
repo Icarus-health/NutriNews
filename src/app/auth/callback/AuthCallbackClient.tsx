@@ -35,20 +35,6 @@ export default function AuthCallbackClient() {
       }
 
       if (authenticated) {
-        // Check if new user needs onboarding (no setting configured yet)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('setting')
-            .eq('id', user.id)
-            .single();
-
-          if (!profile?.setting) {
-            window.location.href = '/onboarding';
-            return;
-          }
-        }
         window.location.href = next;
         return;
       }

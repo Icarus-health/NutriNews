@@ -1,5 +1,4 @@
 import { unstable_cache } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { createClient as createPublicClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
@@ -109,18 +108,6 @@ export default async function HomePage({ searchParams }: PageProps) {
     }),
     supabase.auth.getUser(),
   ]);
-
-  // Onboarding guard: redirect logged-in users who haven't set their work context yet
-  if (user) {
-    const { data: profileCheck } = await supabase
-      .from('profiles')
-      .select('setting')
-      .eq('id', user.id)
-      .single();
-    if (profileCheck && profileCheck.setting == null) {
-      redirect('/onboarding');
-    }
-  }
 
   let allCards: NewsCard[] = cachedCards;
 

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Routes that require authentication
 const PROTECTED_PATHS = ['/saved', '/profile', '/community', '/admin', '/inbox'];
 // Routes that are always public
-const PUBLIC_PATHS = ['/login', '/auth', '/onboarding', '/api', '/offline', '/datenschutz', '/impressum', '/nutzungsbedingungen', '/ki-transparenz'];
+const PUBLIC_PATHS = ['/login', '/auth', '/api', '/offline', '/datenschutz', '/impressum', '/nutzungsbedingungen', '/ki-transparenz'];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
