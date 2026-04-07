@@ -280,36 +280,33 @@ function buildSystemPrompt(sourceType: SourceType): string {
 // --- Anthropic Claude Haiku (~$0.001/Artikel) ---
 async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY nicht gesetzt');
 
   const systemPrompt = buildSystemPrompt(item.source.sourceType);
 
-  try {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default;
-    const anthropic = new Anthropic({ apiKey });
+  const Anthropic = (await import('@anthropic-ai/sdk')).default;
+  const anthropic = new Anthropic({ apiKey });
 
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1500,
-      temperature: 0.2,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: buildUserPrompt(item) }],
-    });
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1500,
+    temperature: 0.2,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: buildUserPrompt(item) }],
+  });
 
-    const block = response.content[0];
-    if (block.type !== 'text') {
-      console.warn(`Claude returned non-text block for: ${item.title?.slice(0, 60)}`);
-      return null;
-    }
+  const block = response.content[0];
+  if (block.type !== 'text') {
+    throw new Error('Claude returned non-text block');
+  }
 
-    const result = parseResult(block.text, item);
-    if (result) console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
-    else console.warn(`Parse failed for: ${item.title?.slice(0, 60)}, response: ${block.text.slice(0, 200)}`);
-    return result;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`Claude API error for "${item.title?.slice(0, 50)}": ${msg}`);
-    return null;
+  const result = parseResult(block.text, item);
+  if (!result) {
+    throw new Error(`Parse failed: ${block.text.slice(0, 150)}`);
+  }
+  console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
+  return result;
+}
   }
 }
 
@@ -340,22 +337,18 @@ function shouldSkipItem(item: RSSItem): boolean {
 }
 
 // --- Main entry: Claude Haiku only ---
-export async function curateArticle(item: RSSItem): Promise<CurationResult | null> {
-  // Pre-filter: skip obviously irrelevant items without calling AI
+// Returns { result, error } so the caller can see WHY it failed
+export async function curateArticle(item: RSSItem): Promise<{ result: CurationResult | null; error?: string }> {
   if (shouldSkipItem(item)) {
-    console.log(`Pre-filter skip: ${item.title?.slice(0, 60)}`);
-    return null;
+    return { result: null, error: `skip: ${item.title?.slice(0, 40)}` };
   }
 
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('ANTHROPIC_API_KEY nicht gesetzt.');
-      return null;
-    }
-
-    return await curateWithClaude(item);
+    const result = await curateWithClaude(item);
+    return { result };
   } catch (error) {
-    console.error('AI curation failed:', error);
-    return null;
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`Curation failed for "${item.title?.slice(0, 50)}": ${msg}`);
+    return { result: null, error: msg.slice(0, 200) };
   }
 }
