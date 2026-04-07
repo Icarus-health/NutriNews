@@ -33,7 +33,7 @@ SCHREIBSTIL-REGELN:
 - Jeder Satz muss einen KONKRETEN Informationsgehalt haben, den der Therapeut vorher nicht wusste
 
 WEITERE REGELN:
-1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel. Erfinde NICHTS hinzu.
+1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel (Titel, Beschreibung und ggf. Volltext). Erfinde NICHTS hinzu.
 2. Erstelle IMMER eine Card — auch wenn der Artikel nur am Rande mit Ernaehrung zu tun hat oder die Informationslage duenn ist. Nutze dann Evidenz-Level "Laienpresse/Trend" oder "Expertenmeinung" und einen niedrigen Praxisrelevanz-Score (1-2). Antworte NUR mit {"insufficient": true} bei reiner Werbung oder Stellenanzeigen ohne jeden fachlichen Inhalt.
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
@@ -153,6 +153,53 @@ Im therapist_check IMMER:
 - Ist Supplementierung noetig oder reicht die Zufuhr ueber Lebensmittel?`;
 
 
+// ═══════════════════════════════════════════════════════════════
+// Fetch full article text from URL for better curation quality
+// ═══════════════════════════════════════════════════════════════
+
+async function fetchArticleText(url: string): Promise<string> {
+  if (!url) return '';
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'NutriNews/1.0 (Ernaehrungsnews-Aggregator)',
+        'Accept': 'text/html',
+      },
+      signal: AbortSignal.timeout(8000),
+      redirect: 'follow',
+    });
+    if (!res.ok) return '';
+    const html = await res.text();
+
+    // Strip scripts, styles, nav, header, footer
+    let text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<aside[\s\S]*?<\/aside>/gi, '');
+
+    // Try to extract <article> or <main> content first
+    const articleMatch = text.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
+      ?? text.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
+      ?? text.match(/<div[^>]*class="[^"]*(?:article|content|post|entry)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+
+    if (articleMatch) {
+      text = articleMatch[1];
+    }
+
+    // Strip all remaining HTML tags
+    text = text.replace(/<[^>]*>/g, ' ');
+    // Normalize whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+    // Cap at ~3000 chars to stay within token limits
+    return text.slice(0, 3000);
+  } catch {
+    return '';
+  }
+}
+
 interface CurationResult {
   headline: string;
   snack_what: string;
@@ -174,7 +221,7 @@ interface CurationResult {
   international_relevance_de: string | null;
 }
 
-function buildUserPrompt(item: RSSItem): string {
+function buildUserPrompt(item: RSSItem, articleText?: string): string {
   const isLayPress = item.source.sourceType === 'laienpresse';
   const isBerufspolitik = item.source.sourceType === 'berufspolitik';
   const isInternational = item.source.sourceType === 'international';
@@ -209,7 +256,7 @@ SPRACHE: ${(() => {
     return langMap[item.source.language] ?? 'Deutsch';
   })()}
 BESCHREIBUNG: ${item.description || 'Keine Beschreibung verfuegbar'}
-URL: ${item.link}
+URL: ${item.link}${articleText ? `\n\nVOLLTEXT DES ARTIKELS:\n${articleText}` : ''}
 
 Antwortformat:
 {
@@ -282,6 +329,9 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY nicht gesetzt');
 
+  // Fetch full article text for better curation quality
+  const articleText = await fetchArticleText(item.link);
+
   const systemPrompt = buildSystemPrompt(item.source.sourceType);
 
   const Anthropic = (await import('@anthropic-ai/sdk')).default;
@@ -292,7 +342,7 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
     max_tokens: 1500,
     temperature: 0.2,
     system: systemPrompt,
-    messages: [{ role: 'user', content: buildUserPrompt(item) }],
+    messages: [{ role: 'user', content: buildUserPrompt(item, articleText || undefined) }],
   });
 
   const block = response.content[0];
@@ -302,6 +352,11 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
 
   const result = parseResult(block.text, item);
   if (!result) {
+    // "insufficient" is a valid Claude response, not an error
+    const isInsufficient = block.text.includes('"insufficient"');
+    if (isInsufficient) {
+      throw new Error(`insufficient: ${item.title?.slice(0, 80)}`);
+    }
     throw new Error(`Parse failed: ${block.text.slice(0, 150)}`);
   }
   console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
