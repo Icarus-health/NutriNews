@@ -2,7 +2,7 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import NewsFeed from '@/components/news/NewsFeed';
+import NewsCardComponent from '@/components/news/NewsCard';
 import { getCategoryLabel, getCategoryStyle } from '@/lib/categories';
 import type { NewsCard } from '@/types/database';
 import type { Metadata } from 'next';
@@ -107,7 +107,13 @@ export default async function CardPage({ params }: PageProps) {
           &larr; Zurück zum Feed
         </a>
       </div>
-      <NewsFeed initialCards={[enrichedCard]} userId={user?.id ?? null} />
+      <div className="px-4">
+        <NewsCardComponent
+          card={enrichedCard}
+          userId={user?.id ?? null}
+          defaultFlipped={true}
+        />
+      </div>
       {similarCards && similarCards.length > 0 && (
         <div className="mx-4 mt-2 mb-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/40 overflow-hidden">
           <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700/40">

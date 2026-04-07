@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { rateLimit } from '@/lib/rate-limit';
 
 /** Escape special characters for PostgREST ilike filter strings */
 function sanitizeFilterValue(value: string): string {
@@ -73,6 +74,11 @@ export async function shareToUser(newsCardId: string, receiverEmail: string, mes
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
+
+  // Rate-limit: max 20 share attempts per user per hour
+  // Prevents email enumeration by repeated lookups
+  const rl = rateLimit(`share:${user.id}`, 20, 60 * 60 * 1000);
+  if (!rl.success) return { error: 'Zu viele Anfragen. Bitte später erneut versuchen.' };
 
   // Find receiver by email
   const { data: receiver } = await supabase
@@ -363,6 +369,52 @@ export async function submitAppFeedback(type: string, message: string) {
 
   if (error) return { error: 'Feedback konnte nicht gesendet werden' };
   return { success: true };
+}
+
+export async function upsertNote(newsCardId: string, content: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  if (!content.trim()) {
+    await supabase.from('notes').delete()
+      .eq('user_id', user.id)
+      .eq('news_card_id', newsCardId);
+    return { success: true };
+  }
+
+  await supabase.from('notes').upsert(
+    { user_id: user.id, news_card_id: newsCardId, content: content.trim(), updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,news_card_id' }
+  );
+  return { success: true };
+}
+
+export async function getNote(newsCardId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from('notes')
+    .select('content')
+    .eq('user_id', user.id)
+    .eq('news_card_id', newsCardId)
+    .single();
+  return data?.content ?? null;
+}
+
+export async function getCardsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  // Limit to prevent oversized queries
+  const safeIds = ids.slice(0, 100);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('news_cards')
+    .select('*')
+    .in('id', safeIds)
+    .eq('status', 'published');
+  return data ?? [];
 }
 
 export async function searchProfiles(query: string) {

@@ -10,7 +10,7 @@ const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false })
 const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
-import { toggleLike, toggleBookmark } from '@/lib/actions/news';
+import { toggleLike, toggleBookmark, upsertNote, getNote } from '@/lib/actions/news';
 import { getCardVerifications } from '@/lib/actions/community';
 import { useUX } from '@/components/providers/UXProvider';
 import type { EvidenceLevel, NewsCard as NewsCardType, SourceType } from '@/types/database';
@@ -20,6 +20,7 @@ interface Props {
   userId: string | null;
   onRequireAuth?: () => void;
   onShare?: (cardId: string) => void;
+  defaultFlipped?: boolean;
 }
 
 const SOURCE_TYPE_ACCENT: Record<string, { gradient: string; bgLight: string; bgDark: string; label: string; emoji: string }> = {
@@ -70,8 +71,8 @@ function formatTime(dateStr: string | null) {
   return `vor ${days} Tag${days > 1 ? 'en' : ''}`;
 }
 
-function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
-  const [flipped, setFlipped] = useState(false);
+function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false }: Props) {
+  const [flipped, setFlipped] = useState(defaultFlipped);
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(card.user_has_liked ?? false);
   const [likeCount, setLikeCount] = useState(card.like_count ?? 0);
@@ -93,13 +94,23 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
   const isNew = ux.isNewCard(card.published_at);
   const noteKey = `nn-note-${card.id}`;
 
-  // Load note from localStorage on mount
+  // Load note: localStorage first; if empty and user is logged in, try Supabase once
   useEffect(() => {
+    let cancelled = false;
     try {
       const stored = localStorage.getItem(noteKey);
-      if (stored) { setNote(stored); setHasNote(true); }
+      if (stored) { setNote(stored); setHasNote(true); return; }
     } catch { /* ignore */ }
-  }, [noteKey]);
+    if (userId) {
+      getNote(card.id).then(remote => {
+        if (cancelled || !remote) return;
+        setNote(remote);
+        setHasNote(true);
+        try { localStorage.setItem(noteKey, remote); } catch { /* ignore */ }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [noteKey, card.id, userId]);
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();
@@ -210,6 +221,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
     setHasNote(value.trim().length > 0);
     if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
     noteTimerRef.current = setTimeout(() => {
+      // Persist to localStorage
       try {
         if (value.trim()) {
           localStorage.setItem(noteKey, value);
@@ -217,8 +229,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
           localStorage.removeItem(noteKey);
         }
       } catch { /* quota */ }
-    }, 500);
-  }, [noteKey]);
+      // Sync to Supabase for cross-device access (only when logged in)
+      if (userId) {
+        upsertNote(card.id, value).catch(() => { /* non-blocking */ });
+      }
+    }, 1500);
+  }, [noteKey, card.id, userId]);
 
   function handlePrint(e: React.MouseEvent) {
     e.stopPropagation();
@@ -351,63 +367,63 @@ function NewsCard({ card, userId, onRequireAuth, onShare }: Props) {
             </div>
 
             {/* Headline */}
-            <div className="px-4 pt-3 pb-2">
-              <h2 className="font-bold text-[17px] leading-[1.3] text-slate-900 dark:text-slate-100 tracking-[-0.02em] line-clamp-4">
+            <div className="px-4 pt-3 pb-1.5">
+              <h2 className="font-bold text-[17px] leading-[1.3] text-slate-900 dark:text-slate-100 tracking-[-0.02em] line-clamp-2">
                 {card.headline}
               </h2>
             </div>
 
-            {/* Therapist-Check */}
-            <div className="mx-4 mb-3 bg-forest-50/50 dark:bg-forest-900/10 rounded-2xl px-4 py-3 border border-forest-100/60 dark:border-forest-800/30">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">
+            {/* Was? — 1-Zeilen-Teaser als schneller Kontext */}
+            {card.snack_what && (
+              <div className="mx-4 mb-2 flex items-baseline gap-2">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex-shrink-0">Was?</span>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                  {card.snack_what}
+                </p>
+              </div>
+            )}
+
+            {/* Therapist-Check — Kern-Einordnung, kompakt auf 2 Zeilen */}
+            <div className="mx-4 mb-2.5 bg-forest-50/50 dark:bg-forest-900/10 rounded-2xl px-4 py-2.5 border border-forest-100/60 dark:border-forest-800/30">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-0.5">
                 {THERAPIST_CHECK_LABELS[card.source_type] ?? 'Therapist-Check'}
               </p>
-              <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-5">
+              <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-2">
                 {card.therapist_check}
               </p>
             </div>
 
-            {/* Laienpresse: Fact-Check — MEDIEN vs. FACH */}
-            {isLayPress && card.lay_press_fact_check && (() => {
-              const parsed = parseFactCheck(card.lay_press_fact_check);
-              if (parsed) {
-                return (
-                  <div className="mx-4 mb-3 rounded-2xl overflow-hidden border border-slate-200/60 dark:border-slate-700/40">
-                    {/* MEDIEN-Teil */}
-                    <div className="bg-amber-50/80 dark:bg-amber-900/20 px-4 py-2.5 flex gap-2">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0 w-12">Medien</span>
-                      <p className="text-[12px] leading-relaxed text-amber-900 dark:text-amber-100 line-clamp-3 italic">
-                        „{parsed.medien}"
-                      </p>
-                    </div>
-                    {/* Trennlinie mit Pfeil */}
-                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700/50 px-4 py-1">
-                      <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Fachliche Einordnung ↓</span>
-                      <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
-                    </div>
-                    {/* FACH-Teil */}
-                    <div className="bg-forest-50/80 dark:bg-forest-900/20 px-4 py-2.5 flex gap-2">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-forest-600 dark:text-forest-400 mt-0.5 flex-shrink-0 w-12">Evidenz</span>
-                      <p className="text-[12px] leading-relaxed text-forest-900 dark:text-forest-100 line-clamp-3">
-                        {parsed.fach}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-              // Fallback wenn Format nicht geparst werden kann
-              return (
-                <div className="mx-4 mb-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl px-4 py-3 border border-amber-200/60 dark:border-amber-800/30">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">
-                    Faktencheck
-                  </p>
-                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 line-clamp-3">
-                    {card.lay_press_fact_check}
-                  </p>
+            {/* Praxisrelevanz-Indikator (Punkte 1–5) */}
+            {card.practice_relevance_score != null && (
+              <div className="mx-4 mb-2.5 flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Praxis</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <span
+                      key={i}
+                      className={clsx(
+                        'w-2 h-2 rounded-full',
+                        i <= (card.practice_relevance_score ?? 0)
+                          ? 'bg-forest-500 dark:bg-forest-400'
+                          : 'bg-slate-200 dark:bg-slate-600'
+                      )}
+                    />
+                  ))}
                 </div>
-              );
-            })()}
+                <span className="text-[9px] text-slate-400">
+                  {card.practice_relevance_score}/5
+                </span>
+              </div>
+            )}
+
+            {/* Laienpresse: Hinweis-Pill statt vollem Faktencheck (Details auf Rückseite) */}
+            {isLayPress && card.lay_press_fact_check && (
+              <div className="mx-4 mb-2.5 flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-200/60 dark:border-amber-800/30">
+                  📰 Medien vs. Evidenz — Faktencheck auf Rückseite
+                </span>
+              </div>
+            )}
 
             {/* Tap hint — prominent CTA */}
             <div className="px-4 pb-2">
