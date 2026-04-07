@@ -34,7 +34,7 @@ SCHREIBSTIL-REGELN:
 
 WEITERE REGELN:
 1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel (Titel, Beschreibung und ggf. Volltext). Erfinde NICHTS hinzu.
-2. Erstelle IMMER eine Card — auch wenn der Artikel nur am Rande mit Ernaehrung zu tun hat oder die Informationslage duenn ist. Nutze dann Evidenz-Level "Laienpresse/Trend" oder "Expertenmeinung" und einen niedrigen Praxisrelevanz-Score (1-2). Antworte NUR mit {"insufficient": true} bei reiner Werbung oder Stellenanzeigen ohne jeden fachlichen Inhalt.
+2. Erstelle IMMER eine Card — auch wenn der Artikel nur am Rande mit Ernaehrung zu tun hat oder die Informationslage duenn ist. Nutze dann Evidenz-Level "Laienpresse/Trend" oder "Expertenmeinung" und einen niedrigen Praxisrelevanz-Score (1-2). Lehne NIEMALS einen Artikel ab — erstelle immer eine Card.
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
 5. Die Evidenz-Einordnung ist PFLICHT: Bewerte Studiendesign, Stichprobengroesse, Limitationen und Uebertragbarkeit.
@@ -273,10 +273,7 @@ Antwortformat:
   "evidence_summary": "Studiendesign (z.B. RCT, n=X, Y Wochen), primaerer Endpunkt, Effektstaerke, wichtigste Limitation, Uebertragbarkeit auf DE-Praxis. (2-3 Saetze)"${extraFieldsStr}
 }
 
-NUR bei reiner Werbung oder Stellenanzeigen OHNE JEDEN fachlichen Inhalt:
-{"insufficient": true}
-
-Im Zweifelsfall: ERSTELLE die Card mit niedrigem practice_relevance_score (1-2) und evidence_level "Laienpresse/Trend".`;
+WICHTIG: Erstelle IMMER eine Card. Auch bei wenig Informationen — nutze dann practice_relevance_score 1-2 und evidence_level "Laienpresse/Trend". Es gibt KEINE Option, den Artikel abzulehnen.`;
 }
 
 function parseResult(content: string, item: RSSItem): CurationResult | null {
@@ -286,7 +283,8 @@ function parseResult(content: string, item: RSSItem): CurationResult | null {
     if (!jsonMatch) return null;
 
     const parsed = JSON.parse(jsonMatch[0]);
-    if (parsed.insufficient) return null;
+    // If Claude only returned {"insufficient": true} without card fields, return null
+    if (parsed.insufficient && !parsed.headline) return null;
     if (!parsed.headline || !parsed.snack_what) return null;
 
     const totalText = [parsed.snack_what, parsed.snack_result, parsed.snack_consequence, parsed.therapist_check, parsed.evidence_summary].filter(Boolean).join(' ');
