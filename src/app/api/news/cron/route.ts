@@ -120,7 +120,7 @@ export async function GET(request: Request) {
           category_main: resolvedCategory,
           evidence_level: result.evidence_level,
           read_time_sec: result.read_time_sec,
-          status: 'published',
+          status: 'draft',
           curated_by_agent: true,
           practice_relevance_score: result.practice_relevance_score,
           action_recommendation: result.action_recommendation,
@@ -131,7 +131,6 @@ export async function GET(request: Request) {
           policy_impact: result.policy_impact,
           policy_action_needed: result.policy_action_needed,
           international_relevance_de: result.international_relevance_de,
-          published_at: new Date().toISOString(),
         }).then(({ error }) => { if (!error) created++; });
       }));
     }
@@ -139,7 +138,7 @@ export async function GET(request: Request) {
     // Invalidate feed cache so next request gets fresh cards
     revalidateTag('news-cards');
 
-    return NextResponse.json({ message: `${created} neue Artikel veröffentlicht.`, created });
+    return NextResponse.json({ message: `${created} neue Entwürfe erstellt.`, created });
   } catch (error) {
     console.error('Cron error:', error);
     return NextResponse.json({ error: 'Fehler beim Cron-Job' }, { status: 500 });
