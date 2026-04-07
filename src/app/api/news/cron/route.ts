@@ -102,16 +102,22 @@ export async function GET(request: Request) {
     }
 
     let created = 0;
+    let curationFailed = 0;
+    const curationErrors: string[] = [];
 
     // Process in parallel batches of 5 to stay within Vercel Hobby 60s timeout
-    // Stop early once we hit 20 successfully created articles
     const CURATE_BATCH_SIZE = 5;
     for (let i = 0; i < toCurate.length && created < TARGET; i += CURATE_BATCH_SIZE) {
       const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
       const results = await Promise.all(batch.map(item => curateArticle(item)));
 
       await Promise.all(results.map((result, j) => {
-        if (!result || created >= TARGET) return Promise.resolve();
+        if (!result) {
+          curationFailed++;
+          curationErrors.push(batch[j].title?.slice(0, 60) || 'unknown');
+          return Promise.resolve();
+        }
+        if (created >= TARGET) return Promise.resolve();
         const item = batch[j];
         const resolvedCategory = resolveCategory(result.category_main);
         return supabase.from('news_cards').insert({
@@ -136,14 +142,27 @@ export async function GET(request: Request) {
           policy_impact: result.policy_impact,
           policy_action_needed: result.policy_action_needed,
           international_relevance_de: result.international_relevance_de,
-        }).then(({ error }) => { if (!error) created++; });
+        }).then(({ error }) => {
+          if (error) {
+            curationErrors.push(`DB: ${item.title?.slice(0, 40)}: ${error.message}`);
+          } else {
+            created++;
+          }
+        });
       }));
     }
 
     // Invalidate feed cache so next request gets fresh cards
     revalidateTag('news-cards');
 
-    return NextResponse.json({ message: `${created} neue Entwürfe erstellt.`, created });
+    return NextResponse.json({
+      message: `${created} neue Entwürfe erstellt.`,
+      created,
+      candidates: toCurate.length,
+      newItems: newItems.length,
+      curationFailed,
+      errors: curationErrors.length > 0 ? curationErrors.slice(0, 10) : undefined,
+    });
   } catch (error) {
     console.error('Cron error:', error);
     return NextResponse.json({ error: 'Fehler beim Cron-Job' }, { status: 500 });
