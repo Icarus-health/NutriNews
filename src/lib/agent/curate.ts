@@ -266,14 +266,6 @@ function parseResult(content: string, item: RSSItem): CurationResult | null {
   }
 }
 
-// HF model priority: try larger models first, fall back to smaller ones
-const HF_MODELS = [
-  'Qwen/Qwen2.5-72B-Instruct',         // Excellent multilingual, free serverless
-  'mistralai/Mixtral-8x7B-Instruct-v0.1', // Good at structured output
-  'mistralai/Mistral-7B-Instruct-v0.3',   // Fallback
-];
-
-// --- Hugging Face Provider (free) ---
 function buildSystemPrompt(sourceType: SourceType): string {
   let prompt = SYSTEM_PROMPT;
   if (sourceType === 'forschung') prompt += FORSCHUNG_ADDITION;
@@ -285,57 +277,7 @@ function buildSystemPrompt(sourceType: SourceType): string {
   return prompt;
 }
 
-async function curateWithHuggingFace(item: RSSItem): Promise<CurationResult | null> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  if (!apiKey) return null;
-
-  const systemPrompt = buildSystemPrompt(item.source.sourceType);
-
-  for (const model of HF_MODELS) {
-    try {
-      const res = await fetch(`https://api-inference.huggingface.co/models/${model}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: buildUserPrompt(item) },
-          ],
-          temperature: 0.2,
-          max_tokens: 1500,
-        }),
-        signal: AbortSignal.timeout(25000),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        console.warn(`HF model ${model} failed (${res.status}): ${errText.slice(0, 200)}`);
-        continue; // Try next model
-      }
-
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) continue;
-
-      const result = parseResult(content, item);
-      if (result) {
-        console.log(`Curated with HF model: ${model}`);
-        return result;
-      }
-    } catch (err) {
-      console.warn(`HF model ${model} error:`, err instanceof Error ? err.message : err);
-      continue;
-    }
-  }
-
-  return null;
-}
-
-// --- Anthropic Claude Provider (fallback, paid but cheap with Haiku) ---
+// --- Anthropic Claude Haiku (~$0.001/Artikel) ---
 async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
@@ -357,7 +299,7 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   if (block.type !== 'text') return null;
 
   const result = parseResult(block.text, item);
-  if (result) console.log(`Curated with Claude (fallback): ${item.title?.slice(0, 60)}`);
+  if (result) console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
   return result;
 }
 
@@ -387,7 +329,7 @@ function shouldSkipItem(item: RSSItem): boolean {
   return false;
 }
 
-// --- Main entry: HuggingFace first (free), Claude as fallback ---
+// --- Main entry: Claude Haiku only ---
 export async function curateArticle(item: RSSItem): Promise<CurationResult | null> {
   // Pre-filter: skip obviously irrelevant items without calling AI
   if (shouldSkipItem(item)) {
@@ -396,20 +338,12 @@ export async function curateArticle(item: RSSItem): Promise<CurationResult | nul
   }
 
   try {
-    // 1. Try Hugging Face FIRST (free, no cost)
-    if (process.env.HUGGINGFACE_API_KEY) {
-      const result = await curateWithHuggingFace(item);
-      if (result) return result;
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY nicht gesetzt.');
+      return null;
     }
 
-    // 2. Fallback to Claude Haiku (paid, ~$0.001/Artikel)
-    if (process.env.ANTHROPIC_API_KEY) {
-      const result = await curateWithClaude(item);
-      if (result) return result;
-    }
-
-    console.error('No AI provider configured. Set HUGGINGFACE_API_KEY or ANTHROPIC_API_KEY.');
-    return null;
+    return await curateWithClaude(item);
   } catch (error) {
     console.error('AI curation failed:', error);
     return null;
