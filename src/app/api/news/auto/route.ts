@@ -7,6 +7,9 @@ import { curateArticle } from '@/lib/agent/curate';
 import { resolveCategory } from '@/lib/categories';
 import { rateLimit } from '@/lib/rate-limit';
 
+// Vercel Hobby max: 60s
+export const maxDuration = 60;
+
 // POST /api/news/auto - startet den News-Kurator-Agenten
 export async function POST(request: Request) {
   // Rate limit: max 3 runs per 10 minutes
@@ -58,17 +61,17 @@ export async function POST(request: Request) {
     }
 
     const toCurate: typeof newItems = [];
-    const TARGET = 20;
-    const CANDIDATE_POOL = 25; // over-select to compensate for curation failures
+    // Vercel Hobby: 60s timeout → ~10 Claude-Aufrufe realistisch
+    const TARGET = 10;
+    const CANDIDATE_POOL = 12;
 
-    // Minimum quotas: guarantee diversity even when forschung dominates
     const minQuotas: Record<string, number> = {
-      laienpresse: 3,
-      berufspolitik: 2,
-      international: 2,
-      supplement: 2,
-      fachpresse: 3,
-      forschung: 4,
+      laienpresse: 1,
+      berufspolitik: 1,
+      international: 1,
+      supplement: 1,
+      fachpresse: 2,
+      forschung: 3,
     };
 
     // First pass: fill minimum quotas

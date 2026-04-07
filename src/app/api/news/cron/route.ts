@@ -7,7 +7,10 @@ import { curateArticle } from '@/lib/agent/curate';
 import { resolveCategory } from '@/lib/categories';
 import { rateLimit } from '@/lib/rate-limit';
 
-// GET /api/news/cron — called by Vercel Cron every 30 minutes
+// Vercel Hobby max: 60s — genug für RSS-Fetch + ~10 Claude-Haiku-Aufrufe
+export const maxDuration = 60;
+
+// GET /api/news/cron — called by GitHub Actions 4x/day
 export async function GET(request: Request) {
   // Rate limit: max 4 runs per 30 minutes (slightly above cron frequency)
   const { success: allowed } = rateLimit('cron', 4, 30 * 60 * 1000);
@@ -59,12 +62,13 @@ export async function GET(request: Request) {
       byType[t].push(item);
     }
 
-    const TARGET = 20;
-    const CANDIDATE_POOL = 25; // over-select to compensate for failures
+    // Vercel Hobby: 60s timeout → RSS-Fetch ~5s + ~10 Claude-Aufrufe à ~4s (parallel in 5er-Batches)
+    const TARGET = 10;
+    const CANDIDATE_POOL = 12; // slight over-select for failures
     const toCurate: typeof newItems = [];
     const minQuotas: Record<string, number> = {
-      laienpresse: 3, berufspolitik: 2, international: 3,
-      supplement: 2, fachpresse: 4, forschung: 6,
+      laienpresse: 1, berufspolitik: 1, international: 1,
+      supplement: 1, fachpresse: 2, forschung: 3,
     };
 
     // Fill minimum quotas first
