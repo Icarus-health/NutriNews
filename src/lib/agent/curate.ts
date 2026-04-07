@@ -33,11 +33,11 @@ SCHREIBSTIL-REGELN:
 - Jeder Satz muss einen KONKRETEN Informationsgehalt haben, den der Therapeut vorher nicht wusste
 
 WEITERE REGELN:
-1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel. Erfinde NICHTS hinzu.
-2. Erstelle IMMER eine Card — auch wenn der Artikel nur am Rande mit Ernaehrung zu tun hat oder die Informationslage duenn ist. Nutze dann Evidenz-Level "Laienpresse/Trend" oder "Expertenmeinung" und einen niedrigen Praxisrelevanz-Score (1-2). Antworte NUR mit {"insufficient": true} bei reiner Werbung oder Stellenanzeigen ohne jeden fachlichen Inhalt.
+1. Verwende die Informationen aus Titel und Beschreibung des Quellartikels. Wenn nur ein Titel und eine kurze Beschreibung vorliegen (z.B. von Google News RSS), erstelle die Card trotzdem basierend auf den verfuegbaren Informationen. Erfinde KEINE Studiendetails oder Zahlen hinzu, aber formuliere eine informative Card aus dem, was da ist.
+2. Erstelle IMMER eine Card — auch wenn der Artikel nur am Rande mit Ernaehrung zu tun hat, die Informationslage duenn ist, oder nur eine Headline mit kurzem Snippet vorliegt. Nutze dann Evidenz-Level "Laienpresse/Trend" oder "Expertenmeinung" und einen niedrigen Praxisrelevanz-Score (1-2). Antworte NUR mit {"insufficient": true} bei reiner Werbung, Stellenanzeigen oder Inhalten die NULL Bezug zu Ernaehrung, Gesundheit oder Berufspolitik haben. Im Zweifelsfall: ERSTELLE die Card.
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
-5. Die Evidenz-Einordnung ist PFLICHT: Bewerte Studiendesign, Stichprobengroesse, Limitationen und Uebertragbarkeit.
+5. Die Evidenz-Einordnung ist PFLICHT sofern anwendbar. Bei Laienpresse/Politik genuegt eine kurze Einordnung.
 
 EVIDENZ-LEVEL (waehle basierend auf der Studienart im Artikel):
 - "Meta-Analyse" - Zusammenfassung mehrerer Studien
@@ -302,6 +302,11 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
 
   const result = parseResult(block.text, item);
   if (!result) {
+    // "insufficient" is a valid Claude response, not an error
+    const isInsufficient = block.text.includes('"insufficient"');
+    if (isInsufficient) {
+      throw new Error(`insufficient: ${item.title?.slice(0, 80)}`);
+    }
     throw new Error(`Parse failed: ${block.text.slice(0, 150)}`);
   }
   console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
