@@ -109,12 +109,12 @@ export async function GET(request: Request) {
     const CURATE_BATCH_SIZE = 5;
     for (let i = 0; i < toCurate.length && created < TARGET; i += CURATE_BATCH_SIZE) {
       const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
-      const results = await Promise.all(batch.map(item => curateArticle(item)));
+      const outcomes = await Promise.all(batch.map(item => curateArticle(item)));
 
-      await Promise.all(results.map((result, j) => {
+      await Promise.all(outcomes.map(({ result, error }, j) => {
         if (!result) {
           curationFailed++;
-          curationErrors.push(batch[j].title?.slice(0, 60) || 'unknown');
+          curationErrors.push(error || batch[j].title?.slice(0, 60) || 'unknown');
           return Promise.resolve();
         }
         if (created >= TARGET) return Promise.resolve();

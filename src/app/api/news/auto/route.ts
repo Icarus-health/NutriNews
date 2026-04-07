@@ -113,14 +113,14 @@ export async function POST(request: Request) {
     const CURATE_BATCH_SIZE = 5;
     for (let i = 0; i < toCurate.length && created < TARGET; i += CURATE_BATCH_SIZE) {
       const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
-      const results = await Promise.all(batch.map(item => curateArticle(item)));
+      const outcomes = await Promise.all(batch.map(item => curateArticle(item)));
 
       // Save each result immediately
-      for (let j = 0; j < results.length; j++) {
+      for (let j = 0; j < outcomes.length; j++) {
         if (created >= TARGET) break;
-        const result = results[j];
+        const { result, error: curationError } = outcomes[j];
         if (!result) {
-          errors.push(`Uebersprungen: ${batch[j].title}`);
+          errors.push(curationError || `Uebersprungen: ${batch[j].title}`);
           continue;
         }
 
