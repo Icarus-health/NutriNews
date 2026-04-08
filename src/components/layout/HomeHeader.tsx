@@ -131,8 +131,8 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden">
-            <Image src="/logo-header.webp" alt="NutriNews" className="w-full h-full object-contain" width={36} height={36} priority />
+          <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden dark:bg-forest-800">
+            <Image src="/logo-header.webp" alt="NutriNews" className="w-full h-full object-cover dark:scale-110" width={36} height={36} priority />
           </div>
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-1.5">

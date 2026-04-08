@@ -47,7 +47,7 @@ export default function SplashScreen() {
           opacity: 0,
         }}
       >
-        <img src="/logo-splash.webp" alt="NutriNews" width={108} height={108} style={{ objectFit: 'contain' }} />
+        <img src="/logo-splash.webp" alt="NutriNews" width={108} height={108} style={{ objectFit: 'cover', borderRadius: '24px', transform: 'scale(1.04)' }} />
       </div>
 
       {/* Text with slightly delayed entrance */}
