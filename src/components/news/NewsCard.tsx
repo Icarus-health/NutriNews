@@ -9,7 +9,7 @@ import { clsx } from 'clsx';
 const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false });
 const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
-import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
+import { getCategoryStyle, getCategoryLabel, getCategoryCardAccent } from '@/lib/categories';
 import { toggleLike, toggleBookmark, upsertNote, getNote } from '@/lib/actions/news';
 import { getCardVerifications } from '@/lib/actions/community';
 import { useUX } from '@/components/providers/UXProvider';
@@ -127,6 +127,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
   const readMin = Math.ceil((card.read_time_sec ?? 45) / 60);
   const isLayPress = card.source_type === 'laienpresse';
   const accent = SOURCE_TYPE_ACCENT[card.source_type] ?? SOURCE_TYPE_ACCENT.forschung;
+  const categoryAccent = getCategoryCardAccent(card.category_main);
 
   useEffect(() => {
     if (backRef.current) {
@@ -309,7 +310,8 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
         <div ref={frontRef} className="flip-card-front">
           <article
             className={clsx(
-              'rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border overflow-hidden cursor-pointer active:scale-[0.98] transition-all duration-200',
+              'rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-l-[3px] overflow-hidden cursor-pointer active:scale-[0.98] transition-all duration-200',
+              categoryAccent,
               isRead
                 ? 'bg-white/80 dark:bg-slate-800/70 border-slate-100/40 dark:border-slate-700/40 opacity-80'
                 : 'bg-white dark:bg-slate-800 border-slate-100/40 dark:border-slate-700/40'
@@ -493,7 +495,10 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
         {/* ═══ BACK ═══ */}
         <div ref={backRef} className="flip-card-back">
           <article
-            className="bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-slate-100/40 dark:border-slate-700/40 overflow-hidden"
+            className={clsx(
+              'bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-l-[3px] border-slate-100/40 dark:border-slate-700/40 overflow-hidden',
+              categoryAccent
+            )}
           >
             {/* Reading progress bar — animates over estimated read time */}
             <div className="relative h-1 overflow-hidden">
