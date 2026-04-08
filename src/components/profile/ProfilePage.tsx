@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare } from 'lucide-react';
+import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare, UserPlus, Link2, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile, submitAppFeedback } from '@/lib/actions/news';
@@ -41,6 +41,7 @@ export default function ProfilePage({ profile, stats }: Props) {
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [feedbackType, setFeedbackType] = useState('verbesserung');
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
@@ -236,6 +237,58 @@ export default function ProfilePage({ profile, stats }: Props) {
               <p className="text-[11px] text-slate-400">Lese regelmäßig, um Badges zu verdienen</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Invite colleagues */}
+      <div className="bg-gradient-to-br from-forest-50 to-emerald-50/50 dark:from-forest-900/20 dark:to-emerald-900/10 rounded-xl border border-forest-100/60 dark:border-forest-800/30 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-1.5">
+          <UserPlus size={18} className="text-forest-600 dark:text-forest-400" />
+          <p className="text-sm font-bold text-forest-800 dark:text-forest-200">Kolleg*innen einladen</p>
+        </div>
+        <p className="text-[12px] text-forest-600/80 dark:text-forest-400/80 mb-3">
+          Teile NutriNews mit deinem Team — gemeinsam evidenzbasiert auf dem neuesten Stand.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              const url = typeof window !== 'undefined' ? window.location.origin : '';
+              const shareText = 'Schau dir NutriNews an — evidenzbasierte Ernährungsnews, kompakt aufbereitet für die Praxis.';
+              if (navigator.share) {
+                try {
+                  await navigator.share({ title: 'NutriNews', text: shareText, url });
+                  return;
+                } catch { /* user cancelled or not supported */ }
+              }
+              try {
+                await navigator.clipboard.writeText(url);
+                setInviteCopied(true);
+                setTimeout(() => setInviteCopied(false), 2500);
+              } catch { /* ignore */ }
+            }}
+            className="flex-1 flex items-center justify-center gap-2 bg-forest-700 hover:bg-forest-800 text-white rounded-xl py-2.5 text-[13px] font-semibold transition-colors"
+          >
+            <UserPlus size={15} />
+            Einladung teilen
+          </button>
+          <button
+            onClick={async () => {
+              const url = typeof window !== 'undefined' ? window.location.origin : '';
+              try {
+                await navigator.clipboard.writeText(url);
+                setInviteCopied(true);
+                setTimeout(() => setInviteCopied(false), 2500);
+              } catch { /* ignore */ }
+            }}
+            className={clsx(
+              'flex items-center justify-center gap-1.5 px-4 rounded-xl text-[12px] font-semibold transition-all border',
+              inviteCopied
+                ? 'bg-forest-50 dark:bg-forest-900/30 border-forest-300 dark:border-forest-700 text-forest-700 dark:text-forest-400'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-forest-300'
+            )}
+          >
+            {inviteCopied ? <><Check size={14} /> Kopiert!</> : <><Link2 size={14} /> Link</>}
+          </button>
         </div>
       </div>
 
