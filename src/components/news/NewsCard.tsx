@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect, useCallback, memo } from 'react';
 import { useMinuteTick } from '@/hooks/useMinuteTick';
 import dynamic from 'next/dynamic';
-import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, Link2, PenLine, Printer, EyeOff } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, ChevronDown, Link2, PenLine, Printer, EyeOff } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false });
@@ -73,6 +73,7 @@ function formatTime(dateStr: string | null) {
 
 function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false }: Props) {
   const [flipped, setFlipped] = useState(defaultFlipped);
+  const [showAllDetails, setShowAllDetails] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(card.user_has_liked ?? false);
   const [likeCount, setLikeCount] = useState(card.like_count ?? 0);
@@ -373,44 +374,38 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </h2>
             </div>
 
-            {/* Was? — voller Text als schneller Kontext */}
+            {/* Was? — gekürzt auf 2 Zeilen für Mobile-Scannability */}
             {card.snack_what && (
               <div className="mx-4 mb-2.5 flex items-baseline gap-2">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex-shrink-0">Was?</span>
-                <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
                   {card.snack_what}
                 </p>
               </div>
             )}
 
-            {/* Praxisrelevanz-Indikator (Punkte 1–5) */}
+            {/* Praxisrelevanz — kompakte Dots ohne Label */}
             {card.practice_relevance_score != null && (
-              <div className="mx-4 mb-2.5 flex items-center gap-2">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Praxis</span>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <span
-                      key={i}
-                      className={clsx(
-                        'w-2 h-2 rounded-full',
-                        i <= (card.practice_relevance_score ?? 0)
-                          ? 'bg-forest-500 dark:bg-forest-400'
-                          : 'bg-slate-200 dark:bg-slate-600'
-                      )}
-                    />
-                  ))}
-                </div>
-                <span className="text-[9px] text-slate-400">
-                  {card.practice_relevance_score}/5
-                </span>
+              <div className="mx-4 mb-2 flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <span
+                    key={i}
+                    className={clsx(
+                      'w-1.5 h-1.5 rounded-full',
+                      i <= (card.practice_relevance_score ?? 0)
+                        ? 'bg-forest-500 dark:bg-forest-400'
+                        : 'bg-slate-200 dark:bg-slate-600'
+                    )}
+                  />
+                ))}
               </div>
             )}
 
-            {/* Laienpresse: Hinweis-Pill statt vollem Faktencheck (Details auf Rückseite) */}
+            {/* Laienpresse: kompakter Hinweis */}
             {isLayPress && card.lay_press_fact_check && (
-              <div className="mx-4 mb-2.5 flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-200/60 dark:border-amber-800/30">
-                  📰 Medien vs. Evidenz — Faktencheck auf Rückseite
+              <div className="mx-4 mb-2 flex items-center">
+                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/30">
+                  📰 Faktencheck verfügbar
                 </span>
               </div>
             )}
@@ -581,43 +576,62 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.snack_consequence}</p>
               </div>
 
-              {card.evidence_summary && (
-                <div className="bg-indigo-50/60 dark:bg-indigo-900/20 rounded-xl px-3.5 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-0.5">
-                    {evidence.icon} Evidenz-Einordnung
-                  </p>
-                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.evidence_summary}</p>
-                </div>
-              )}
+              {/* ── Optionale Details — ausklappbar für weniger Textwand ── */}
+              {(card.evidence_summary || card.action_recommendation || card.patient_question_anticipation || card.policy_action_needed || card.international_relevance_de) && (
+                <>
+                  {!showAllDetails && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowAllDetails(true); }}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-[12px] font-semibold text-forest-600 dark:text-forest-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700"
+                    >
+                      <ChevronDown size={14} />
+                      Mehr Details
+                    </button>
+                  )}
 
-              {card.action_recommendation && (
-                <div className="bg-forest-50/60 dark:bg-forest-900/20 rounded-xl px-3.5 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-forest-500 dark:text-forest-400 mb-0.5">Handlungsempfehlung</p>
-                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.action_recommendation}</p>
-                </div>
-              )}
+                  {showAllDetails && (
+                    <div className="space-y-2.5 animate-fade-in">
+                      {card.evidence_summary && (
+                        <div className="bg-indigo-50/60 dark:bg-indigo-900/20 rounded-xl px-3.5 py-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-0.5">
+                            {evidence.icon} Evidenz-Einordnung
+                          </p>
+                          <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.evidence_summary}</p>
+                        </div>
+                      )}
 
-              {card.patient_question_anticipation && (
-                <div className="bg-rose-50/60 dark:bg-rose-900/20 rounded-xl px-3.5 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-0.5">Erwartbare Patientenfrage</p>
-                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 italic">
-                    &ldquo;{card.patient_question_anticipation}&rdquo;
-                  </p>
-                </div>
-              )}
+                      {card.action_recommendation && (
+                        <div className="bg-forest-50/60 dark:bg-forest-900/20 rounded-xl px-3.5 py-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-forest-500 dark:text-forest-400 mb-0.5">Handlungsempfehlung</p>
+                          <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.action_recommendation}</p>
+                        </div>
+                      )}
 
-              {card.policy_action_needed && (
-                <div className="bg-orange-50/60 dark:bg-orange-900/20 rounded-xl px-3.5 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-0.5">Was ist zu tun?</p>
-                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.policy_action_needed}</p>
-                </div>
-              )}
+                      {card.patient_question_anticipation && (
+                        <div className="bg-rose-50/60 dark:bg-rose-900/20 rounded-xl px-3.5 py-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-0.5">Erwartbare Patientenfrage</p>
+                          <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 italic">
+                            &ldquo;{card.patient_question_anticipation}&rdquo;
+                          </p>
+                        </div>
+                      )}
 
-              {card.international_relevance_de && (
-                <div className="bg-sky-50/60 dark:bg-sky-900/20 rounded-xl px-3.5 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">Relevanz für Deutschland</p>
-                  <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.international_relevance_de}</p>
-                </div>
+                      {card.policy_action_needed && (
+                        <div className="bg-orange-50/60 dark:bg-orange-900/20 rounded-xl px-3.5 py-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-0.5">Was ist zu tun?</p>
+                          <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.policy_action_needed}</p>
+                        </div>
+                      )}
+
+                      {card.international_relevance_de && (
+                        <div className="bg-sky-50/60 dark:bg-sky-900/20 rounded-xl px-3.5 py-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">Relevanz für Deutschland</p>
+                          <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{card.international_relevance_de}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {card.curated_by_agent && (
