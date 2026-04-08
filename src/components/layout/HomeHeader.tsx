@@ -358,19 +358,19 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
         )}
       </div>
 
-      {/* Extended filters toggle */}
-      <div className="px-5 pb-3">
+      {/* Extended filters toggle — kompakter für Mobile */}
+      <div className="px-5 pb-2">
         <button
           onClick={() => setShowFilters(f => !f)}
           className={clsx(
-            'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+            'flex items-center gap-1.5 text-[11px] font-semibold transition-colors',
             showFilters || selectedEvidence.size > 0 || days || relevance
               ? 'text-forest-700 dark:text-forest-400'
               : 'text-slate-400 hover:text-slate-600'
           )}
         >
-          <SlidersHorizontal size={14} />
-          Erweiterte Filter
+          <SlidersHorizontal size={13} />
+          Filter
           {(selectedEvidence.size > 0 || days || relevance) && (
             <span className="w-4 h-4 rounded-full bg-forest-700 text-white text-[9px] flex items-center justify-center font-bold">
               {(selectedEvidence.size > 0 ? 1 : 0) + (days ? 1 : 0) + (relevance ? 1 : 0)}
@@ -379,86 +379,77 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
         </button>
 
         {showFilters && (
-          <div className="mt-3 space-y-3 animate-fade-in">
-            {/* Evidence Level multi-select */}
-            <div>
-              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Evidenz-Level</p>
-              <div className="flex flex-wrap gap-1.5">
-                {EVIDENCE_LEVELS.map(level => {
-                  const config = EVIDENCE_CONFIG[level];
-                  const isActive = selectedEvidence.has(level);
-                  return (
-                    <button
-                      key={level}
-                      onClick={() => {
-                        setSelectedEvidence(prev => {
-                          const next = new Set(prev);
-                          if (next.has(level)) next.delete(level); else next.add(level);
-                          router.push(buildUrl(selected, query, next));
-                          return next;
-                        });
-                      }}
-                      className={clsx(
-                        'px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all border',
-                        isActive
-                          ? 'bg-forest-700 text-white border-forest-700'
-                          : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300'
-                      )}
-                    >
-                      {config.icon} {config.label}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="mt-2 space-y-2 animate-fade-in">
+            {/* Evidence Level — kompaktere Chips */}
+            <div className="flex flex-wrap gap-1">
+              {EVIDENCE_LEVELS.map(level => {
+                const config = EVIDENCE_CONFIG[level];
+                const isActive = selectedEvidence.has(level);
+                return (
+                  <button
+                    key={level}
+                    onClick={() => {
+                      setSelectedEvidence(prev => {
+                        const next = new Set(prev);
+                        if (next.has(level)) next.delete(level); else next.add(level);
+                        router.push(buildUrl(selected, query, next));
+                        return next;
+                      });
+                    }}
+                    className={clsx(
+                      'px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all border',
+                      isActive
+                        ? 'bg-forest-700 text-white border-forest-700'
+                        : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300'
+                    )}
+                  >
+                    {config.icon} {config.label}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Date range + Min relevance row */}
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Zeitraum</p>
-                <div className="flex gap-1.5">
-                  {DATE_RANGES.map(dr => (
-                    <button
-                      key={dr.value}
-                      onClick={() => {
-                        const next = days === dr.value ? '' : dr.value;
-                        setDays(next);
-                        router.push(buildUrl(selected, query, undefined, next));
-                      }}
-                      className={clsx(
-                        'flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all border text-center',
-                        days === dr.value
-                          ? 'bg-forest-700 text-white border-forest-700'
-                          : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
-                      )}
-                    >
-                      {dr.label}
-                    </button>
-                  ))}
-                </div>
+            {/* Date range + Min relevance — kompakter in einer Zeile */}
+            <div className="flex gap-2">
+              <div className="flex-1 flex gap-1">
+                {DATE_RANGES.map(dr => (
+                  <button
+                    key={dr.value}
+                    onClick={() => {
+                      const next = days === dr.value ? '' : dr.value;
+                      setDays(next);
+                      router.push(buildUrl(selected, query, undefined, next));
+                    }}
+                    className={clsx(
+                      'flex-1 py-1 rounded-lg text-[10px] font-semibold transition-all border text-center',
+                      days === dr.value
+                        ? 'bg-forest-700 text-white border-forest-700'
+                        : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
+                    )}
+                  >
+                    {dr.label}
+                  </button>
+                ))}
               </div>
-              <div className="w-28">
-                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Min. Relevanz</p>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map(score => (
-                    <button
-                      key={score}
-                      onClick={() => {
-                        const next = relevance === String(score) ? '' : String(score);
-                        setRelevance(next);
-                        router.push(buildUrl(selected, query, undefined, undefined, next));
-                      }}
-                      className={clsx(
-                        'flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all border text-center',
-                        Number(relevance) >= 1 && score <= Number(relevance)
-                          ? 'bg-forest-700 text-white border-forest-700'
-                          : 'bg-white dark:bg-slate-700 text-slate-400 border-slate-200 dark:border-slate-600'
-                      )}
-                    >
-                      {score}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map(score => (
+                  <button
+                    key={score}
+                    onClick={() => {
+                      const next = relevance === String(score) ? '' : String(score);
+                      setRelevance(next);
+                      router.push(buildUrl(selected, query, undefined, undefined, next));
+                    }}
+                    className={clsx(
+                      'w-6 h-6 rounded-md text-[10px] font-bold transition-all border text-center',
+                      Number(relevance) >= 1 && score <= Number(relevance)
+                        ? 'bg-forest-700 text-white border-forest-700'
+                        : 'bg-white dark:bg-slate-700 text-slate-400 border-slate-200 dark:border-slate-600'
+                    )}
+                  >
+                    {score}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -471,9 +462,9 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                   setRelevance('');
                   router.push(buildUrl(selected, query, new Set(), '', ''));
                 }}
-                className="text-[11px] text-slate-400 hover:text-red-400 transition-colors"
+                className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
               >
-                Erweiterte Filter zurücksetzen
+                Zurücksetzen
               </button>
             )}
           </div>

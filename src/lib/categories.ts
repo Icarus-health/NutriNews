@@ -140,3 +140,40 @@ export function resolveCategory(category: string): CategoryId {
   if (CATEGORIES.some(c => c.id === category)) return category as CategoryId;
   return LEGACY_CATEGORY_MAP[category] ?? 'Fortbildung & Lehre';
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Farblicher Karten-Akzent pro Kategorie (linker Rand)
+// Gibt visuell sofort Orientierung im Feed
+// ═══════════════════════════════════════════════════════════════
+
+const CATEGORY_CARD_ACCENTS: Record<string, string> = {
+  'Künstliche Ernährung':              'border-l-teal-400 dark:border-l-teal-500',
+  'Onkologische Ernährung':            'border-l-purple-400 dark:border-l-purple-500',
+  'Geriatrie & Sarkopenie':            'border-l-stone-400 dark:border-l-stone-500',
+  'Nieren & Leber':                    'border-l-slate-400 dark:border-l-slate-500',
+  'GLP-1 & Adipositastherapie':        'border-l-red-400 dark:border-l-red-500',
+  'Diabetologie & Ernährung':          'border-l-amber-400 dark:border-l-amber-500',
+  'Gastroenterologie':                 'border-l-lime-400 dark:border-l-lime-500',
+  'Supplements & NEM':                 'border-l-emerald-400 dark:border-l-emerald-500',
+  'Kardiovaskulär':                    'border-l-rose-400 dark:border-l-rose-500',
+  'Psychiatrie & Ernährung':           'border-l-violet-400 dark:border-l-violet-500',
+  'Pädiatrische Ernährung':            'border-l-pink-400 dark:border-l-pink-500',
+  'Nachhaltigkeit & Ernährung':        'border-l-green-400 dark:border-l-green-500',
+  'Sport & klinische Ernährung':       'border-l-cyan-400 dark:border-l-cyan-500',
+  'Mikronährstoffe klinisch':          'border-l-blue-400 dark:border-l-blue-500',
+  'Adipositas & Gewichtsmanagement':   'border-l-orange-400 dark:border-l-orange-500',
+  'Berufspolitik & Recht':             'border-l-orange-500 dark:border-l-orange-400',
+  'Fortbildung & Lehre':               'border-l-indigo-400 dark:border-l-indigo-500',
+  'Laienpresse & Patientenfragen':     'border-l-yellow-400 dark:border-l-yellow-500',
+  'Internationale Perspektive':        'border-l-sky-400 dark:border-l-sky-500',
+  'Medikament-Nährstoff-Interaktionen': 'border-l-red-300 dark:border-l-red-400',
+};
+
+/** Gibt die Tailwind-Klasse für den farbigen linken Kartenrand zurück */
+export function getCategoryCardAccent(id: string): string {
+  const direct = CATEGORY_CARD_ACCENTS[id];
+  if (direct) return direct;
+  const mapped = LEGACY_CATEGORY_MAP[id];
+  if (mapped) return CATEGORY_CARD_ACCENTS[mapped] ?? '';
+  return 'border-l-slate-300 dark:border-l-slate-600';
+}

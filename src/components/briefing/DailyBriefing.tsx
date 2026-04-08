@@ -21,6 +21,7 @@ function formatDate(dateStr: string): string {
 export default function DailyBriefing({ items, date, isYesterday }: Props) {
   // Today's briefing starts expanded and is not collapsible by default
   const [collapsed, setCollapsed] = useState(isYesterday ? true : false);
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
   if (items.length === 0) return null;
 
@@ -99,10 +100,24 @@ export default function DailyBriefing({ items, date, isYesterday }: Props) {
                     {item.headline}
                   </p>
 
-                  {/* Summary */}
-                  <p className="text-forest-100 text-[12px] leading-relaxed">
+                  {/* Summary — gekürzt auf 2 Zeilen, expandierbar */}
+                  <p className={clsx(
+                    'text-forest-100 text-[12px] leading-relaxed',
+                    !expandedItems.has(i) && 'line-clamp-2'
+                  )}>
                     {item.summary}
                   </p>
+                  {!expandedItems.has(i) && item.summary.length > 100 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedItems(prev => new Set(prev).add(i));
+                      }}
+                      className="text-[11px] font-semibold text-emerald-300 hover:text-white mt-0.5 transition-colors"
+                    >
+                      mehr
+                    </button>
+                  )}
 
                   {/* Source link */}
                   {item.source_url && (
