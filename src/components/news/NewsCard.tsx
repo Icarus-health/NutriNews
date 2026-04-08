@@ -371,11 +371,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </h2>
             </div>
 
-            {/* Was? — 3 Zeilen für ausreichend Kontext */}
+            {/* Was? — vollständig anzeigen, damit Nutzer sich ein Bild machen können */}
             {card.snack_what && (
               <div className="mx-4 mb-2 flex items-baseline gap-2">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex-shrink-0">Was?</span>
-                <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
+                <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   {card.snack_what}
                 </p>
               </div>
