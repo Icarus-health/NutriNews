@@ -322,51 +322,46 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               ux.markAsRead(card.id, card.headline, card.category_main);
             }}
           >
-            {/* ── Visual hero header with gradient + decorative emoji ── */}
-            <div className={clsx('relative px-4 pt-4 pb-3 overflow-hidden', accent.bgLight, accent.bgDark)}>
-              {/* Decorative large emoji (background) */}
-              <span className="absolute -right-2 -top-2 text-[72px] opacity-[0.08] select-none pointer-events-none leading-none">
-                {accent.emoji}
-              </span>
+            {/* ── Kompakter Header: Quellentyp + Kategorie + Evidenz in einer Zeile ── */}
+            <div className={clsx('relative px-4 pt-2.5 pb-2 overflow-hidden', accent.bgLight, accent.bgDark)}>
               {/* Gradient accent bar */}
-              <div className={clsx('absolute top-0 left-0 right-0 h-1 bg-gradient-to-r', accent.gradient)} />
+              <div className={clsx('absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r', accent.gradient)} />
 
-              {/* Source type + Evidence row */}
-              <div className="relative flex items-center gap-2 mb-2.5">
-                <span className="text-base">{accent.emoji}</span>
-                <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300">
-                  {accent.label}
+              {/* Alles in einer Zeile: Quellentyp · Kategorie · Evidenz · Zeit */}
+              <div className="relative flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  {accent.emoji} {accent.label}
                 </span>
-                <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full', evidence.color)}>
+                <span className="text-slate-300 dark:text-slate-600 text-[10px]">&middot;</span>
+                <span className={clsx(
+                  'text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full',
+                  getCategoryStyle(card.category_main)
+                )}>
+                  {getCategoryLabel(card.category_main)}
+                </span>
+                <span className={clsx('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidence.label}
                 </span>
                 {isNew && !isRead && (
-                  <span className="text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-green-500 text-white px-1.5 py-0.5 rounded-full">
+                  <span className="text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-green-500 text-white px-1.5 py-0.5 rounded-full">
                     Neu
                   </span>
                 )}
-                {card.published_at && (
-                  <span className="ml-auto text-[10px] text-slate-400 tabular-nums">
-                    {formatTime(card.published_at)}
-                  </span>
-                )}
-                {/* Hide card button */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); ux.hideCard(card.id); }}
-                  title="Nicht mehr anzeigen"
-                  className="ml-1 p-1 rounded-full text-slate-300 hover:text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-700/40 transition-colors"
-                >
-                  <EyeOff size={13} strokeWidth={1.5} />
-                </button>
+                <span className="ml-auto flex items-center gap-1">
+                  {card.published_at && (
+                    <span className="text-[10px] text-slate-400 tabular-nums">
+                      {formatTime(card.published_at)}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); ux.hideCard(card.id); }}
+                    title="Nicht mehr anzeigen"
+                    className="p-0.5 rounded-full text-slate-300 hover:text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-700/40 transition-colors"
+                  >
+                    <EyeOff size={12} strokeWidth={1.5} />
+                  </button>
+                </span>
               </div>
-
-              {/* Category badge */}
-              <span className={clsx(
-                'text-[10px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full inline-block',
-                getCategoryStyle(card.category_main)
-              )}>
-                {getCategoryLabel(card.category_main)}
-              </span>
             </div>
 
             {/* Headline */}
@@ -376,11 +371,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </h2>
             </div>
 
-            {/* Was? — gekürzt auf 2 Zeilen für Mobile-Scannability */}
+            {/* Was? — 3 Zeilen für ausreichend Kontext */}
             {card.snack_what && (
-              <div className="mx-4 mb-2.5 flex items-baseline gap-2">
+              <div className="mx-4 mb-2 flex items-baseline gap-2">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex-shrink-0">Was?</span>
-                <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
                   {card.snack_what}
                 </p>
               </div>
@@ -412,11 +407,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </div>
             )}
 
-            {/* Tap hint — prominent CTA */}
+            {/* Tap hint — kompakter CTA */}
             <div className="px-4 pb-2">
-              <div className="flex items-center justify-center gap-1.5 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-2.5 rounded-2xl transition-colors">
-                <span className="text-[13px] font-bold text-white">Alle Details lesen</span>
-                <ChevronRight size={14} strokeWidth={2.5} className="text-white/80" />
+              <div className="flex items-center justify-center gap-1 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-1.5 rounded-xl transition-colors">
+                <span className="text-[12px] font-bold text-white">Details lesen</span>
+                <ChevronRight size={13} strokeWidth={2.5} className="text-white/80" />
               </div>
             </div>
 
