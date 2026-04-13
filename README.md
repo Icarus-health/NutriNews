@@ -15,6 +15,7 @@
 
 1. Neues Projekt auf [supabase.com](https://supabase.com) anlegen
 2. SQL aus `/supabase/schema.sql` im SQL-Editor ausführen
+3. Zusätzliche Migrationen aus `/supabase/migrations/*.sql` ausführen (z. B. Performance-Indizes)
 
 #### Google OAuth einrichten
 
@@ -53,6 +54,11 @@ npm run dev
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `OPENAI_API_KEY`
 3. Deploy!
+
+## Betrieb auf Free-Tiers
+
+- **Cron** läuft über GitHub Actions (`.github/workflows/cron.yml`) als Ersatz für Vercel Cron im Hobby-Plan.
+- Für gute Feed-Performance auf Supabase Free sollten die SQL-Migrationen in `supabase/migrations/` eingespielt sein.
 
 ## Kategorien
 
