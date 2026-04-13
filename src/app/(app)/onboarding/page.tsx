@@ -13,11 +13,11 @@ export default async function OnboardingPage() {
   // Check if user already completed onboarding
   const { data: profile } = await supabase
     .from('profiles')
-    .select('setting')
+    .select('preferred_categories')
     .eq('id', user.id)
     .single();
 
-  if (profile?.setting) redirect('/');
+  if (profile?.preferred_categories && profile.preferred_categories.length > 0) redirect('/');
 
   // Load channels for step 3
   const { data: channels } = await supabase

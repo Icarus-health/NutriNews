@@ -2,25 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Stethoscope, Tags, Users, ArrowRight, Check } from 'lucide-react';
+import { Tags, Users, ArrowRight, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile } from '@/lib/actions/news';
 import { joinChannel } from '@/lib/actions/community';
-import type { TherapistSetting, Channel } from '@/types/database';
-
-const SETTINGS: { id: TherapistSetting; label: string; description: string; emoji: string }[] = [
-  { id: 'akutklinik', label: 'Akutklinik', description: 'Stationäre Versorgung, Intensiv', emoji: '🏥' },
-  { id: 'rehabilitation', label: 'Rehabilitation', description: 'Reha-Einrichtungen', emoji: '🏋️' },
-  { id: 'ambulant', label: 'Ambulante Praxis', description: 'Freiberufliche Ernährungstherapie', emoji: '🏠' },
-  { id: 'psychiatrie', label: 'Psychiatrische Einrichtung', description: 'Psychiatrie, Psychosomatik', emoji: '🧠' },
-  { id: 'langzeitpflege', label: 'Langzeitpflege', description: 'Pflegeheime, Geriatrie', emoji: '🧓' },
-  { id: 'praevention', label: 'Prävention', description: 'Gesundheitsförderung, Kursleitung', emoji: '🍏' },
-  { id: 'forschung_lehre', label: 'Forschung & Lehre', description: 'Hochschule, Wissenschaft', emoji: '🔬' },
-];
+import type { Channel } from '@/types/database';
 
 const STEPS = [
-  { title: 'Arbeitsumfeld', subtitle: 'Wo arbeitest du?', icon: Stethoscope },
   { title: 'Themen', subtitle: 'Was interessiert dich?', icon: Tags },
   { title: 'Community', subtitle: 'Vernetze dich', icon: Users },
 ] as const;
@@ -32,7 +21,6 @@ interface Props {
 export default function OnboardingClient({ channels }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [setting, setSetting] = useState<TherapistSetting | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -44,7 +32,7 @@ export default function OnboardingClient({ channels }: Props) {
   }
 
   function handleNext() {
-    if (step < 2) {
+    if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
       handleFinish();
@@ -54,7 +42,6 @@ export default function OnboardingClient({ channels }: Props) {
   function handleFinish() {
     startTransition(async () => {
       await updateProfile({
-        setting: setting ?? undefined,
         preferred_categories: selectedCategories,
       });
 
@@ -68,8 +55,7 @@ export default function OnboardingClient({ channels }: Props) {
   }
 
   const canProceed =
-    step === 0 ? setting !== null :
-    step === 1 ? selectedCategories.length >= 1 :
+    step === 0 ? selectedCategories.length >= 1 :
     true;
 
   return (
@@ -104,40 +90,8 @@ export default function OnboardingClient({ channels }: Props) {
         <p className="text-[14px] text-slate-400 mt-1">{STEPS[step].subtitle}</p>
       </div>
 
-      {/* Step 1: Setting */}
+      {/* Step 1: Categories */}
       {step === 0 && (
-        <div className="space-y-3 animate-fade-in">
-          {SETTINGS.map(s => (
-            <button
-              key={s.id}
-              onClick={() => setSetting(s.id)}
-              className={clsx(
-                'w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all border',
-                setting === s.id
-                  ? 'bg-forest-50 dark:bg-forest-900/20 border-forest-300 dark:border-forest-700 ring-1 ring-forest-300 dark:ring-forest-700'
-                  : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600'
-              )}
-            >
-              <span className="text-xl">{s.emoji}</span>
-              <div>
-                <p className={clsx(
-                  'text-[14px] font-semibold',
-                  setting === s.id ? 'text-forest-700 dark:text-forest-400' : 'text-slate-700 dark:text-slate-300'
-                )}>
-                  {s.label}
-                </p>
-                <p className="text-[12px] text-slate-400 mt-0.5">{s.description}</p>
-              </div>
-              {setting === s.id && (
-                <Check size={18} className="ml-auto text-forest-600 flex-shrink-0" />
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Step 2: Categories */}
-      {step === 1 && (
         <div className="animate-fade-in">
           <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-4">
             Wähle mindestens 1 Thema, das dich besonders interessiert. Du kannst sie später jederzeit ändern.
@@ -167,8 +121,8 @@ export default function OnboardingClient({ channels }: Props) {
         </div>
       )}
 
-      {/* Step 3: Join a channel */}
-      {step === 2 && (
+      {/* Step 2: Join a channel */}
+      {step === 1 && (
         <div className="space-y-3 animate-fade-in">
           <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-4">
             Tritt einer Fachgruppe bei, um dich mit Kolleg:innen auszutauschen. Optional — du kannst auch später beitreten.
@@ -221,11 +175,11 @@ export default function OnboardingClient({ channels }: Props) {
               isPending && 'opacity-60'
             )}
           >
-            {isPending ? 'Wird gespeichert...' : step === 2 ? 'Los geht\'s' : 'Weiter'}
+            {isPending ? 'Wird gespeichert...' : step === STEPS.length - 1 ? 'Los geht\'s' : 'Weiter'}
             {!isPending && <ArrowRight size={16} />}
           </button>
         </div>
-        {step === 2 && !selectedChannel && (
+        {step === STEPS.length - 1 && !selectedChannel && (
           <button
             onClick={handleFinish}
             disabled={isPending}
