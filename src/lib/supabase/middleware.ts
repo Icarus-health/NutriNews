@@ -52,11 +52,11 @@ export async function updateSession(request: NextRequest) {
   if (user && !isOnboardingRoute && requiresOnboarding) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('setting')
+      .select('preferred_categories')
       .eq('id', user.id)
       .single();
 
-    if (!profile?.setting) {
+    if (!profile?.preferred_categories || profile.preferred_categories.length === 0) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = '/onboarding';
       return NextResponse.redirect(onboardingUrl);
