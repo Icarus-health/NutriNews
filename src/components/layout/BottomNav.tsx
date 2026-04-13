@@ -92,9 +92,6 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
     { href: '/profile',   label: 'Profil',      icon: User,    dot: false,        badge: 0 },
   ];
 
-  // Hide bottom nav during onboarding so it doesn't overlap the onboarding CTA bar
-  if (pathname?.startsWith('/onboarding')) return null;
-
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 glass border-t border-slate-200/60 dark:border-slate-700/60 safe-bottom max-w-2xl mx-auto">
       <div className="flex">
