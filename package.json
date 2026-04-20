@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.52.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.0",
+    "@vercel/analytics": "^2.0.1",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.5.9",
     "lucide-react": "^0.468.0",

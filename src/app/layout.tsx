@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Analytics } from '@vercel/analytics/next';
 import UXProvider from '@/components/providers/UXProvider';
 import CookieConsent from '@/components/compliance/CookieConsent';
 import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PWAUpdateHandler />
           <CookieConsent />
         </UXProvider>
+        <Analytics />
       </body>
     </html>
   );
