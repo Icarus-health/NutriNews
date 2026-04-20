@@ -95,23 +95,29 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
   const isNew = ux.isNewCard(card.published_at);
   const noteKey = `nn-note-${card.id}`;
 
-  // Load note: localStorage first; if empty and user is logged in, try Supabase once
+  const noteServerLoaded = useRef(false);
+
+  // On mount: synchronous localStorage check only — no network call
   useEffect(() => {
-    let cancelled = false;
     try {
       const stored = localStorage.getItem(noteKey);
-      if (stored) { setNote(stored); setHasNote(true); return; }
+      if (stored) { setNote(stored); setHasNote(true); }
     } catch { /* ignore */ }
-    if (userId) {
-      getNote(card.id).then(remote => {
-        if (cancelled || !remote) return;
-        setNote(remote);
-        setHasNote(true);
-        try { localStorage.setItem(noteKey, remote); } catch { /* ignore */ }
-      });
-    }
+  }, [noteKey]);
+
+  // Deferred: fetch from Supabase only when note panel is first opened
+  useEffect(() => {
+    if (!showNote || noteServerLoaded.current || hasNote || !userId) return;
+    noteServerLoaded.current = true;
+    let cancelled = false;
+    getNote(card.id).then(remote => {
+      if (cancelled || !remote) return;
+      setNote(remote);
+      setHasNote(true);
+      try { localStorage.setItem(noteKey, remote); } catch { /* ignore */ }
+    });
     return () => { cancelled = true; };
-  }, [noteKey, card.id, userId]);
+  }, [showNote, hasNote, card.id, userId, noteKey]);
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();

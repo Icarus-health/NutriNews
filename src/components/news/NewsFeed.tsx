@@ -34,9 +34,10 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const [isOnline, setIsOnline] = useState(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Pull-to-refresh
+  // Pull-to-refresh — use refs to avoid re-renders on every touchmove
   const pullStartY = useRef(0);
-  const [pullY, setPullY] = useState(0);
+  const pullYRef = useRef(0);
+  const pullIndicatorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCards(initialCards);
@@ -109,21 +110,32 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     return () => observer.disconnect();
   }, [hasMore, isPending, isOnline, handleLoadMore]);
 
-  // Pull-to-refresh touch handlers
+  // Pull-to-refresh touch handlers — direct DOM updates avoid React re-renders at 60fps+
   function onTouchStart(e: React.TouchEvent) {
     pullStartY.current = e.touches[0].clientY;
   }
   function onTouchMove(e: React.TouchEvent) {
     if (window.scrollY > 5 || isRefreshing) return;
     const delta = e.touches[0].clientY - pullStartY.current;
-    if (delta > 0) setPullY(Math.min(delta * 0.45, 80));
+    if (delta > 0) {
+      const y = Math.min(delta * 0.45, 80);
+      pullYRef.current = y;
+      const el = pullIndicatorRef.current;
+      if (el) {
+        const progress = Math.min(y / 62, 1);
+        el.style.height = `${y}px`;
+        el.style.opacity = String(progress);
+        const icon = el.querySelector<HTMLDivElement>('[data-pull-icon]');
+        if (icon) icon.style.transform = `rotate(${progress * 180}deg)`;
+      }
+    }
   }
   function onTouchEnd() {
-    if (pullY >= 62) handleRefresh();
-    setPullY(0);
+    if (pullYRef.current >= 62) handleRefresh();
+    pullYRef.current = 0;
+    const el = pullIndicatorRef.current;
+    if (el) { el.style.height = '0px'; el.style.opacity = '0'; }
   }
-
-  const pullProgress = Math.min(pullY / 62, 1);
 
   if (cards.length === 0) {
     return (
@@ -146,20 +158,19 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Pull-to-refresh indicator */}
-      {pullY > 0 && (
+      {/* Pull-to-refresh indicator — height/opacity driven by direct DOM ref */}
+      <div
+        ref={pullIndicatorRef}
+        className="flex items-center justify-center mb-2 overflow-hidden"
+        style={{ height: 0, opacity: 0 }}
+      >
         <div
-          className="flex items-center justify-center mb-2 transition-all"
-          style={{ height: pullY, opacity: pullProgress }}
+          data-pull-icon
+          className="w-9 h-9 rounded-full bg-forest-100 dark:bg-forest-900/40 flex items-center justify-center shadow-sm"
         >
-          <div
-            className="w-9 h-9 rounded-full bg-forest-100 dark:bg-forest-900/40 flex items-center justify-center shadow-sm"
-            style={{ transform: `rotate(${pullProgress * 180}deg)` }}
-          >
-            <RefreshCw size={16} className="text-forest-600 dark:text-forest-400" />
-          </div>
+          <RefreshCw size={16} className="text-forest-600 dark:text-forest-400" />
         </div>
-      )}
+      </div>
 
       {/* Offline banner */}
       {!isOnline && (

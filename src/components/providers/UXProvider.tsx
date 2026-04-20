@@ -227,18 +227,30 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     return { count: thisWeek.length, topCategories };
   }, [readHistory]);
 
+  const ctxValue = useMemo(() => ({
+    theme, setTheme, isDark,
+    darkSchedule, setDarkSchedule,
+    textSize, setTextSize,
+    readHistory, markAsRead, weeklyStats,
+    searchHistory, addSearchQuery, clearSearchHistory,
+    readLaterQueue, toggleReadLater, isInReadLater,
+    streak: streakData,
+    isNewCard,
+    hiddenCards, hideCard, isHidden,
+  }), [
+    theme, isDark, darkSchedule, textSize,
+    readHistory, weeklyStats,
+    searchHistory,
+    readLaterQueue, isInReadLater,
+    streakData, isNewCard,
+    hiddenCards, isHidden,
+    setTheme, setDarkSchedule, setTextSize,
+    markAsRead, addSearchQuery, clearSearchHistory,
+    toggleReadLater, hideCard,
+  ]);
+
   return (
-    <UXContext.Provider value={{
-      theme, setTheme, isDark,
-      darkSchedule, setDarkSchedule,
-      textSize, setTextSize,
-      readHistory, markAsRead, weeklyStats,
-      searchHistory, addSearchQuery, clearSearchHistory,
-      readLaterQueue, toggleReadLater, isInReadLater,
-      streak: streakData,
-      isNewCard,
-      hiddenCards, hideCard, isHidden,
-    }}>
+    <UXContext.Provider value={ctxValue}>
       {children}
     </UXContext.Provider>
   );
