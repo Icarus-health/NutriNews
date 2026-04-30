@@ -756,14 +756,14 @@ export const RSS_SOURCES: RSSSource[] = [
   },
   {
     name: 'bioRxiv Nutrition',
-    url: 'http://connect.biorxiv.org/biorxiv_xml.php?subject=nutrition',
+    url: 'https://connect.biorxiv.org/biorxiv_xml.php?subject=nutrition',
     defaultCategory: 'Internationale Perspektive',
     language: 'en',
     sourceType: 'forschung',
   },
   {
     name: 'medRxiv Nutrition',
-    url: 'http://connect.medrxiv.org/medrxiv_xml.php?subject=Nutrition',
+    url: 'https://connect.medrxiv.org/medrxiv_xml.php?subject=Nutrition',
     defaultCategory: 'Internationale Perspektive',
     language: 'en',
     sourceType: 'forschung',

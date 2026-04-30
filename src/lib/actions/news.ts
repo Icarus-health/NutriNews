@@ -230,13 +230,13 @@ export async function deleteNewsCard(newsCardId: string) {
   return { success: true };
 }
 
-export async function loadMoreCards(cursor: string, excludeIds: string[], filters?: {
+export async function loadMoreCards(cursor: string, filters?: {
   categories?: string[];
   q?: string;
   evidence?: string[];
   days?: number;
   minRelevance?: number;
-}, cursorId?: string) {
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

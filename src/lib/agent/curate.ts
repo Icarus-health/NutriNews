@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import type { RSSItem } from './rss';
 import type { SourceType } from '@/types/database';
 
@@ -324,18 +325,16 @@ function buildSystemPrompt(sourceType: SourceType): string {
   return prompt;
 }
 
+const anthropic = new Anthropic();
+
 // --- Anthropic Claude Haiku (~$0.001/Artikel) ---
 async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY nicht gesetzt');
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY nicht gesetzt');
 
   // Fetch full article text for better curation quality
   const articleText = await fetchArticleText(item.link);
 
   const systemPrompt = buildSystemPrompt(item.source.sourceType);
-
-  const Anthropic = (await import('@anthropic-ai/sdk')).default;
-  const anthropic = new Anthropic({ apiKey });
 
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
