@@ -3,8 +3,7 @@ import { createClient as createServerClient } from '@supabase/supabase-js';
 import { revalidateTag } from 'next/cache';
 import { RSS_SOURCES } from '@/lib/agent/sources';
 import { fetchAllFeeds } from '@/lib/agent/rss';
-import { curateArticle } from '@/lib/agent/curate';
-import { resolveCategory } from '@/lib/categories';
+import { selectDiverseCandidates, runCurationPipeline } from '@/lib/agent/pipeline';
 import { rateLimit } from '@/lib/rate-limit';
 
 // Vercel Hobby max: 60s — genug für RSS-Fetch + ~10 Claude-Haiku-Aufrufe
@@ -17,7 +16,7 @@ export async function GET(request: Request) {
   if (!allowed) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
-  // Verify the request comes from Vercel Cron or a trusted caller
+
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
@@ -53,115 +52,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Alle Artikel bereits bekannt.', created: 0 });
     }
 
-    // Diverse selection with minimum quotas per source type
-    // Select 25 candidates so we still reach 20 even if some fail curation
-    const byType: Record<string, typeof newItems> = {};
-    for (const item of newItems) {
-      const t = item.source.sourceType;
-      if (!byType[t]) byType[t] = [];
-      byType[t].push(item);
-    }
+    const candidates = selectDiverseCandidates(newItems);
+    const { created, curationFailed, errors } = await runCurationPipeline(candidates, supabase);
 
-    // Vercel Hobby: 60s timeout → RSS-Fetch ~5s + ~10 Claude-Aufrufe à ~4s (parallel in 5er-Batches)
-    const TARGET = 10;
-    const CANDIDATE_POOL = 12; // slight over-select for failures
-    const toCurate: typeof newItems = [];
-    // Diversitäts-Quotas: Berufspolitik und Laienpresse stärker gewichten
-    const minQuotas: Record<string, number> = {
-      berufspolitik: 3, laienpresse: 2, fachpresse: 2,
-      international: 1, supplement: 1, forschung: 2,
-    };
-
-    // Fill minimum quotas first
-    for (const [type, min] of Object.entries(minQuotas)) {
-      const items = byType[type] ?? [];
-      for (let i = 0; i < Math.min(min, items.length); i++) {
-        toCurate.push(items[i]);
-      }
-    }
-
-    // Fill remaining with round-robin up to CANDIDATE_POOL
-    const usedPerType: Record<string, number> = {};
-    for (const item of toCurate) {
-      usedPerType[item.source.sourceType] = (usedPerType[item.source.sourceType] ?? 0) + 1;
-    }
-    const types = Object.keys(byType);
-    let round = 0;
-    while (toCurate.length < CANDIDATE_POOL) {
-      let added = false;
-      for (const type of types) {
-        const start = usedPerType[type] ?? 0;
-        if (byType[type][start + round]) {
-          toCurate.push(byType[type][start + round]);
-          added = true;
-          if (toCurate.length >= CANDIDATE_POOL) break;
-        }
-      }
-      if (!added) break;
-      round++;
-    }
-
-    let created = 0;
-    let curationFailed = 0;
-    const curationErrors: string[] = [];
-
-    // Process in parallel batches of 5 to stay within Vercel Hobby 60s timeout
-    const CURATE_BATCH_SIZE = 5;
-    for (let i = 0; i < toCurate.length && created < TARGET; i += CURATE_BATCH_SIZE) {
-      const batch = toCurate.slice(i, i + CURATE_BATCH_SIZE);
-      const outcomes = await Promise.all(batch.map(item => curateArticle(item)));
-
-      await Promise.all(outcomes.map(({ result, error }, j) => {
-        if (!result) {
-          curationFailed++;
-          curationErrors.push(error || batch[j].title?.slice(0, 60) || 'unknown');
-          return Promise.resolve();
-        }
-        if (created >= TARGET) return Promise.resolve();
-        const item = batch[j];
-        const resolvedCategory = resolveCategory(result.category_main);
-        return supabase.from('news_cards').insert({
-          headline: result.headline,
-          snack_what: result.snack_what,
-          snack_result: result.snack_result,
-          snack_consequence: result.snack_consequence,
-          therapist_check: result.therapist_check,
-          source_url: item.link,
-          source_name: item.source.name,
-          category_main: resolvedCategory,
-          evidence_level: result.evidence_level,
-          read_time_sec: result.read_time_sec,
-          status: 'draft',
-          curated_by_agent: true,
-          practice_relevance_score: result.practice_relevance_score,
-          action_recommendation: result.action_recommendation,
-          patient_question_anticipation: result.patient_question_anticipation,
-          evidence_summary: result.evidence_summary,
-          source_type: item.source.sourceType,
-          lay_press_fact_check: result.lay_press_fact_check,
-          policy_impact: result.policy_impact,
-          policy_action_needed: result.policy_action_needed,
-          international_relevance_de: result.international_relevance_de,
-        }).then(({ error }) => {
-          if (error) {
-            curationErrors.push(`DB: ${item.title?.slice(0, 40)}: ${error.message}`);
-          } else {
-            created++;
-          }
-        });
-      }));
-    }
-
-    // Invalidate feed cache so next request gets fresh cards
     revalidateTag('news-cards');
 
     return NextResponse.json({
       message: `${created} neue Entwürfe erstellt.`,
       created,
-      candidates: toCurate.length,
+      candidates: candidates.length,
       newItems: newItems.length,
       curationFailed,
-      errors: curationErrors.length > 0 ? curationErrors.slice(0, 10) : undefined,
+      errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
     });
   } catch (error) {
     console.error('Cron error:', error);

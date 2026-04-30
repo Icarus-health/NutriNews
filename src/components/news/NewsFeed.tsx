@@ -79,7 +79,7 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   }, []);
 
   function handleRequireAuth() {
-    if (typeof window !== 'undefined') window.location.href = '/login';
+    router.push('/login');
   }
 
   function handleRefresh() {
@@ -92,7 +92,7 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     const lastCard = cards[cards.length - 1];
     if (!lastCard?.published_at || isPending || !hasMore || !isOnline) return;
     startTransition(async () => {
-      const result = await loadMoreCards(lastCard.published_at!, [], filters);
+      const result = await loadMoreCards(lastCard.published_at!, filters);
       setCards(prev => [...prev, ...result.cards]);
       setHasMore(result.hasMore);
     });

@@ -105,6 +105,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
     } catch { /* ignore */ }
   }, [noteKey]);
 
+  // Cleanup debounce timer on unmount to prevent state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
+    };
+  }, []);
+
   // Deferred: fetch from Supabase only when note panel is first opened
   useEffect(() => {
     if (!showNote || noteServerLoaded.current || hasNote || !userId) return;
@@ -270,8 +277,10 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
     ${noteHtml}
     <div class="footer">Quelle: ${escapeHtml(card.source_name ?? '')} · NutriNews</div>
     <script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`;
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (w) w.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
   }
 
   async function handleShare(e: React.MouseEvent) {
