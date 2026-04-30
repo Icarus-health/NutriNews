@@ -77,7 +77,7 @@ export async function shareToUser(newsCardId: string, receiverEmail: string, mes
 
   // Rate-limit: max 20 share attempts per user per hour
   // Prevents email enumeration by repeated lookups
-  const rl = rateLimit(`share:${user.id}`, 20, 60 * 60 * 1000);
+  const rl = await rateLimit(`share:${user.id}`, 20, 60 * 60 * 1000);
   if (!rl.success) return { error: 'Zu viele Anfragen. Bitte später erneut versuchen.' };
 
   // Find receiver by email

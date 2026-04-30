@@ -12,7 +12,7 @@ export const maxDuration = 60;
 // GET /api/news/cron — called by GitHub Actions 4x/day
 export async function GET(request: Request) {
   // Rate limit: max 4 runs per 30 minutes (slightly above cron frequency)
-  const { success: allowed } = rateLimit('cron', 4, 30 * 60 * 1000);
+  const { success: allowed } = await rateLimit('cron', 4, 30 * 60 * 1000);
   if (!allowed) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
