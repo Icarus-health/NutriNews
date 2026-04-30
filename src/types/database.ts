@@ -215,5 +215,15 @@ export type Database = {
       quick_answers: { Row: QuickAnswer; Insert: Partial<QuickAnswer>; Update: Partial<QuickAnswer> };
       card_verifications: { Row: CardVerification; Insert: Partial<CardVerification>; Update: Partial<CardVerification> };
     };
+    Functions: {
+      check_rate_limit: {
+        Args: { p_key: string; p_max_requests: number; p_window_ms: number };
+        Returns: Array<{ allowed: boolean; remaining: number }>;
+      };
+      cleanup_rate_limit_entries: {
+        Args: Record<never, never>;
+        Returns: void;
+      };
+    };
   };
 };

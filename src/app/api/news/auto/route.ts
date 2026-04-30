@@ -12,7 +12,7 @@ export const maxDuration = 60;
 // POST /api/news/auto - startet den News-Kurator-Agenten
 export async function POST(request: Request) {
   // Rate limit: max 3 runs per 10 minutes
-  const { success: allowed } = rateLimit('auto-agent', 3, 10 * 60 * 1000);
+  const { success: allowed } = await rateLimit('auto-agent', 3, 10 * 60 * 1000);
   if (!allowed) {
     return NextResponse.json({ error: 'Zu viele Anfragen. Bitte warte einige Minuten.' }, { status: 429 });
   }
