@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
 // ─── In-Memory fallback ─────────────────────────────────────────────────────
 // Used when SUPABASE_SERVICE_ROLE_KEY is not set (local dev without full env).
@@ -31,10 +32,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Lazy singleton — only created once per instance if env vars are available
-let _adminClient: ReturnType<typeof createClient> | null = null;
+let _adminClient: ReturnType<typeof createClient<Database>> | null = null;
 function getAdminClient() {
   if (!_adminClient) {
-    _adminClient = createClient(supabaseUrl!, serviceRoleKey!);
+    _adminClient = createClient<Database>(supabaseUrl!, serviceRoleKey!);
   }
   return _adminClient;
 }
