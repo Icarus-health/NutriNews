@@ -1,8 +1,8 @@
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
+import { createClient } from '@supabase/supabase-js';
 
-// ─── In-Memory fallback (dev / no Upstash configured) ──────────────────────
-// Per-instance only — resets on cold start. Acceptable for local dev.
+// ─── In-Memory fallback ─────────────────────────────────────────────────────
+// Used when SUPABASE_SERVICE_ROLE_KEY is not set (local dev without full env).
+// Per-instance only — resets on cold start.
 
 const inMemoryStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -23,45 +23,28 @@ function inMemoryLimit(
   return { success: true, remaining: maxRequests - entry.count };
 }
 
-// ─── Upstash distributed rate limiter ──────────────────────────────────────
-// One Ratelimit instance per (maxRequests, windowMs) combination, cached for reuse.
+// ─── Supabase-backed distributed rate limiter ───────────────────────────────
+// Uses a PostgreSQL table + atomic SECURITY DEFINER function (check_rate_limit).
+// Works across all serverless instances; persists across cold starts.
 
-const upstashLimiterCache = new Map<string, Ratelimit>();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-function msToUpstashDuration(ms: number): `${number} ${'ms' | 's' | 'm' | 'h' | 'd'}` {
-  if (ms < 1000) return `${ms} ms`;
-  const s = Math.round(ms / 1000);
-  if (s < 60) return `${s} s`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} m`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} h`;
-  return `${Math.round(h / 24)} d`;
-}
-
-function getUpstashLimiter(maxRequests: number, windowMs: number): Ratelimit {
-  const cacheKey = `${maxRequests}:${windowMs}`;
-  if (!upstashLimiterCache.has(cacheKey)) {
-    upstashLimiterCache.set(cacheKey, new Ratelimit({
-      redis: Redis.fromEnv(),
-      limiter: Ratelimit.slidingWindow(maxRequests, msToUpstashDuration(windowMs)),
-      prefix: 'nn_rl',
-    }));
+// Lazy singleton — only created once per instance if env vars are available
+let _adminClient: ReturnType<typeof createClient> | null = null;
+function getAdminClient() {
+  if (!_adminClient) {
+    _adminClient = createClient(supabaseUrl!, serviceRoleKey!);
   }
-  return upstashLimiterCache.get(cacheKey)!;
+  return _adminClient;
 }
-
-const useUpstash = !!(
-  process.env.UPSTASH_REDIS_REST_URL &&
-  process.env.UPSTASH_REDIS_REST_TOKEN
-);
 
 /**
- * Distributed rate limiter backed by Upstash Redis (sliding window).
- * Falls back to per-instance in-memory when Upstash env vars are not set.
+ * Distributed rate limiter backed by Supabase PostgreSQL (atomic upsert).
+ * Falls back to per-instance in-memory when SUPABASE_SERVICE_ROLE_KEY is not set.
  *
  * @param key         Unique identifier for the counter (e.g. 'cron', `share:${userId}`)
- * @param maxRequests Max number of requests allowed in the window
+ * @param maxRequests Max allowed requests in the window
  * @param windowMs    Window size in milliseconds
  */
 export async function rateLimit(
@@ -69,11 +52,25 @@ export async function rateLimit(
   maxRequests: number,
   windowMs: number,
 ): Promise<{ success: boolean; remaining: number }> {
-  if (!useUpstash) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return inMemoryLimit(key, maxRequests, windowMs);
   }
 
-  const limiter = getUpstashLimiter(maxRequests, windowMs);
-  const { success, remaining } = await limiter.limit(key);
-  return { success, remaining };
+  const { data, error } = await getAdminClient().rpc('check_rate_limit', {
+    p_key: key,
+    p_max_requests: maxRequests,
+    p_window_ms: windowMs,
+  });
+
+  if (error) {
+    // Fail open — better to allow the request than block everything on a DB error
+    console.error('Rate limit check failed:', error.message);
+    return { success: true, remaining: maxRequests };
+  }
+
+  const result = data?.[0] as { allowed: boolean; remaining: number } | undefined;
+  return {
+    success: result?.allowed ?? true,
+    remaining: result?.remaining ?? 0,
+  };
 }
