@@ -323,7 +323,12 @@ export async function updateProfile(data: { full_name?: string; alias?: string; 
   if (!user) return { error: 'Nicht angemeldet' };
 
   const { error } = await supabase.from('profiles').update({
-    ...data,
+    full_name: data.full_name,
+    alias: data.alias,
+    specialties: data.specialties,
+    preferred_categories: data.preferred_categories,
+    notify_new_news: data.notify_new_news,
+    setting: data.setting,
     updated_at: new Date().toISOString(),
   }).eq('id', user.id);
 

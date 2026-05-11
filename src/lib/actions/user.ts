@@ -21,8 +21,7 @@ export async function deleteAccount(): Promise<{ error?: string }> {
   for (const table of tables) {
     await admin.from(table).delete().eq('user_id', user.id);
   }
-  // Comments use author_id
-  await admin.from('comments').delete().eq('author_id', user.id);
+  await admin.from('comments').delete().eq('user_id', user.id);
 
   // Delete auth user — cascades to profiles via FK ON DELETE CASCADE
   const { error } = await admin.auth.admin.deleteUser(user.id);
