@@ -29,9 +29,21 @@ export async function GET(request: Request) {
   );
 
   try {
-    const allItems = await fetchAllFeeds(RSS_SOURCES);
+    const { items: allItems, sourceHealth } = await fetchAllFeeds(RSS_SOURCES);
+
+    // Log sources that failed or returned 0 items — visible in Vercel logs
+    const failed = sourceHealth.filter(s => s.error);
+    const empty = sourceHealth.filter(s => !s.error && s.items === 0);
+    if (failed.length > 0) {
+      console.warn(`[cron] ${failed.length} source(s) failed:`, failed.map(s => `${s.name} (${s.error})`).join(', '));
+    }
+    if (empty.length > 5) {
+      // Only log if suspiciously many sources are empty (could indicate network issues)
+      console.warn(`[cron] ${empty.length} source(s) returned 0 items`);
+    }
+
     if (allItems.length === 0) {
-      return NextResponse.json({ message: 'Keine neuen Artikel in den RSS-Feeds.', created: 0 });
+      return NextResponse.json({ message: 'Keine neuen Artikel in den RSS-Feeds.', created: 0, sourcesOk: sourceHealth.filter(s => s.items > 0).length, sourcesFailed: failed.length });
     }
 
     // Filter already known URLs (batch to avoid URL length limits)
@@ -49,20 +61,24 @@ export async function GET(request: Request) {
     const newItems = allItems.filter(item => item.link && !existingUrls.has(item.link));
 
     if (newItems.length === 0) {
-      return NextResponse.json({ message: 'Alle Artikel bereits bekannt.', created: 0 });
+      return NextResponse.json({ message: 'Alle Artikel bereits bekannt.', created: 0, sourcesOk: sourceHealth.filter(s => s.items > 0).length, sourcesFailed: failed.length });
     }
 
     const candidates = selectDiverseCandidates(newItems);
-    const { created, curationFailed, errors } = await runCurationPipeline(candidates, supabase);
+    const { created, published, drafts, curationFailed, errors } = await runCurationPipeline(candidates, supabase);
 
     revalidateTag('news-cards');
 
     return NextResponse.json({
-      message: `${created} neue Entwürfe erstellt.`,
+      message: `${created} Karten erstellt (${published} published, ${drafts} draft für Laienpresse-Review).`,
       created,
+      published,
+      drafts,
       candidates: candidates.length,
       newItems: newItems.length,
       curationFailed,
+      sourcesOk: sourceHealth.filter(s => s.items > 0).length,
+      sourcesFailed: failed.length,
       errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
     });
   } catch (error) {

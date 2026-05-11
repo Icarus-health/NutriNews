@@ -138,14 +138,25 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   }
 
   if (cards.length === 0) {
+    const hasActiveFilters = filters && (
+      (filters.categories && filters.categories.length > 0) ||
+      filters.q ||
+      (filters.evidence && filters.evidence.length > 0) ||
+      filters.days ||
+      filters.minRelevance
+    );
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-400 px-5">
         <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-          <span className="text-2xl">📭</span>
+          <span className="text-2xl">{hasActiveFilters ? '🔍' : '☕'}</span>
         </div>
-        <p className="text-[15px] font-semibold text-slate-500 dark:text-slate-400">Keine Beiträge gefunden</p>
+        <p className="text-[15px] font-semibold text-slate-500 dark:text-slate-400">
+          {hasActiveFilters ? 'Keine Treffer' : 'Gleich geht\'s los'}
+        </p>
         <p className="text-[13px] mt-1 text-center text-slate-400 dark:text-slate-500">
-          Für diese Auswahl sind aktuell keine Meldungen vorhanden. Bitte Filter anpassen oder später zurückkommen.
+          {hasActiveFilters
+            ? 'Für diese Filterauswahl gibt es keine Meldungen. Filter anpassen oder zurücksetzen.'
+            : 'Die nächste Kuration läuft automatisch. Normalerweise erscheinen täglich neue Artikel.'}
         </p>
       </div>
     );

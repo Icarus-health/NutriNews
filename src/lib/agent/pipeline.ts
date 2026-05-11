@@ -60,6 +60,8 @@ export function selectDiverseCandidates(newItems: RSSItem[]): RSSItem[] {
 
 export interface PipelineResult {
   created: number;
+  published: number;
+  drafts: number;
   curationFailed: number;
   errors: string[];
 }
@@ -75,6 +77,8 @@ export async function runCurationPipeline(
   curatedBy?: string,
 ): Promise<PipelineResult> {
   let created = 0;
+  let published = 0;
+  let drafts = 0;
   let curationFailed = 0;
   const errors: string[] = [];
 
@@ -95,6 +99,13 @@ export async function runCurationPipeline(
       const item = batch[j];
       const resolvedCategory = resolveCategory(result.category_main);
 
+      // Laienpresse needs manual fact-check review before going live.
+      // All other source types (fachpresse, forschung, berufspolitik, international, supplement)
+      // are published immediately so the feed stays populated without daily admin attention.
+      const isLayPress = item.source.sourceType === 'laienpresse';
+      const status = isLayPress ? 'draft' : 'published';
+      const publishedAt = isLayPress ? null : new Date().toISOString();
+
       const { error: dbError } = await supabase.from('news_cards').insert({
         headline: result.headline,
         snack_what: result.snack_what,
@@ -106,7 +117,8 @@ export async function runCurationPipeline(
         category_main: resolvedCategory,
         evidence_level: result.evidence_level,
         read_time_sec: result.read_time_sec,
-        status: 'draft',
+        status,
+        published_at: publishedAt,
         curated_by: curatedBy ?? null,
         curated_by_agent: true,
         practice_relevance_score: result.practice_relevance_score,
@@ -124,9 +136,10 @@ export async function runCurationPipeline(
         errors.push(`DB: ${item.title?.slice(0, 40)}: ${dbError.message}`);
       } else {
         created++;
+        if (isLayPress) drafts++; else published++;
       }
     }
   }
 
-  return { created, curationFailed, errors };
+  return { created, published, drafts, curationFailed, errors };
 }

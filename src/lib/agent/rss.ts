@@ -10,19 +10,30 @@ export interface RSSItem {
   source: RSSSource;
 }
 
+export interface SourceHealth {
+  name: string;
+  sourceType: string;
+  items: number;
+  error?: string;
+}
+
 const PARSER_OPTIONS = {
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
 } as const;
 
-export async function fetchRSSFeed(source: RSSSource): Promise<RSSItem[]> {
+export async function fetchRSSFeed(source: RSSSource): Promise<{ items: RSSItem[]; health: SourceHealth }> {
+  const health: SourceHealth = { name: source.name, sourceType: source.sourceType, items: 0 };
   try {
     const res = await fetch(source.url, {
       headers: { 'User-Agent': 'NutriNews/1.0 (Ernaehrungsnews-Aggregator)' },
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) {
+      health.error = `HTTP ${res.status}`;
+      return { items: [], health };
+    }
 
     const xml = await res.text();
     // Create a fresh parser per request to avoid shared state in concurrent calls
@@ -36,7 +47,7 @@ export async function fetchRSSFeed(source: RSSSource): Promise<RSSItem[]> {
 
     const itemArray = Array.isArray(items) ? items : [items];
 
-    return itemArray
+    const result = itemArray
       .filter((item: Record<string, unknown>) => item && (item.title || item.link))
       .slice(0, 10)
       .map((item: Record<string, unknown>) => ({
@@ -46,9 +57,13 @@ export async function fetchRSSFeed(source: RSSSource): Promise<RSSItem[]> {
         pubDate: String(item.pubDate ?? item.published ?? item.updated ?? ''),
         source,
       }));
-  } catch {
-    console.error(`RSS fetch failed for ${source.name}`);
-    return [];
+
+    health.items = result.length;
+    return { items: result, health };
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === 'TimeoutError';
+    health.error = isTimeout ? 'timeout' : (err instanceof Error ? err.message.slice(0, 80) : 'unknown');
+    return { items: [], health };
   }
 }
 
@@ -68,20 +83,28 @@ function extractDescription(item: Record<string, unknown>): string {
   return String(desc).replace(/<[^>]*>/g, '').trim().slice(0, 2000);
 }
 
-export async function fetchAllFeeds(sources: RSSSource[]): Promise<RSSItem[]> {
+export interface FeedResult {
+  items: RSSItem[];
+  sourceHealth: SourceHealth[];
+}
+
+export async function fetchAllFeeds(sources: RSSSource[]): Promise<FeedResult> {
   const [rssResults, scrapedItems] = await Promise.all([
     Promise.allSettled(sources.map(fetchRSSFeed)),
     fetchScrapedSources(),
   ]);
 
   const allItems: RSSItem[] = [];
+  const sourceHealth: SourceHealth[] = [];
+
   for (const result of rssResults) {
     if (result.status === 'fulfilled') {
-      allItems.push(...result.value);
+      allItems.push(...result.value.items);
+      sourceHealth.push(result.value.health);
     }
   }
 
   allItems.push(...scrapedItems);
 
-  return allItems;
+  return { items: allItems, sourceHealth };
 }

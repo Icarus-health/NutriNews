@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   if (profile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
-    const allItems = await fetchAllFeeds(RSS_SOURCES);
+    const { items: allItems } = await fetchAllFeeds(RSS_SOURCES);
 
     if (allItems.length === 0) {
       return NextResponse.json({ message: 'Keine neuen Artikel in den RSS-Feeds gefunden.', created: 0 });
@@ -51,16 +51,18 @@ export async function POST(request: Request) {
     }
 
     const candidates = selectDiverseCandidates(newItems);
-    const { created, curationFailed, errors } = await runCurationPipeline(candidates, supabase, user.id);
+    const { created, published, drafts, curationFailed, errors } = await runCurationPipeline(candidates, supabase, user.id);
 
     revalidatePath('/admin');
     revalidatePath('/');
 
     return NextResponse.json({
-      message: `${created} neue Entwuerfe erstellt.${errors.length > 0 ? ` ${errors.length} uebersprungen.` : ''}`,
+      message: `${created} Karten erstellt (${published} published, ${drafts} draft für Laienpresse-Review).${errors.length > 0 ? ` ${errors.length} übersprungen.` : ''}`,
       created,
+      published,
+      drafts,
       total_checked: candidates.length,
-      skipped: curationFailed + (errors.length - curationFailed),
+      skipped: curationFailed,
       source_types_checked: [...new Set(candidates.map(c => c.source.sourceType))],
       errors: errors.length > 0 ? errors : undefined,
     });
