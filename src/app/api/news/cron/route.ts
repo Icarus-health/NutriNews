@@ -29,7 +29,17 @@ export async function GET(request: Request) {
   );
 
   try {
-    const { items: allItems, sourceHealth } = await fetchAllFeeds(RSS_SOURCES);
+    // Skip sources that have been manually disabled in the admin panel
+    const { data: disabledRows } = await supabase
+      .from('source_health')
+      .select('source_name')
+      .eq('disabled', true);
+    const disabledNames = new Set((disabledRows ?? []).map((r: { source_name: string }) => r.source_name));
+    const activeSources = disabledNames.size > 0
+      ? RSS_SOURCES.filter(s => !disabledNames.has(s.name))
+      : RSS_SOURCES;
+
+    const { items: allItems, sourceHealth } = await fetchAllFeeds(activeSources);
 
     // Log sources that failed or returned 0 items — visible in Vercel logs
     const failed = sourceHealth.filter(s => s.error);

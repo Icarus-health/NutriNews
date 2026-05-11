@@ -5,6 +5,7 @@ import NewsFeed from '@/components/news/NewsFeed';
 import HomeHeader from '@/components/layout/HomeHeader';
 import DailyBriefing from '@/components/briefing/DailyBriefing';
 import TopOfWeek from '@/components/news/TopOfWeek';
+import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import { rankCards, interleaveBySourceType } from '@/lib/feed-ranking';
 import { evidenceKeyToLevel } from '@/lib/evidence';
 import type { NewsCard, DailyBriefing as DailyBriefingType, Profile, EvidenceLevel } from '@/types/database';
@@ -185,6 +186,7 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   return (
     <div>
+      {user && <OnboardingFlow userId={user.id} />}
       <HomeHeader
         user={user}
         activeCategories={activeCategories}
