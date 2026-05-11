@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS source_health (
 
 ALTER TABLE source_health ENABLE ROW LEVEL SECURITY;
 
--- Only the service role (cron job, admin) can access this table.
-CREATE POLICY "service_role_full_access" ON source_health
-  USING (true)
-  WITH CHECK (true);
+-- Authenticated users may read source health (displayed in admin dashboard).
+-- Writes come exclusively from the service_role (cron job), which bypasses RLS.
+CREATE POLICY "authenticated_read" ON source_health
+  FOR SELECT TO authenticated USING (true);
 
 CREATE INDEX IF NOT EXISTS idx_source_health_failures
   ON source_health (consecutive_failures DESC, last_checked_at DESC);
