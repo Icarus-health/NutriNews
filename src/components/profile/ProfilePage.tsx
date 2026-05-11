@@ -5,10 +5,11 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare, UserPlus, Link2, Check } from 'lucide-react';
+import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare, UserPlus, Link2, Check, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile, submitAppFeedback } from '@/lib/actions/news';
+import { deleteAccount } from '@/lib/actions/user';
 import { useUX } from '@/components/providers/UXProvider';
 import type { Profile, TherapistSetting } from '@/types/database';
 
@@ -47,6 +48,16 @@ export default function ProfilePage({ profile, stats }: Props) {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackError, setFeedbackError] = useState('');
   const [isFeedbackPending, startFeedbackTransition] = useTransition();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const [deleteError, setDeleteError] = useState('');
+
+  function handleDeleteAccount() {
+    startDeleteTransition(async () => {
+      const result = await deleteAccount();
+      if (result?.error) setDeleteError(result.error);
+    });
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -538,11 +549,50 @@ export default function ProfilePage({ profile, stats }: Props) {
       {/* Sign out */}
       <button
         onClick={handleSignOut}
-        className="w-full border border-red-200 dark:border-red-800 text-red-500 rounded-xl py-2.5 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2 mb-4"
+        className="w-full border border-red-200 dark:border-red-800 text-red-500 rounded-xl py-2.5 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2 mb-2"
       >
         <LogOut size={16} />
         Abmelden
       </button>
+
+      {/* Account deletion — DSGVO Art. 17 */}
+      {!showDeleteConfirm ? (
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="w-full text-slate-400 dark:text-slate-500 text-[12px] py-2 mb-4 hover:text-red-400 transition-colors"
+        >
+          Konto und alle Daten löschen
+        </button>
+      ) : (
+        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <Trash2 size={16} className="text-red-500 mt-0.5 shrink-0" />
+            <p className="text-[13px] text-red-700 dark:text-red-300 font-medium">
+              Konto unwiderruflich löschen?
+            </p>
+          </div>
+          <p className="text-[12px] text-red-600 dark:text-red-400">
+            Alle deine Daten (Lesezeichen, Likes, Kommentare, Profil) werden sofort und dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
+          </p>
+          {deleteError && <p className="text-[12px] text-red-500">{deleteError}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowDeleteConfirm(false); setDeleteError(''); }}
+              className="flex-1 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg py-2 text-[13px] font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg py-2 text-[13px] font-semibold transition-colors flex items-center justify-center gap-1.5"
+            >
+              {isDeleting && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              Ja, Konto löschen
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Legal links */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700 mb-4">
