@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info, MessageSquare } from 'lucide-react';
+import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info, MessageSquare, Activity, Wifi, WifiOff } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
@@ -30,11 +30,24 @@ interface FeedbackEntry {
   user_id: string | null;
 }
 
+interface SourceHealthEntry {
+  source_name: string;
+  source_type: string;
+  items_last_run: number;
+  error_last_run: string | null;
+  last_checked_at: string;
+  consecutive_failures: number;
+  total_checks: number;
+  total_failures: number;
+}
+
 export default function AdminDashboard({ drafts: initialDrafts }: Props) {
   const router = useRouter();
-  const [tab, setTab] = useState<'drafts' | 'create' | 'auto' | 'feedback'>('drafts');
+  const [tab, setTab] = useState<'drafts' | 'create' | 'auto' | 'feedback' | 'sources'>('drafts');
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [sourceHealthList, setSourceHealthList] = useState<SourceHealthEntry[]>([]);
+  const [sourceHealthLoading, setSourceHealthLoading] = useState(false);
   const [drafts, setDrafts] = useState(initialDrafts);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [autoRunning, setAutoRunning] = useState(false);
@@ -164,6 +177,18 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
     setFeedbackLoading(false);
   }
 
+  async function loadSourceHealth() {
+    setSourceHealthLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('source_health')
+      .select('*')
+      .order('consecutive_failures', { ascending: false })
+      .order('last_checked_at', { ascending: false });
+    setSourceHealthList((data as SourceHealthEntry[]) ?? []);
+    setSourceHealthLoading(false);
+  }
+
   const inputCls = 'w-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-forest-500 placeholder:text-slate-400';
 
   return (
@@ -177,10 +202,15 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
           { id: 'create',   label: 'Erstellen' },
           { id: 'auto',     label: 'Auto-Agent' },
           { id: 'feedback', label: 'Feedback' },
+          { id: 'sources',  label: 'Quellen' },
         ] as const).map(({ id, label }) => (
           <button
             key={id}
-            onClick={() => { setTab(id); if (id === 'feedback' && feedbackList.length === 0) loadFeedback(); }}
+            onClick={() => {
+              setTab(id);
+              if (id === 'feedback' && feedbackList.length === 0) loadFeedback();
+              if (id === 'sources' && sourceHealthList.length === 0) loadSourceHealth();
+            }}
             className={clsx(
               'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
               tab === id
@@ -501,6 +531,130 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
                 );
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── SOURCES TAB ─── */}
+      {tab === 'sources' && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Quellen-Monitoring ({sourceHealthList.length})
+            </p>
+            <button
+              onClick={loadSourceHealth}
+              disabled={sourceHealthLoading}
+              className="flex items-center gap-1.5 text-[12px] text-forest-600 dark:text-forest-400 font-medium"
+            >
+              <RefreshCw size={13} className={sourceHealthLoading ? 'animate-spin' : ''} />
+              Neu laden
+            </button>
+          </div>
+
+          {sourceHealthLoading ? (
+            <div className="flex items-center justify-center py-12 text-slate-400">
+              <RefreshCw size={20} className="animate-spin" />
+            </div>
+          ) : sourceHealthList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <Activity size={28} className="mb-2 opacity-30" />
+              <p className="text-sm">Noch keine Daten vorhanden.</p>
+              <p className="text-xs mt-1 text-center">Daten werden beim nächsten Cron-Lauf befüllt.</p>
+            </div>
+          ) : (
+            <>
+              {/* Summary bar */}
+              {(() => {
+                const failing = sourceHealthList.filter(s => s.consecutive_failures > 0).length;
+                const dead = sourceHealthList.filter(s => s.consecutive_failures >= 3).length;
+                const ok = sourceHealthList.length - failing;
+                return (
+                  <div className="flex gap-2 mb-4 flex-wrap">
+                    <div className="flex items-center gap-1.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-3 py-1.5">
+                      <Wifi size={13} className="text-green-600 dark:text-green-400" />
+                      <span className="text-xs font-semibold text-green-700 dark:text-green-400">{ok} OK</span>
+                    </div>
+                    {failing > 0 && (
+                      <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-1.5">
+                        <AlertCircle size={13} className="text-amber-600 dark:text-amber-400" />
+                        <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">{failing} fehlerhaft</span>
+                      </div>
+                    )}
+                    {dead > 0 && (
+                      <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-1.5">
+                        <WifiOff size={13} className="text-red-600 dark:text-red-400" />
+                        <span className="text-xs font-semibold text-red-700 dark:text-red-400">{dead} vermutlich tot (≥3 Fehler)</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="space-y-1.5">
+                {sourceHealthList.map(s => {
+                  const isDead = s.consecutive_failures >= 3;
+                  const isFailing = s.consecutive_failures > 0 && !isDead;
+                  const isOk = s.consecutive_failures === 0;
+                  const lastChecked = new Date(s.last_checked_at).toLocaleDateString('de-DE', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                  });
+                  const typeLabels: Record<string, string> = {
+                    forschung: 'Forschung', fachpresse: 'Fachpresse', laienpresse: 'Laienpresse',
+                    berufspolitik: 'Politik', international: 'International', supplement: 'Supplement',
+                  };
+                  return (
+                    <div
+                      key={s.source_name}
+                      className={clsx(
+                        'flex items-center gap-3 px-3 py-2.5 rounded-xl border text-[12px]',
+                        isDead   && 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800',
+                        isFailing && 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800',
+                        isOk     && 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700',
+                      )}
+                    >
+                      {isDead   && <WifiOff size={14} className="shrink-0 text-red-500" />}
+                      {isFailing && <AlertCircle size={14} className="shrink-0 text-amber-500" />}
+                      {isOk     && <Wifi size={14} className="shrink-0 text-green-500" />}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={clsx(
+                            'font-medium truncate',
+                            isDead ? 'text-red-700 dark:text-red-300' :
+                            isFailing ? 'text-amber-700 dark:text-amber-300' :
+                            'text-slate-700 dark:text-slate-200'
+                          )}>
+                            {s.source_name}
+                          </span>
+                          <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full shrink-0">
+                            {typeLabels[s.source_type] ?? s.source_type}
+                          </span>
+                        </div>
+                        {s.error_last_run && (
+                          <p className={clsx(
+                            'text-[11px] mt-0.5 truncate',
+                            isDead ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'
+                          )}>
+                            {s.error_last_run}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="text-right shrink-0 space-y-0.5">
+                        <p className="text-slate-400 dark:text-slate-500">{lastChecked}</p>
+                        <p className={clsx(
+                          'font-semibold',
+                          isDead ? 'text-red-500' : isFailing ? 'text-amber-500' : 'text-green-600 dark:text-green-400'
+                        )}>
+                          {isOk ? `${s.items_last_run} Items` : `${s.consecutive_failures}× Fehler`}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}

@@ -42,6 +42,19 @@ export async function GET(request: Request) {
       console.warn(`[cron] ${empty.length} source(s) returned 0 items`);
     }
 
+    // Persist source health to DB — atomic upsert with consecutive_failures tracking
+    if (sourceHealth.length > 0) {
+      const rows = sourceHealth.map(s => ({
+        source_name: s.name,
+        source_type: s.sourceType,
+        items_last_run: s.items,
+        error_last_run: s.error ?? null,
+      }));
+      // Function handles upsert + consecutive_failures increment in one round-trip
+      const { error: rpcError } = await supabase.rpc('upsert_source_health_batch', { rows });
+      if (rpcError) console.error('[cron] source_health upsert failed:', rpcError.message);
+    }
+
     if (allItems.length === 0) {
       return NextResponse.json({ message: 'Keine neuen Artikel in den RSS-Feeds.', created: 0, sourcesOk: sourceHealth.filter(s => s.items > 0).length, sourcesFailed: failed.length });
     }
