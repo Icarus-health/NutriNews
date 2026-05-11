@@ -28,11 +28,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <Image
-            src="/Design  Titel.png"
+            src="/logo-splash.webp"
             alt="NutriNews"
-            className="w-full max-w-[280px] mx-auto mb-4 object-contain"
-            width={560}
-            height={260}
+            className="w-28 h-28 mx-auto mb-4 rounded-3xl object-cover"
+            width={112}
+            height={112}
             priority
           />
           <p className="text-slate-400 text-[14px] font-medium">Für Ernährungstherapeut:innen</p>
