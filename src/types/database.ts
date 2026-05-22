@@ -64,6 +64,7 @@ export interface DailyBriefing {
 
 export interface NewsCard {
   id: string;
+  kernbotschaft: string | null;
   headline: string;
   snack_what: string;
   snack_result: string;
