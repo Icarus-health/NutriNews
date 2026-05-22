@@ -19,8 +19,9 @@ function formatDate(dateStr: string): string {
 }
 
 export default function DailyBriefing({ items, date, isYesterday }: Props) {
-  // Today's briefing starts expanded and is not collapsible by default
-  const [collapsed, setCollapsed] = useState(isYesterday ? true : false);
+  // Starts collapsed to keep the home screen calm — the header stays a compact,
+  // tappable teaser ("N Meldungen"). Users expand on demand.
+  const [collapsed, setCollapsed] = useState(true);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
   if (items.length === 0) return null;

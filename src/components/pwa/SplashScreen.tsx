@@ -78,7 +78,7 @@ export default function SplashScreen() {
           letterSpacing: '0.01em',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}>
-          Evidenzbasiert. Praxisnah.
+          News für Ernährungsfachkräfte.
         </p>
       </div>
 

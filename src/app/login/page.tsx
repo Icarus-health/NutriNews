@@ -35,14 +35,14 @@ export default function LoginPage() {
             height={112}
             priority
           />
-          <p className="text-slate-400 text-[14px] font-medium">Für Ernährungstherapeut:innen</p>
+          <p className="text-slate-400 text-[14px] font-medium">Für Ernährungsfachkräfte</p>
         </div>
         <Suspense>
           <ErrorBanner />
         </Suspense>
         <LoginForm />
         <p className="text-center text-[11px] text-slate-300 mt-8">
-          Evidenzbasierte Ernährungsnews &middot; Keine Werbung
+          Aktuelle Fachnews &middot; Keine Werbung
         </p>
       </div>
     </div>

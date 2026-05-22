@@ -2,7 +2,7 @@
   "id": "/",
   "name": "NutriNews",
   "short_name": "NutriNews",
-  "description": "Evidenzbasierte Ernährungsnews für Therapeuten",
+  "description": "Die Nachrichten-App für Ernährungsfachkräfte.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a4a20",

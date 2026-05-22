@@ -386,15 +386,22 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </h2>
             </div>
 
-            {/* Was? — vollständig anzeigen, damit Nutzer sich ein Bild machen können */}
-            {card.snack_what && (
+            {/* Kernbotschaft (Hero) — die zentrale Aussage, direkt an die Leser:in
+                gerichtet. Fallback auf "Was?" für Altkarten ohne Kernbotschaft. */}
+            {card.kernbotschaft ? (
+              <div className="px-4 pb-2.5">
+                <p className="text-[15px] font-semibold leading-snug text-slate-800 dark:text-slate-100">
+                  {card.kernbotschaft}
+                </p>
+              </div>
+            ) : card.snack_what ? (
               <div className="mx-4 mb-2 flex items-baseline gap-2">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex-shrink-0">Was?</span>
                 <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   {card.snack_what}
                 </p>
               </div>
-            )}
+            ) : null}
 
             {/* Praxisrelevanz — kompakte Dots ohne Label */}
             {card.practice_relevance_score != null && (

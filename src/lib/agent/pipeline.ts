@@ -7,13 +7,17 @@ const TARGET = 10;
 const CANDIDATE_POOL = 12;
 const CURATE_BATCH_SIZE = 5;
 
+// Weighted toward the source types that produce the highest practice relevance.
+// Berufspolitik is intentionally low: it is dominated by pharma/G-BA decisions
+// with little nutrition-therapy value. Laienpresse stays — its value is the
+// fact-check/Einordnung, not the original claim.
 const MIN_QUOTAS: Record<string, number> = {
-  berufspolitik: 3,
+  forschung: 3,
+  fachpresse: 3,
   laienpresse: 2,
-  fachpresse: 2,
-  international: 1,
   supplement: 1,
-  forschung: 2,
+  international: 1,
+  berufspolitik: 1,
 };
 
 /** Selects a diverse candidate pool from new items using minimum quotas + round-robin. */
@@ -99,14 +103,18 @@ export async function runCurationPipeline(
       const item = batch[j];
       const resolvedCategory = resolveCategory(result.category_main);
 
-      // Laienpresse needs manual fact-check review before going live.
-      // All other source types (fachpresse, forschung, berufspolitik, international, supplement)
-      // are published immediately so the feed stays populated without daily admin attention.
+      // Laienpresse always needs manual fact-check review before going live
+      // (its value is the fachliche Einordnung, so we keep it as draft).
+      // Everything else is auto-published ONLY when it clears the practice-
+      // relevance bar — low-relevance items become drafts so the live feed
+      // stays high-signal instead of flooded with filler.
       const isLayPress = item.source.sourceType === 'laienpresse';
-      const status = isLayPress ? 'draft' : 'published';
-      const publishedAt = isLayPress ? null : new Date().toISOString();
+      const meetsRelevanceBar = (result.practice_relevance_score ?? 0) >= 3;
+      const status = (!isLayPress && meetsRelevanceBar) ? 'published' : 'draft';
+      const publishedAt = status === 'published' ? new Date().toISOString() : null;
 
       const { error: dbError } = await supabase.from('news_cards').insert({
+        kernbotschaft: result.kernbotschaft || null,
         headline: result.headline,
         snack_what: result.snack_what,
         snack_result: result.snack_result,
@@ -136,7 +144,7 @@ export async function runCurationPipeline(
         errors.push(`DB: ${item.title?.slice(0, 40)}: ${dbError.message}`);
       } else {
         created++;
-        if (isLayPress) drafts++; else published++;
+        if (status === 'published') published++; else drafts++;
       }
     }
   }

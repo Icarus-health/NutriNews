@@ -35,7 +35,7 @@ SCHREIBSTIL-REGELN:
 
 WEITERE REGELN:
 1. Verwende AUSSCHLIESSLICH Informationen aus dem Quellartikel (Titel, Beschreibung und ggf. Volltext). Erfinde NICHTS hinzu.
-2. Erstelle IMMER eine Card — auch wenn der Artikel nur am Rande mit Ernaehrung zu tun hat oder die Informationslage duenn ist. Nutze dann Evidenz-Level "Laienpresse/Trend" oder "Expertenmeinung" und einen niedrigen Praxisrelevanz-Score (1-2). Lehne NIEMALS einen Artikel ab — erstelle immer eine Card.
+2. INHALT MUSS DA SEIN: Wenn der Quellartikel KEINEN konkreten Fachinhalt hergibt (z. B. nur eine Schlagzeile hinter einer Paywall, eine reine Ankuendigung ohne Details oder eine inhaltsleere Google-News-Beschreibung), dann erstelle KEINE Card — antworte AUSSCHLIESSLICH mit {"insufficient": true}. Schreibe NIEMALS Fuelltext wie "Der Artikel nennt keine konkreten Zahlen", "Volltext nicht verfuegbar", "es werden keine Details genannt" o. Ae. Eine Card ohne echten Mehrwert ist schlechter als gar keine Card. (AUSNAHME: Laienpresse — siehe unten, dort immer eine Card erstellen.)
 3. Die Zusammenfassung muss faktisch korrekt und quellentreu sein.
 4. Formuliere in klarem, professionellem Deutsch.
 5. Die Evidenz-Einordnung ist PFLICHT: Bewerte Studiendesign, Stichprobengroesse, Limitationen und Uebertragbarkeit.
@@ -62,6 +62,8 @@ PRAXISRELEVANZ-SCORE (1-5):
 Antworte IMMER als valides JSON.`;
 
 const LAY_PRESS_ADDITION = `
+
+WICHTIG bei Laienpresse: Erstelle IMMER eine Card — auch bei duennem oder fachlich falschem Originalclaim. Der Mehrwert liegt NICHT im Originalartikel, sondern in DEINER fachlichen Einordnung/Korrektur. Gib hier NIEMALS {"insufficient": true} zurueck. Patienten lesen diese Meldungen und kommen damit in die Beratung — ordne sie ein.
 
 ZUSAETZLICH fuer Laienpresse-Artikel:
 1. Das Feld "therapist_check" MUSS beginnen mit: "⚠️ Laienpresse-Meldung:" gefolgt von der fachlichen Einordnung. Erklaere kurz was die Meldung behauptet und wie die Evidenzlage tatsaechlich ist. Patienten werden damit in die Praxis kommen.
@@ -163,7 +165,7 @@ async function fetchArticleText(url: string): Promise<string> {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'NutriNews/1.0 (Ernaehrungsnews-Aggregator)',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html',
       },
       signal: AbortSignal.timeout(8000),
@@ -201,7 +203,48 @@ async function fetchArticleText(url: string): Promise<string> {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Europe PMC: kostenlose Abstracts fuer Forschungsartikel — auch wenn
+// der Verlags-Volltext hinter einer Paywall liegt. Kein API-Key noetig.
+// ═══════════════════════════════════════════════════════════════
+
+function extractDoi(url: string): string | null {
+  const m = url.match(/10\.\d{4,9}\/[^\s"&?#<]+/);
+  return m ? m[0].replace(/[.,;)]+$/, '') : null;
+}
+
+function extractPmid(url: string): string | null {
+  const m = url.match(/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)/i) ?? url.match(/[?&]list_uids=(\d+)/i);
+  return m ? m[1] : null;
+}
+
+async function fetchEuropePmcAbstract(item: RSSItem): Promise<string> {
+  const pmid = extractPmid(item.link);
+  const doi = extractDoi(item.link);
+  let query: string;
+  if (pmid) query = `EXT_ID:${pmid} AND SRC:MED`;
+  else if (doi) query = `DOI:"${doi}"`;
+  else if (item.title && item.title.length > 15) query = `TITLE:"${item.title.replace(/["\\]/g, '').slice(0, 180)}"`;
+  else return '';
+
+  try {
+    const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}&resultType=core&format=json&pageSize=1`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'NutriNews/1.0 (mailto:info@icarus-health.de)', 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const result = data?.resultList?.result?.[0];
+    if (!result?.abstractText) return '';
+    return String(result.abstractText).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+  } catch {
+    return '';
+  }
+}
+
 interface CurationResult {
+  kernbotschaft: string;
   headline: string;
   snack_what: string;
   snack_result: string;
@@ -261,6 +304,7 @@ URL: ${item.link}${articleText ? `\n\nVOLLTEXT DES ARTIKELS:\n${articleText}` : 
 
 Antwortformat:
 {
+  "kernbotschaft": "EIN praegnanter Satz, direkt an die Ernaehrungsfachkraft gerichtet: die zentrale Erkenntnis bzw. der konkrete Mehrwert dieser Meldung. NICHT 'Die Studie zeigt...', sondern die Botschaft selbst — z. B. '30 g Walnuesse/Tag senken das LDL um ~5 % — eine einfache Empfehlung fuer kardiologische Patient:innen.' (max 120 Zeichen)",
   "headline": "Praegnante deutsche Ueberschrift mit konkretem Inhalt, nicht generisch (max 100 Zeichen)",
   "snack_what": "Was GENAU wurde untersucht/veroeffentlicht? Nenne Studientyp, Population, Intervention. (1-2 Saetze)",
   "snack_result": "Was GENAU kam heraus? Nenne konkrete Ergebnisse: Zahlen, Effektstaerken, Empfehlungen, Grenzwerte. Kein 'es wurde festgestellt dass...' sondern die Fakten direkt. (1-2 Saetze)",
@@ -274,7 +318,9 @@ Antwortformat:
   "evidence_summary": "Studiendesign (z.B. RCT, n=X, Y Wochen), primaerer Endpunkt, Effektstaerke, wichtigste Limitation, Uebertragbarkeit auf DE-Praxis. (2-3 Saetze)"${extraFieldsStr}
 }
 
-WICHTIG: Erstelle IMMER eine Card. Auch bei wenig Informationen — nutze dann practice_relevance_score 1-2 und evidence_level "Laienpresse/Trend". Es gibt KEINE Option, den Artikel abzulehnen.`;
+${isLayPress
+    ? `WICHTIG: Erstelle IMMER eine Card — der Mehrwert ist DEINE fachliche Einordnung, nicht der Originalartikel.`
+    : `WICHTIG: Erstelle nur dann eine Card, wenn echter Fachinhalt extrahierbar ist. Gibt die Quelle keinen konkreten Inhalt her (Paywall, reine Schlagzeile, inhaltslose Beschreibung), antworte AUSSCHLIESSLICH mit {"insufficient": true}. Erfinde KEINE Inhalte und schreibe keinen Fuelltext ueber fehlende Informationen.`}`;
 }
 
 function parseResult(content: string, item: RSSItem): CurationResult | null {
@@ -292,6 +338,7 @@ function parseResult(content: string, item: RSSItem): CurationResult | null {
     const readTimeSec = Math.ceil(totalText.split(/\s+/).length / 3.5);
 
     return {
+      kernbotschaft: parsed.kernbotschaft || '',
       headline: parsed.headline,
       snack_what: parsed.snack_what,
       snack_result: parsed.snack_result || '',
@@ -332,7 +379,14 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY nicht gesetzt');
 
   // Fetch full article text for better curation quality
-  const articleText = await fetchArticleText(item.link);
+  let articleText = await fetchArticleText(item.link);
+
+  // Research/international publisher pages are often paywalled and yield almost
+  // no usable text — fall back to the free Europe PMC abstract.
+  if (articleText.length < 400 && (item.source.sourceType === 'forschung' || item.source.sourceType === 'international')) {
+    const abstract = await fetchEuropePmcAbstract(item);
+    if (abstract.length > articleText.length) articleText = abstract;
+  }
 
   const systemPrompt = buildSystemPrompt(item.source.sourceType);
 

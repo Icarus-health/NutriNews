@@ -191,16 +191,6 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
         </div>
       )}
 
-      {/* Refresh button */}
-      <button
-        onClick={handleRefresh}
-        disabled={isRefreshing}
-        className="w-full flex items-center justify-center gap-2 py-2 mb-3 rounded-xl text-[13px] font-semibold text-forest-600 dark:text-forest-400 bg-forest-50 dark:bg-forest-900/20 hover:bg-forest-100 dark:hover:bg-forest-900/30 transition-colors disabled:opacity-50 border border-forest-100 dark:border-forest-800/40"
-      >
-        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-        {isRefreshing ? 'Wird aktualisiert...' : 'Feed aktualisieren'}
-      </button>
-
       {cards.filter(card => !ux.isHidden(card.id)).map((card, i) => (
         <div key={card.id} style={{ animationDelay: `${Math.min(i, 14) * 60}ms` }} className="animate-scale-in">
           <NewsCardComponent

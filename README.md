@@ -1,6 +1,6 @@
 # Nutri News 🐦
 
-> Evidenzbasierte Ernährungsnews für Ernährungstherapeut:innen in Deutschland.
+> Die Nachrichten-App für Ernährungsfachkräfte in Deutschland.
 
 ## Tech Stack
 

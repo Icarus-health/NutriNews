@@ -9,7 +9,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'NutriNews',
-  description: 'Evidenzbasierte Ernährungsnews für Therapeuten',
+  description: 'Die Nachrichten-App für Ernährungsfachkräfte.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

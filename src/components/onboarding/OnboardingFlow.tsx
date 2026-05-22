@@ -110,7 +110,7 @@ export default function OnboardingFlow({ userId }: Props) {
               Willkommen bei NutriNews
             </h2>
             <p className="text-[14px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
-              Täglich kuratierte Fachinhalte für Ernährungstherapeuten – evidenzbasiert, praxisnah, auf den Punkt.
+              Täglich kuratierte Fachnews für Ernährungsfachkräfte – kompakt und auf den Punkt.
             </p>
             <p className="text-[13px] text-slate-400 dark:text-slate-500">
               Kurze Einrichtung damit dein Feed zu dir passt.

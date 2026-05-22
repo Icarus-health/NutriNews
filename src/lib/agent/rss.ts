@@ -17,16 +17,28 @@ export interface SourceHealth {
   error?: string;
 }
 
+// processEntities:false disables DTD entity expansion. Many public feeds (DGE,
+// WHO, several journals) carry enough HTML entities to trip fast-xml-parser's
+// billion-laughs guard ("Entity expansion limit exceeded") and fail entirely.
+// We strip HTML/entities downstream anyway, so expansion is unnecessary.
 const PARSER_OPTIONS = {
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
+  processEntities: false,
+} as const;
+
+// Browser-like UA + Accept: several publishers (NCBI/PubMed, MDPI, journal
+// platforms) return HTTP 403 for generic bot user-agents.
+const FEED_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
 } as const;
 
 export async function fetchRSSFeed(source: RSSSource): Promise<{ items: RSSItem[]; health: SourceHealth }> {
   const health: SourceHealth = { name: source.name, sourceType: source.sourceType, items: 0 };
   try {
     const res = await fetch(source.url, {
-      headers: { 'User-Agent': 'NutriNews/1.0 (Ernaehrungsnews-Aggregator)' },
+      headers: FEED_HEADERS,
       signal: AbortSignal.timeout(10000),
     });
 
