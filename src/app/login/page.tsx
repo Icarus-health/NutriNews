@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import LoginForm from '@/components/auth/LoginForm';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 function ErrorBanner() {
   const searchParams = useSearchParams();
@@ -23,6 +24,7 @@ function ErrorBanner() {
 }
 
 export default function LoginPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-forest-50 via-white to-slate-50 px-5">
       <div className="w-full max-w-sm">
@@ -35,14 +37,14 @@ export default function LoginPage() {
             height={112}
             priority
           />
-          <p className="text-slate-400 text-[14px] font-medium">Für Ernährungsfachkräfte</p>
+          <p className="text-slate-400 text-[14px] font-medium">{t('login.tagline')}</p>
         </div>
         <Suspense>
           <ErrorBanner />
         </Suspense>
         <LoginForm />
         <p className="text-center text-[11px] text-slate-300 mt-8">
-          Aktuelle Fachnews &middot; Keine Werbung
+          {t('login.footer')}
         </p>
       </div>
     </div>

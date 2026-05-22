@@ -7,6 +7,7 @@ import { RefreshCw, WifiOff, Loader2 } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
 import { loadMoreCards } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 const ShareModal = dynamic(() => import('./ShareModal'), { ssr: false });
 import type { NewsCard } from '@/types/database';
@@ -26,6 +27,7 @@ interface Props {
 export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const router = useRouter();
   const ux = useUX();
+  const { t } = useI18n();
   const [cards, setCards] = useState(initialCards);
   const [hasMore, setHasMore] = useState(initialCards.length >= 15);
   const [shareCardId, setShareCardId] = useState<string | null>(null);
@@ -151,12 +153,10 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
           <span className="text-2xl">{hasActiveFilters ? '🔍' : '☕'}</span>
         </div>
         <p className="text-[15px] font-semibold text-slate-500 dark:text-slate-400">
-          {hasActiveFilters ? 'Keine Treffer' : 'Gleich geht\'s los'}
+          {hasActiveFilters ? t('feed.emptyFiltered.title') : t('feed.empty.title')}
         </p>
         <p className="text-[13px] mt-1 text-center text-slate-400 dark:text-slate-500">
-          {hasActiveFilters
-            ? 'Für diese Filterauswahl gibt es keine Meldungen. Filter anpassen oder zurücksetzen.'
-            : 'Die nächste Kuration läuft automatisch. Normalerweise erscheinen täglich neue Artikel.'}
+          {hasActiveFilters ? t('feed.emptyFiltered.body') : t('feed.empty.body')}
         </p>
       </div>
     );
@@ -187,7 +187,7 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
       {!isOnline && (
         <div className="flex items-center gap-2 px-4 py-2.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/30 text-amber-700 dark:text-amber-400 text-[13px] font-medium animate-fade-in">
           <WifiOff size={14} />
-          Offline — du siehst zwischengespeicherte Inhalte
+          {t('feed.offline')}
         </div>
       )}
 
@@ -208,11 +208,11 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
           {isPending && (
             <div className="flex items-center gap-2 text-[13px] text-slate-400">
               <Loader2 size={16} className="animate-spin" />
-              Lädt...
+              {t('feed.loading')}
             </div>
           )}
           {!isOnline && (
-            <p className="text-[12px] text-slate-400">Offline — kein Nachladen möglich</p>
+            <p className="text-[12px] text-slate-400">{t('feed.offlineNoMore')}</p>
           )}
         </div>
       )}

@@ -1,14 +1,21 @@
 import type { EvidenceLevel } from '@/types/database';
 
-export const EVIDENCE_CONFIG: Record<EvidenceLevel, { label: string; color: string; icon: string; key: string }> = {
-  'Meta-Analyse':        { label: 'Meta-Analyse',        color: 'bg-forest-600 text-white', icon: '🏆', key: 'meta' },
-  'Systematische Review':{ label: 'Syst. Review',        color: 'bg-forest-500 text-white', icon: '📋', key: 'review' },
-  'RCT':                 { label: 'RCT',                 color: 'bg-blue-600 text-white',   icon: '🔬', key: 'rct' },
-  'Kohortenstudie':      { label: 'Kohortenstudie',      color: 'bg-blue-400 text-white',   icon: '📊', key: 'kohorte' },
-  'Fallstudie':          { label: 'Fallstudie',          color: 'bg-yellow-500 text-white', icon: '📄', key: 'fall' },
-  'Expertenmeinung':     { label: 'Expertenmeinung',     color: 'bg-slate-400 text-white',  icon: '💬', key: 'expert' },
-  'Laienpresse/Trend':   { label: 'Trend/Laienpresse',  color: 'bg-orange-400 text-white', icon: '📰', key: 'trend' },
+export const EVIDENCE_CONFIG: Record<EvidenceLevel, { label: string; labelEn: string; color: string; icon: string; key: string }> = {
+  'Meta-Analyse':        { label: 'Meta-Analyse',        labelEn: 'Meta-analysis', color: 'bg-forest-600 text-white', icon: '🏆', key: 'meta' },
+  'Systematische Review':{ label: 'Syst. Review',        labelEn: 'Syst. review',  color: 'bg-forest-500 text-white', icon: '📋', key: 'review' },
+  'RCT':                 { label: 'RCT',                 labelEn: 'RCT',           color: 'bg-blue-600 text-white',   icon: '🔬', key: 'rct' },
+  'Kohortenstudie':      { label: 'Kohortenstudie',      labelEn: 'Cohort study',  color: 'bg-blue-400 text-white',   icon: '📊', key: 'kohorte' },
+  'Fallstudie':          { label: 'Fallstudie',          labelEn: 'Case study',    color: 'bg-yellow-500 text-white', icon: '📄', key: 'fall' },
+  'Expertenmeinung':     { label: 'Expertenmeinung',     labelEn: 'Expert opinion',color: 'bg-slate-400 text-white',  icon: '💬', key: 'expert' },
+  'Laienpresse/Trend':   { label: 'Trend/Laienpresse',  labelEn: 'Trend/Lay press',color: 'bg-orange-400 text-white', icon: '📰', key: 'trend' },
 };
+
+/** Returns the evidence label for the given locale ('en' falls back to German label if missing). */
+export function getEvidenceLabel(level: EvidenceLevel, locale: string = 'de'): string {
+  const cfg = EVIDENCE_CONFIG[level];
+  if (!cfg) return level;
+  return locale === 'en' ? cfg.labelEn : cfg.label;
+}
 
 /** Map URL-safe short key → full evidence level name */
 export function evidenceKeyToLevel(key: string): EvidenceLevel | null {

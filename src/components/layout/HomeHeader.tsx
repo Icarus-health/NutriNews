@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, X, Clock, ChevronDown, Check, SlidersHorizontal } from 'lucide-react';
 import { clsx } from 'clsx';
-import { CATEGORIES, CATEGORY_CONTEXTS } from '@/lib/categories';
-import { EVIDENCE_CONFIG, evidenceLevelToKey } from '@/lib/evidence';
+import { CATEGORIES, CATEGORY_CONTEXTS, getCategoryLabel } from '@/lib/categories';
+import { EVIDENCE_CONFIG, evidenceLevelToKey, getEvidenceLabel } from '@/lib/evidence';
 import { useUX } from '@/components/providers/UXProvider';
+import { useI18n } from '@/components/providers/I18nProvider';
 import type { User } from '@supabase/supabase-js';
 import type { EvidenceLevel } from '@/types/database';
 
@@ -31,6 +32,7 @@ interface Props {
 export default function HomeHeader({ user, activeCategories, searchQuery, evidenceFilter = [], daysFilter, minRelevance }: Props) {
   const router = useRouter();
   const ux = useUX();
+  const { locale, t } = useI18n();
   const [showSearch, setShowSearch] = useState(!!searchQuery);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showFilters, setShowFilters] = useState(evidenceFilter.length > 0 || !!daysFilter || !!minRelevance);
@@ -146,7 +148,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
               )}
             </div>
             <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-none font-medium">
-              {user ? user.email?.split('@')[0] : 'News für Ernährungsfachkräfte'}
+              {user ? user.email?.split('@')[0] : t('header.subtitle')}
             </span>
           </div>
         </div>
@@ -170,7 +172,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="News durchsuchen..."
+              placeholder={t('header.searchPlaceholder')}
               value={query}
               onChange={e => handleSearch(e.target.value)}
               autoFocus
@@ -199,7 +201,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 onClick={() => ux.clearSearchHistory()}
                 className="px-2 py-1 text-[10px] text-slate-400 hover:text-red-400 transition-colors"
               >
-                Löschen
+                {t('header.searchDelete')}
               </button>
             </div>
           )}
@@ -219,10 +221,10 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
         >
           <span>
             {categoryCount === 0
-              ? 'Alle Kategorien'
+              ? t('header.allCategories')
               : categoryCount === 1
-                ? CATEGORIES.find(c => selected.has(c.id))?.label ?? '1 Kategorie'
-                : `${categoryCount} Kategorien`}
+                ? getCategoryLabel(Array.from(selected)[0], locale)
+                : t('header.categoriesN', { n: categoryCount })}
           </span>
           <div className="flex items-center gap-2">
             {categoryCount > 0 && (
@@ -240,7 +242,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
         {/* Restore last filter suggestion (only when no active filters) */}
         {!showDropdown && categoryCount === 0 && savedFilters && savedFilters.length > 0 && (
           <div className="flex items-center gap-2 mt-2 animate-fade-in">
-            <span className="text-[11px] text-slate-400">Zuletzt:</span>
+            <span className="text-[11px] text-slate-400">{t('header.recent')}</span>
             {savedFilters.slice(0, 3).map(catId => {
               const cat = CATEGORIES.find(c => c.id === catId);
               if (!cat) return null;
@@ -255,7 +257,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                   }}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] text-slate-500 dark:text-slate-400 hover:bg-forest-50 hover:text-forest-700 dark:hover:bg-forest-900/20 dark:hover:text-forest-400 transition-colors border border-slate-200 dark:border-slate-600"
                 >
-                  {cat.label}
+                  {getCategoryLabel(cat.id, locale)}
                 </button>
               );
             })}
@@ -280,7 +282,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                   onClick={() => toggleCategory(catId)}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-forest-700 text-white text-[11px] font-semibold transition-colors hover:bg-forest-800"
                 >
-                  {cat.label}
+                  {getCategoryLabel(cat.id, locale)}
                   <X size={10} strokeWidth={3} />
                 </button>
               );
@@ -327,7 +329,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                           'text-[13px] font-medium',
                           isSelected ? 'text-forest-700 dark:text-forest-400' : 'text-slate-700 dark:text-slate-300'
                         )}>
-                          {cat.label}
+                          {getCategoryLabel(cat.id, locale)}
                         </span>
                         <span className={clsx('ml-auto text-[10px] px-2 py-0.5 rounded-full', cat.color)}>
                           {cat.id.split(' ')[0]}
@@ -345,13 +347,13 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 onClick={clearCategories}
                 className="text-[12px] text-slate-400 hover:text-red-400 transition-colors"
               >
-                Alle zurücksetzen
+                {t('header.resetAll')}
               </button>
               <button
                 onClick={() => setShowDropdown(false)}
                 className="bg-forest-700 text-white px-4 py-1.5 rounded-lg text-[12px] font-semibold hover:bg-forest-800 transition-colors"
               >
-                Fertig {categoryCount > 0 && `(${categoryCount})`}
+                {t('header.done')} {categoryCount > 0 && `(${categoryCount})`}
               </button>
             </div>
           </div>
@@ -370,7 +372,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
           )}
         >
           <SlidersHorizontal size={13} />
-          Filter
+          {t('header.filter')}
           {(selectedEvidence.size > 0 || days || relevance) && (
             <span className="w-4 h-4 rounded-full bg-forest-700 text-white text-[9px] flex items-center justify-center font-bold">
               {(selectedEvidence.size > 0 ? 1 : 0) + (days ? 1 : 0) + (relevance ? 1 : 0)}
@@ -403,7 +405,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                         : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300'
                     )}
                   >
-                    {config.icon} {config.label}
+                    {config.icon} {getEvidenceLabel(level, locale)}
                   </button>
                 );
               })}
@@ -427,7 +429,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                         : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
                     )}
                   >
-                    {dr.label}
+                    {t(`header.days${dr.value}`)}
                   </button>
                 ))}
               </div>
@@ -464,7 +466,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 }}
                 className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
               >
-                Zurücksetzen
+                {t('header.reset')}
               </button>
             )}
           </div>

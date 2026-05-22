@@ -5,12 +5,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare, UserPlus, Link2, Check, Trash2 } from 'lucide-react';
+import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare, UserPlus, Link2, Check, Trash2, Languages } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile, submitAppFeedback } from '@/lib/actions/news';
 import { deleteAccount } from '@/lib/actions/user';
 import { useUX } from '@/components/providers/UXProvider';
+import { useI18n } from '@/components/providers/I18nProvider';
+import { LOCALES, LOCALE_LABELS } from '@/lib/i18n/config';
 import type { Profile, TherapistSetting } from '@/types/database';
 
 const SETTINGS: { id: TherapistSetting; label: string; description: string }[] = [
@@ -32,6 +34,7 @@ export default function ProfilePage({ profile, stats }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const ux = useUX();
+  const { locale, setLocale, t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [alias, setAlias] = useState(profile?.alias ?? '');
@@ -387,6 +390,31 @@ export default function ProfilePage({ profile, stats }: Props) {
       {saved && (
         <p className="text-center text-sm text-forest-600 font-medium mb-4 animate-fade-in">Gespeichert!</p>
       )}
+
+      {/* Language */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Languages size={18} className="text-forest-600" />
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('profile.language')}</p>
+        </div>
+        <p className="text-[11px] text-slate-400 mb-3">{t('profile.languageHint')}</p>
+        <div className="flex gap-2">
+          {LOCALES.map(loc => (
+            <button
+              key={loc}
+              onClick={() => setLocale(loc)}
+              className={clsx(
+                'flex-1 py-2 rounded-lg text-[12px] font-semibold transition-colors',
+                locale === loc
+                  ? 'bg-forest-700 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              )}
+            >
+              {LOCALE_LABELS[loc]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Dark Mode */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">

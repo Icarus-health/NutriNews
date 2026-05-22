@@ -6,9 +6,11 @@ import { Home, Bookmark, Users, User, ShieldCheck, Inbox } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useI18n } from '@/components/providers/I18nProvider';
 
 export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const { t } = useI18n();
   const [isAdmin, setIsAdmin] = useState(isAdminProp ?? false);
   const [inboxUnread, setInboxUnread] = useState(0);
   const [communityDot, setCommunityDot] = useState(false);
@@ -85,11 +87,11 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
   }, [pathname]);
 
   const navItems = [
-    { href: '/',          label: 'Home',        icon: Home,    dot: false,        badge: 0 },
-    { href: '/community', label: 'Community',   icon: Users,   dot: communityDot, badge: 0 },
-    { href: '/inbox',     label: 'Posteingang', icon: Inbox,   dot: false,        badge: inboxUnread },
-    { href: '/saved',     label: 'Gespeichert', icon: Bookmark,dot: false,        badge: 0 },
-    { href: '/profile',   label: 'Profil',      icon: User,    dot: false,        badge: 0 },
+    { href: '/',          label: t('nav.home'),      icon: Home,    dot: false,        badge: 0 },
+    { href: '/community', label: t('nav.community'), icon: Users,   dot: communityDot, badge: 0 },
+    { href: '/inbox',     label: t('nav.inbox'),     icon: Inbox,   dot: false,        badge: inboxUnread },
+    { href: '/saved',     label: t('nav.saved'),     icon: Bookmark,dot: false,        badge: 0 },
+    { href: '/profile',   label: t('nav.profile'),   icon: User,    dot: false,        badge: 0 },
   ];
 
   return (
@@ -134,7 +136,7 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
             )}
           >
             <ShieldCheck size={21} strokeWidth={pathname === '/admin' ? 2.2 : 1.5} />
-            <span>Admin</span>
+            <span>{t('nav.admin')}</span>
           </Link>
         )}
       </div>
