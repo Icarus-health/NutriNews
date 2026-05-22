@@ -146,7 +146,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
               )}
             </div>
             <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-none font-medium">
-              {user ? user.email?.split('@')[0] : 'Evidenzbasiert · Praxisnah'}
+              {user ? user.email?.split('@')[0] : 'News für Ernährungsfachkräfte'}
             </span>
           </div>
         </div>

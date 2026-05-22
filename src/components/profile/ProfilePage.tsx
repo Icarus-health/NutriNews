@@ -258,13 +258,13 @@ export default function ProfilePage({ profile, stats }: Props) {
           <p className="text-sm font-bold text-forest-800 dark:text-forest-200">Kolleg*innen einladen</p>
         </div>
         <p className="text-[12px] text-forest-600/80 dark:text-forest-400/80 mb-3">
-          Teile NutriNews mit deinem Team — gemeinsam evidenzbasiert auf dem neuesten Stand.
+          Teile NutriNews mit deinem Team — gemeinsam auf dem neuesten Stand.
         </p>
         <div className="flex gap-2">
           <button
             onClick={async () => {
               const url = typeof window !== 'undefined' ? window.location.origin : '';
-              const shareText = 'Schau dir NutriNews an — evidenzbasierte Ernährungsnews, kompakt aufbereitet für die Praxis.';
+              const shareText = 'Schau dir NutriNews an — Ernährungsnews, kompakt aufbereitet für die Praxis.';
               if (navigator.share) {
                 try {
                   await navigator.share({ title: 'NutriNews', text: shareText, url });

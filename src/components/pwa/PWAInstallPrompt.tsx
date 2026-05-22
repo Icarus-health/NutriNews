@@ -91,7 +91,7 @@ export default function PWAInstallPrompt() {
           </div>
           <h2 className="text-white font-bold text-xl mb-1">NutriNews installieren</h2>
           <p className="text-forest-100 text-[13px]">
-            Schnellzugriff auf evidenzbasierte Fachnews direkt vom Homescreen
+            Schnellzugriff auf aktuelle Fachnews direkt vom Homescreen
           </p>
         </div>
 
