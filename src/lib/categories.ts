@@ -93,12 +93,39 @@ export function getCategoryStyle(id: string): string {
   return 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300';
 }
 
-export function getCategoryLabel(id: string): string {
+// English short labels keyed by category id (mirrors the German `label`).
+const CATEGORY_LABELS_EN: Record<string, string> = {
+  'Künstliche Ernährung': 'Artificial nutrition',
+  'Onkologische Ernährung': 'Oncology nutrition',
+  'Geriatrie & Sarkopenie': 'Geriatrics & sarcopenia',
+  'Nieren & Leber': 'Kidney & liver',
+  'GLP-1 & Adipositastherapie': 'Obesity (GLP-1)',
+  'Diabetologie & Ernährung': 'Diabetology',
+  'Gastroenterologie': 'Gastroenterology',
+  'Supplements & NEM': 'Supplements',
+  'Kardiovaskulär': 'Cardiovascular',
+  'Psychiatrie & Ernährung': 'Psychiatry & nutrition',
+  'Pädiatrische Ernährung': 'Paediatric nutrition',
+  'Nachhaltigkeit & Ernährung': 'Sustainability',
+  'Sport & klinische Ernährung': 'Sports & nutrition',
+  'Mikronährstoffe klinisch': 'Micronutrients',
+  'Adipositas & Gewichtsmanagement': 'Weight management',
+  'Berufspolitik & Recht': 'Policy & law',
+  'Fortbildung & Lehre': 'Education & training',
+  'Laienpresse & Patientenfragen': 'Lay press',
+  'Internationale Perspektive': 'International',
+  'Medikament-Nährstoff-Interaktionen': 'Drug-nutrient interaction',
+};
+
+export function getCategoryLabel(id: string, locale: string = 'de'): string {
   const cat = CATEGORIES.find(c => c.id === id);
+  const resolvedId = cat ? cat.id : LEGACY_CATEGORY_MAP[id];
+  if (locale === 'en' && resolvedId && CATEGORY_LABELS_EN[resolvedId]) {
+    return CATEGORY_LABELS_EN[resolvedId];
+  }
   if (cat) return cat.label;
-  const mapped = LEGACY_CATEGORY_MAP[id];
-  if (mapped) {
-    const mappedCat = CATEGORIES.find(c => c.id === mapped);
+  if (resolvedId) {
+    const mappedCat = CATEGORIES.find(c => c.id === resolvedId);
     if (mappedCat) return mappedCat.label;
   }
   return id;

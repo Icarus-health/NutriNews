@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/next';
 import UXProvider from '@/components/providers/UXProvider';
+import I18nProvider from '@/components/providers/I18nProvider';
 import CookieConsent from '@/components/compliance/CookieConsent';
 import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
 import PWAUpdateHandler from '@/components/pwa/PWAUpdateHandler';
@@ -47,11 +48,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans antialiased">
         <UXProvider>
-          <SplashScreen />
-          {children}
-          <PWAInstallPrompt />
-          <PWAUpdateHandler />
-          <CookieConsent />
+          <I18nProvider>
+            <SplashScreen />
+            {children}
+            <PWAInstallPrompt />
+            <PWAUpdateHandler />
+            <CookieConsent />
+          </I18nProvider>
         </UXProvider>
         <Analytics />
       </body>

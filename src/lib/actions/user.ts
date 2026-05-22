@@ -4,6 +4,16 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 
+/** Persists the UI/content language to the user's profile. No-op when logged out. */
+export async function updateLanguage(language: string): Promise<{ error?: string }> {
+  if (language !== 'de' && language !== 'en') return { error: 'invalid language' };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return {};
+  const { error } = await supabase.from('profiles').update({ language }).eq('id', user.id);
+  return error ? { error: error.message } : {};
+}
+
 export async function deleteAccount(): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

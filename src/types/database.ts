@@ -39,8 +39,27 @@ export interface Profile {
   preferred_categories: string[];
   notify_new_news: boolean;
   setting: TherapistSetting | null;
+  language: string;
   created_at: string;
   updated_at: string;
+}
+
+/** Cached, on-the-fly translation of a card's text fields for one language. */
+export interface NewsCardTranslation {
+  news_card_id: string;
+  lang: string;
+  kernbotschaft: string | null;
+  headline: string | null;
+  snack_what: string | null;
+  snack_result: string | null;
+  snack_consequence: string | null;
+  therapist_check: string | null;
+  action_recommendation: string | null;
+  patient_question_anticipation: string | null;
+  evidence_summary: string | null;
+  lay_press_fact_check: string | null;
+  policy_action_needed: string | null;
+  international_relevance_de: string | null;
 }
 
 export interface BriefingItem {

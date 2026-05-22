@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { clsx } from 'clsx';
-import { EVIDENCE_CONFIG } from '@/lib/evidence';
+import { EVIDENCE_CONFIG, getEvidenceLabel } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
+import { useI18n } from '@/components/providers/I18nProvider';
 import type { BriefingItem, EvidenceLevel } from '@/types/database';
 import { ExternalLink, Newspaper, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -13,12 +14,13 @@ interface Props {
   isYesterday?: boolean;
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr + 'T00:00:00');
-  return date.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  return date.toLocaleDateString(locale === 'en' ? 'en-US' : 'de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 export default function DailyBriefing({ items, date, isYesterday }: Props) {
+  const { locale, t } = useI18n();
   // Starts collapsed to keep the home screen calm — the header stays a compact,
   // tappable teaser ("N Meldungen"). Users expand on demand.
   const [collapsed, setCollapsed] = useState(true);
@@ -40,16 +42,16 @@ export default function DailyBriefing({ items, date, isYesterday }: Props) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-white font-bold text-[15px] leading-none">
-                {isYesterday ? 'Gestriges Briefing' : 'Morgen-Briefing'}
+                {isYesterday ? t('briefing.yesterday') : t('briefing.today')}
               </h2>
               {!isYesterday && (
                 <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-400 text-emerald-900 px-1.5 py-0.5 rounded-full leading-none">
-                  Neu
+                  {t('common.new')}
                 </span>
               )}
             </div>
             <p className="text-forest-200 text-[11px] mt-0.5">
-              {formatDate(date)} &middot; {items.length} Meldungen
+              {formatDate(date, locale)} &middot; {t('briefing.items', { n: items.length })}
             </p>
           </div>
           <div className="flex-shrink-0 text-white/60">
@@ -76,11 +78,11 @@ export default function DailyBriefing({ items, date, isYesterday }: Props) {
                       'text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full',
                       getCategoryStyle(item.category_main)
                     )}>
-                      {getCategoryLabel(item.category_main)}
+                      {getCategoryLabel(item.category_main, locale)}
                     </span>
                     {evidence && (
                       <span className="text-[10px] text-forest-200">
-                        {evidence.icon} {evidence.label}
+                        {evidence.icon} {getEvidenceLabel(item.evidence_level as EvidenceLevel, locale)}
                       </span>
                     )}
                     <div className="flex items-center gap-0.5 ml-auto" title={`Praxisrelevanz: ${item.practice_relevance_score}/5`}>
@@ -116,7 +118,7 @@ export default function DailyBriefing({ items, date, isYesterday }: Props) {
                       }}
                       className="text-[11px] font-semibold text-emerald-300 hover:text-white mt-0.5 transition-colors"
                     >
-                      mehr
+                      {t('common.more')}
                     </button>
                   )}
 
@@ -132,7 +134,7 @@ export default function DailyBriefing({ items, date, isYesterday }: Props) {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-[10px] text-forest-200 hover:text-white transition-colors"
                       >
-                        Quelle <ExternalLink size={10} />
+                        {t('common.source')} <ExternalLink size={10} />
                       </a>
                     </div>
                   )}
