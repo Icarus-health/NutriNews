@@ -284,20 +284,13 @@ export async function loadMoreCards(cursor: string, filters?: {
   const hasMoreCards = rawCards.length > 15;
   if (cards.length === 0) return { cards: [], hasMore: false };
 
-  // Enrich with like counts - single batched query
+  // like_count is denormalized on news_cards (kept in sync by a DB trigger), so it
+  // already comes back with each row — no per-request counting of like rows needed.
   const cardIds = cards.map(c => c.id);
-  const likeCountMap: Record<string, number> = {};
-  const { data: allLikesData } = await supabase
-    .from('likes')
-    .select('news_card_id')
-    .in('news_card_id', cardIds);
-  allLikesData?.forEach(l => {
-    likeCountMap[l.news_card_id] = (likeCountMap[l.news_card_id] ?? 0) + 1;
-  });
 
   let enriched = cards.map(card => ({
     ...card,
-    like_count: likeCountMap[card.id] ?? 0,
+    like_count: card.like_count ?? 0,
   }));
 
   if (user) {

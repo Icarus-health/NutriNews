@@ -7,6 +7,21 @@ const PROTECTED_PATHS = ['/saved', '/profile', '/community', '/admin', '/inbox']
 const PUBLIC_PATHS = ['/login', '/auth', '/api', '/offline', '/datenschutz', '/impressum', '/nutzungsbedingungen', '/ki-transparenz'];
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const isProtected = PROTECTED_PATHS.some(p => pathname.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
+
+  // Fast path: anonymous visitors (no Supabase auth cookie) on non-protected
+  // routes don't need a getUser() round-trip to Supabase Auth on every
+  // navigation. Sessions for logged-in users are still validated/refreshed
+  // below because their requests carry the sb-*-auth-token cookie.
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some(c => c.name.startsWith('sb-') && c.name.includes('auth-token'));
+  if (!isProtected && !hasAuthCookie) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -27,12 +42,6 @@ export async function updateSession(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
-
-  // Check if path is protected and user is not authenticated
-  const isProtected = PROTECTED_PATHS.some(p => pathname.startsWith(p));
-  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
 
   if (isProtected && !isPublic && !user) {
     const loginUrl = request.nextUrl.clone();
