@@ -117,8 +117,10 @@ export default function CardVerification({ newsCardId, userId, counts, userVotes
               key={action.type}
               onClick={() => handleVerify(action.type)}
               disabled={isPending}
+              aria-label={action.label}
+              aria-pressed={hasVoted}
               className={clsx(
-                'flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors',
+                'flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors',
                 hasVoted
                   ? `${action.activeColor} bg-slate-100 dark:bg-slate-600 ring-1 ring-current/20`
                   : count > 0
@@ -156,6 +158,7 @@ export default function CardVerification({ newsCardId, userId, counts, userVotes
             <button
               type="button"
               onClick={() => { setShowReason(null); setReason(''); }}
+              aria-label="Abbrechen"
               className="px-2 py-1.5 text-[12px] text-slate-400"
             >
               ×

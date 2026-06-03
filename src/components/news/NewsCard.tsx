@@ -321,6 +321,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
     if (w) w.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
   }
 
+  function openCard() {
+    vibrate(5);
+    setFlipped(true);
+    ux.markAsRead(card.id, card.headline, card.category_main);
+  }
+
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
     const cardUrl = getCardUrl();
@@ -362,6 +368,10 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
         {/* ═══ FRONT ═══ */}
         <div ref={frontRef} className="flip-card-front">
           <article
+            role="button"
+            tabIndex={0}
+            aria-label={`Artikel öffnen: ${headline}`}
+            aria-expanded={flipped}
             className={clsx(
               'rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_rgba(0,0,0,0.06)] border border-l-[3px] overflow-hidden cursor-pointer active:scale-[0.98] transition-all duration-200',
               categoryAccent,
@@ -369,10 +379,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                 ? 'bg-white/80 dark:bg-slate-800/70 border-slate-100/40 dark:border-slate-700/40 opacity-80'
                 : 'bg-white dark:bg-slate-800 border-slate-100/40 dark:border-slate-700/40'
             )}
-            onClick={() => {
-              vibrate(5);
-              setFlipped(true);
-              ux.markAsRead(card.id, card.headline, card.category_main);
+            onClick={openCard}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === ' ') e.preventDefault();
+                openCard();
+              }
             }}
           >
             {/* ── Kompakter Header: Quellentyp + Kategorie + Evidenz in einer Zeile ── */}
@@ -385,30 +397,31 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                 <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
                   {accent.emoji} {sourceTypeLabel}
                 </span>
-                <span className="text-slate-300 dark:text-slate-600 text-[10px]">&middot;</span>
+                <span className="text-slate-300 dark:text-slate-600 text-[11px]">&middot;</span>
                 <span className={clsx(
-                  'text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full',
+                  'text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full',
                   getCategoryStyle(card.category_main)
                 )}>
                   {categoryLabel}
                 </span>
-                <span className={clsx('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', evidence.color)}>
+                <span className={clsx('text-[11px] font-semibold px-1.5 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidenceLabel}
                 </span>
                 {isNew && !isRead && (
-                  <span className="text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-green-500 text-white px-1.5 py-0.5 rounded-full">
+                  <span className="text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-green-500 text-white px-1.5 py-0.5 rounded-full">
                     {t('common.new')}
                   </span>
                 )}
                 <span className="ml-auto flex items-center gap-1">
                   {card.published_at && (
-                    <span className="text-[10px] text-slate-400 tabular-nums">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
                       {formatTime(card.published_at, t)}
                     </span>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); ux.hideCard(card.id); }}
                     title={t('card.hide')}
+                    aria-label="Artikel ausblenden"
                     className="p-0.5 rounded-full text-slate-300 hover:text-slate-500 hover:bg-slate-100/60 dark:hover:bg-slate-700/40 transition-colors"
                   >
                     <EyeOff size={12} strokeWidth={1.5} />
@@ -434,7 +447,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </div>
             ) : snackWhat ? (
               <div className="mx-4 mb-2 flex items-baseline gap-2">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex-shrink-0">{t('card.what')}</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex-shrink-0">{t('card.what')}</span>
                 <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   {snackWhat}
                 </p>
@@ -461,7 +474,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
             {/* Laienpresse: kompakter Hinweis */}
             {isLayPress && layPressFactCheck && (
               <div className="mx-4 mb-2 flex items-center">
-                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/30">
+                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/30">
                   {t('card.factCheckAvailable')}
                 </span>
               </div>
@@ -480,6 +493,8 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               <button
                 onClick={handleLike}
                 disabled={isPending}
+                aria-label={liked ? 'Gefällt mir entfernen' : 'Gefällt mir'}
+                aria-pressed={liked}
                 className={clsx(
                   'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
                   liked ? 'text-red-500' : 'text-slate-400 hover:text-red-400'
@@ -490,6 +505,8 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowComments(p => !p); }}
+                aria-label="Kommentare anzeigen"
+                aria-pressed={showComments}
                 className={clsx(
                   'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
                   showComments ? 'text-forest-600 dark:text-forest-400' : 'text-slate-400 hover:text-forest-500'
@@ -499,24 +516,27 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </button>
               <button
                 onClick={handleShare}
+                aria-label="Artikel teilen"
                 className="flex items-center gap-1 text-[12px] font-medium text-slate-400 hover:text-forest-500 px-2.5 py-1.5 rounded-lg transition-all"
               >
                 <Send size={18} strokeWidth={1.5} />
               </button>
               <button
                 onClick={handleCopyLink}
+                aria-label="Link kopieren"
                 className={clsx(
                   'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
                   linkCopied ? 'text-forest-600' : 'text-slate-400 hover:text-forest-500'
                 )}
               >
                 <Link2 size={18} strokeWidth={1.5} />
-                {linkCopied && <span className="text-[10px]">{t('card.copied')}</span>}
+                {linkCopied && <span className="text-[11px]">{t('card.copied')}</span>}
               </button>
               {/* Note dot indicator */}
               {hasNote && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setFlipped(true); setTimeout(() => setShowNote(true), 350); }}
+                  aria-label="Notiz anzeigen"
                   className="relative flex items-center justify-center w-8 h-8"
                 >
                   <PenLine size={16} strokeWidth={1.5} className="text-amber-400" />
@@ -528,6 +548,8 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                 <button
                   onClick={handleBookmark}
                   disabled={isPending}
+                  aria-label={bookmarked ? 'Lesezeichen entfernen' : 'Lesezeichen setzen'}
+                  aria-pressed={bookmarked}
                   className={clsx(
                     'flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-all',
                     bookmarked ? 'text-forest-600 dark:text-forest-400' : 'text-slate-400 hover:text-forest-500'
@@ -571,13 +593,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex items-center gap-2">
                 <span className={clsx(
-                  'text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full',
+                  'text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full',
                   getCategoryStyle(card.category_main)
                 )}>
                   {categoryLabel}
                 </span>
                 {translating && (
-                  <span className="flex items-center gap-1 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
                     <Languages size={11} /> {t('card.translating')}
                   </span>
                 )}
@@ -608,11 +630,11 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                   return (
                     <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                       <div className="bg-amber-50 dark:bg-amber-900/20 px-3.5 py-2.5">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">📰 {t('card.mediaReport')}</p>
+                        <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">📰 {t('card.mediaReport')}</p>
                         <p className="text-[13px] leading-relaxed text-amber-900 dark:text-amber-100 italic">„{parsed.medien}"</p>
                       </div>
                       <div className="bg-forest-50/80 dark:bg-forest-900/20 px-3.5 py-2.5">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">🔬 {t('card.expertContext')}</p>
+                        <p className="text-[11px] font-black uppercase tracking-widest text-forest-600 dark:text-forest-400 mb-1">🔬 {t('card.expertContext')}</p>
                         <p className="text-[13px] leading-relaxed text-forest-900 dark:text-forest-100">{parsed.fach}</p>
                       </div>
                     </div>
@@ -620,24 +642,24 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                 }
                 return (
                   <div className="bg-amber-50/60 dark:bg-amber-900/20 rounded-xl px-3.5 py-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-0.5">{t('card.factCheck')}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-0.5">{t('card.factCheck')}</p>
                     <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{layPressFactCheck}</p>
                   </div>
                 );
               })()}
 
               <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3.5 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{t('card.what')}</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-0.5">{t('card.what')}</p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{snackWhat}</p>
               </div>
 
               <div className="bg-blue-50/60 dark:bg-blue-900/20 rounded-xl px-3.5 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-0.5">{t('card.result')}</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-blue-400 mb-0.5">{t('card.result')}</p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{snackResult}</p>
               </div>
 
               <div className="bg-amber-50/60 dark:bg-amber-900/20 rounded-xl px-3.5 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-0.5">{t('card.consequence')}</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-0.5">{t('card.consequence')}</p>
                 <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{snackConsequence}</p>
               </div>
 
@@ -647,6 +669,8 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                   {!showAllDetails && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setShowAllDetails(true); }}
+                      aria-expanded={showAllDetails}
+                      aria-label={t('card.moreDetails')}
                       className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-[12px] font-semibold text-forest-600 dark:text-forest-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-100 dark:border-slate-700"
                     >
                       <ChevronDown size={14} />
@@ -658,7 +682,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                     <div className="space-y-2.5 animate-fade-in">
                       {evidenceSummary && (
                         <div className="bg-indigo-50/60 dark:bg-indigo-900/20 rounded-xl px-3.5 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-0.5">
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-400 mb-0.5">
                             {evidence.icon} {t('card.evidenceContext')}
                           </p>
                           <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{evidenceSummary}</p>
@@ -667,14 +691,14 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
                       {actionRecommendation && (
                         <div className="bg-forest-50/60 dark:bg-forest-900/20 rounded-xl px-3.5 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-forest-500 dark:text-forest-400 mb-0.5">{t('card.actionRecommendation')}</p>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-forest-500 dark:text-forest-400 mb-0.5">{t('card.actionRecommendation')}</p>
                           <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{actionRecommendation}</p>
                         </div>
                       )}
 
                       {patientQuestion && (
                         <div className="bg-rose-50/60 dark:bg-rose-900/20 rounded-xl px-3.5 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-0.5">{t('card.patientQuestion')}</p>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-rose-400 mb-0.5">{t('card.patientQuestion')}</p>
                           <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200 italic">
                             &ldquo;{patientQuestion}&rdquo;
                           </p>
@@ -683,14 +707,14 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
                       {policyActionNeeded && (
                         <div className="bg-orange-50/60 dark:bg-orange-900/20 rounded-xl px-3.5 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-0.5">{t('card.policyAction')}</p>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400 mb-0.5">{t('card.policyAction')}</p>
                           <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{policyActionNeeded}</p>
                         </div>
                       )}
 
                       {internationalRelevanceDe && (
                         <div className="bg-sky-50/60 dark:bg-sky-900/20 rounded-xl px-3.5 py-2.5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">{t('card.relevanceDE')}</p>
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">{t('card.relevanceDE')}</p>
                           <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-200">{internationalRelevanceDe}</p>
                         </div>
                       )}
@@ -701,10 +725,10 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
               {card.curated_by_agent && (
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                     {t('card.aiSummary')}
                   </span>
-                  <span className="text-[10px] text-slate-300 dark:text-slate-500">{card.source_name}</span>
+                  <span className="text-[11px] text-slate-300 dark:text-slate-500">{card.source_name}</span>
                 </div>
               )}
             </div>
@@ -714,13 +738,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               <div className="px-4 pb-2 flex flex-wrap gap-2">
                 {card.doi && (
                   <a href={`https://doi.org/${card.doi}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
                     DOI: {card.doi}
                   </a>
                 )}
                 {card.pubmed_id && (
                   <a href={`https://pubmed.ncbi.nlm.nih.gov/${card.pubmed_id}/`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full hover:bg-emerald-100 transition-colors">
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full hover:bg-emerald-100 transition-colors">
                     PubMed: {card.pubmed_id}
                   </a>
                 )}
@@ -768,14 +792,15 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
             {/* Source footer */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100/80 dark:border-slate-700/60">
               <div className="flex items-center gap-2">
-                <span className={clsx('text-[10px] font-medium px-2 py-0.5 rounded-full', evidence.color)}>
+                <span className={clsx('text-[11px] font-medium px-2 py-0.5 rounded-full', evidence.color)}>
                   {evidence.icon} {evidenceLabel}
                 </span>
-                {card.published_at && <span className="text-[10px] text-slate-400">{formatTime(card.published_at, t)}</span>}
+                {card.published_at && <span className="text-[11px] text-slate-500 dark:text-slate-400">{formatTime(card.published_at, t)}</span>}
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={handlePrint}
+                  aria-label="Artikel drucken"
                   className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
                   <Printer size={14} strokeWidth={1.5} />

@@ -155,7 +155,7 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
         <p className="text-[15px] font-semibold text-slate-500 dark:text-slate-400">
           {hasActiveFilters ? t('feed.emptyFiltered.title') : t('feed.empty.title')}
         </p>
-        <p className="text-[13px] mt-1 text-center text-slate-400 dark:text-slate-500">
+        <p className="text-[13px] mt-1 text-center text-slate-500 dark:text-slate-500">
           {hasActiveFilters ? t('feed.emptyFiltered.body') : t('feed.empty.body')}
         </p>
       </div>
@@ -206,13 +206,13 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
       {hasMore && (
         <div ref={sentinelRef} className="flex items-center justify-center py-6">
           {isPending && (
-            <div className="flex items-center gap-2 text-[13px] text-slate-400">
+            <div className="flex items-center gap-2 text-[13px] text-slate-500 dark:text-slate-400">
               <Loader2 size={16} className="animate-spin" />
               {t('feed.loading')}
             </div>
           )}
           {!isOnline && (
-            <p className="text-[12px] text-slate-400">{t('feed.offlineNoMore')}</p>
+            <p className="text-[12px] text-slate-500 dark:text-slate-400">{t('feed.offlineNoMore')}</p>
           )}
         </div>
       )}

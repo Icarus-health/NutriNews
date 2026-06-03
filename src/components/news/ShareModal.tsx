@@ -25,6 +25,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Clean up search timer on unmount
   useEffect(() => {
@@ -32,6 +33,16 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
   }, []);
+
+  // Autofocus first input + close on Escape for accessible dialog semantics
+  useEffect(() => {
+    searchInputRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const handleSearch = useCallback((value: string) => {
     setQuery(value);
@@ -57,12 +68,15 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 animate-fade-in" onClick={onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Artikel teilen"
         className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-t-2xl p-4 animate-slide-up"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-slate-900 dark:text-slate-100">News teilen</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} aria-label="Schließen" className="text-slate-400 hover:text-slate-600">
             <X size={20} />
           </button>
         </div>
@@ -90,7 +104,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
             <div className="w-full border-t border-slate-200 dark:border-slate-700" />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-white dark:bg-slate-800 px-3 text-[11px] text-slate-400 dark:text-slate-500">oder an Kolleg:in senden</span>
+            <span className="bg-white dark:bg-slate-800 px-3 text-[11px] text-slate-500 dark:text-slate-500">oder an Kolleg:in senden</span>
           </div>
         </div>
 
@@ -104,6 +118,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
             <div className="relative mb-3">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Kollegen suchen (Name oder E-Mail)..."
                 value={query}
@@ -125,7 +140,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-800">{p.full_name || 'Unbekannt'}</p>
-                      <p className="text-xs text-slate-400">{p.email}</p>
+                      <p className="text-xs text-slate-500">{p.email}</p>
                     </div>
                   </button>
                 ))}
@@ -136,7 +151,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
               <div className="mb-3">
                 <span className="inline-flex items-center gap-1 bg-forest-100 text-forest-800 text-xs font-medium px-2 py-1 rounded-full">
                   {query}
-                  <button onClick={() => { setSelectedEmail(''); setQuery(''); }} className="hover:text-forest-600">
+                  <button onClick={() => { setSelectedEmail(''); setQuery(''); }} aria-label="Auswahl entfernen" className="hover:text-forest-600">
                     <X size={12} />
                   </button>
                 </span>
