@@ -143,7 +143,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
           <div className="h-3 w-32 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
         </div>
       ) : comments.length === 0 ? (
-        <p className="text-xs text-slate-400 py-1">Noch keine Kommentare.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 py-1">Noch keine Kommentare.</p>
       ) : (
         <div className="space-y-2 mb-3 max-h-60 overflow-y-auto">
           {comments.map(c => (
@@ -154,12 +154,13 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{c.profiles?.full_name || 'Anonym'}</span>
-                  <span className="text-xs text-slate-400">{formatTime(c.created_at)}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{formatTime(c.created_at)}</span>
                   {userId && c.user_id !== userId && (
                     <button
                       onClick={() => setReplyTo(c)}
                       className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-forest-500 transition-opacity"
                       title="Antworten"
+                      aria-label="Auf Kommentar antworten"
                     >
                       <Reply size={12} />
                     </button>
@@ -167,6 +168,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
                   {c.user_id === userId && !c.id.startsWith('temp-') && (
                     <button
                       onClick={() => handleDelete(c.id)}
+                      aria-label="Kommentar löschen"
                       className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-opacity ml-auto"
                     >
                       <Trash2 size={12} />
@@ -188,7 +190,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
           </span>
           <button
             onClick={() => setReplyTo(null)}
-            className="text-[10px] text-slate-400 hover:text-red-400"
+            className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-red-400"
           >
             Abbrechen
           </button>
@@ -208,6 +210,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
           <button
             onClick={handleSubmit}
             disabled={!body.trim() || isPending}
+            aria-label="Kommentar senden"
             className="p-1.5 rounded-lg bg-forest-700 text-white disabled:opacity-40 hover:bg-forest-800 transition-colors"
           >
             <Send size={16} />

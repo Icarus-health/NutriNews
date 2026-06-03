@@ -97,9 +97,11 @@ export default async function HomePage({ searchParams }: PageProps) {
   const minRelevance = params.minRelevance ? parseInt(params.minRelevance, 10) : null;
   const hasFilters = activeCategories.length > 0 || !!params.q || evidenceFilter.length > 0 || !!daysFilter || !!minRelevance;
 
-  // Cached cards query + per-request auth in parallel
+  // Cached cards query + per-request auth + daily briefing, all in parallel
   const supabase = await createClient();
-  const [cachedCards, { data: { user } }] = await Promise.all([
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const [cachedCards, { data: { user } }, briefingResult] = await Promise.all([
     fetchCachedCards({
       categories: activeCategories,
       evidenceFilter,
@@ -108,6 +110,16 @@ export default async function HomePage({ searchParams }: PageProps) {
       q: params.q ?? null,
     }),
     supabase.auth.getUser(),
+    // Briefing doesn't depend on the cards — fetch it concurrently (only when unfiltered)
+    hasFilters
+      ? Promise.resolve(null)
+      : supabase
+          .from('daily_briefings')
+          .select('*')
+          .in('date', [today, yesterday])
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
   ]);
 
   let allCards: NewsCard[] = cachedCards;
@@ -116,6 +128,9 @@ export default async function HomePage({ searchParams }: PageProps) {
   if (allCards.length > 0) {
     const cardIds = allCards.map(c => c.id);
 
+    // like_count is now denormalized on news_cards (kept in sync by a DB trigger),
+    // so we no longer fetch + count every like row per request. Only the current
+    // user's like/bookmark membership (bounded by the user) is fetched here.
     const userLikesPromise = user
       ? supabase.from('likes').select('news_card_id').eq('user_id', user.id).in('news_card_id', cardIds)
       : null;
@@ -128,17 +143,11 @@ export default async function HomePage({ searchParams }: PageProps) {
       ? supabase.from('profiles').select('*').eq('id', user.id).single()
       : null;
 
-    const [allLikesResult, userLikesResult, userBookmarksResult, profileResult] = await Promise.all([
-      supabase.from('likes').select('news_card_id').in('news_card_id', cardIds),
+    const [userLikesResult, userBookmarksResult, profileResult] = await Promise.all([
       userLikesPromise,
       userBookmarksPromise,
       profilePromise,
     ]);
-
-    const likeCountMap: Record<string, number> = {};
-    allLikesResult.data?.forEach(l => {
-      likeCountMap[l.news_card_id] = (likeCountMap[l.news_card_id] ?? 0) + 1;
-    });
 
     const userLikeSet = new Set(userLikesResult?.data?.map(l => l.news_card_id));
     const userBookmarkSet = new Set(userBookmarksResult?.data?.map(b => b.news_card_id));
@@ -146,7 +155,7 @@ export default async function HomePage({ searchParams }: PageProps) {
 
     allCards = allCards.map(card => ({
       ...card,
-      like_count: likeCountMap[card.id] ?? 0,
+      like_count: card.like_count ?? 0,
       ...(user ? {
         user_has_liked: userLikeSet.has(card.id),
         user_has_bookmarked: userBookmarkSet.has(card.id),
@@ -166,22 +175,11 @@ export default async function HomePage({ searchParams }: PageProps) {
     allCards = interleaveBySourceType(allCards);
   }
 
-  // Load daily briefing (only when no filters) — single query for today or yesterday
+  // Daily briefing was fetched in parallel with the cards/auth above (only when unfiltered)
   let briefingData: { briefing: DailyBriefingType | null; isYesterday: boolean } = { briefing: null, isYesterday: false };
-  if (!hasFilters) {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const { data: recentBriefing } = await supabase
-      .from('daily_briefings')
-      .select('*')
-      .in('date', [today, yesterday])
-      .order('date', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (recentBriefing) {
-      briefingData = { briefing: recentBriefing, isYesterday: recentBriefing.date !== today };
-    }
+  const recentBriefing = briefingResult?.data ?? null;
+  if (recentBriefing) {
+    briefingData = { briefing: recentBriefing, isYesterday: recentBriefing.date !== today };
   }
 
   return (

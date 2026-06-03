@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { updateProfile } from '@/lib/actions/news';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, getCategoryLabel } from '@/lib/categories';
+import { useI18n } from '@/components/providers/I18nProvider';
 import { clsx } from 'clsx';
 import type { TherapistSetting } from '@/types/database';
 
 const STORAGE_KEY = 'nn-onboarding-done';
 
-const SETTINGS: { id: TherapistSetting; label: string; emoji: string }[] = [
-  { id: 'akutklinik',      label: 'Akutklinik / Intensiv',      emoji: '🏥' },
-  { id: 'rehabilitation',  label: 'Rehabilitation',              emoji: '🔄' },
-  { id: 'ambulant',        label: 'Ambulante Praxis',            emoji: '🏠' },
-  { id: 'psychiatrie',     label: 'Psychiatrie / Psychosomatik', emoji: '🧠' },
-  { id: 'langzeitpflege',  label: 'Langzeitpflege / Geriatrie',  emoji: '👴' },
-  { id: 'praevention',     label: 'Prävention & Kursleitung',    emoji: '🌱' },
-  { id: 'forschung_lehre', label: 'Forschung & Lehre',           emoji: '🔬' },
+const SETTINGS: { id: TherapistSetting; emoji: string }[] = [
+  { id: 'akutklinik',      emoji: '🏥' },
+  { id: 'rehabilitation',  emoji: '🔄' },
+  { id: 'ambulant',        emoji: '🏠' },
+  { id: 'psychiatrie',     emoji: '🧠' },
+  { id: 'langzeitpflege',  emoji: '👴' },
+  { id: 'praevention',     emoji: '🌱' },
+  { id: 'forschung_lehre', emoji: '🔬' },
 ];
 
 // A curated short list for onboarding (full list available in profile settings)
@@ -32,11 +33,18 @@ interface Props {
 }
 
 export default function OnboardingFlow({ userId }: Props) {
+  const { locale, t } = useI18n();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [show, setShow] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState<TherapistSetting | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // Move focus into the dialog when it opens (A11y)
+  useEffect(() => {
+    if (show) sheetRef.current?.focus();
+  }, [show]);
 
   useEffect(() => {
     try {
@@ -90,7 +98,15 @@ export default function OnboardingFlow({ userId }: Props) {
       />
 
       {/* Sheet */}
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
+      <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`onboarding-title-${step}`}
+        tabIndex={-1}
+        onKeyDown={(e) => { if (e.key === 'Escape' && step === 1) dismiss(); }}
+        className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300 focus:outline-none"
+      >
 
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-5">
@@ -106,26 +122,26 @@ export default function OnboardingFlow({ userId }: Props) {
         {step === 1 && (
           <div className="text-center space-y-4">
             <div className="text-5xl mb-2">🥗</div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Willkommen bei NutriNews
+            <h2 id="onboarding-title-1" className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              {t('onboarding.welcome.title')}
             </h2>
             <p className="text-[14px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
-              Täglich kuratierte Fachnews für Ernährungsfachkräfte – kompakt und auf den Punkt.
+              {t('onboarding.welcome.body')}
             </p>
-            <p className="text-[13px] text-slate-400 dark:text-slate-500">
-              Kurze Einrichtung damit dein Feed zu dir passt.
+            <p className="text-[13px] text-slate-500 dark:text-slate-400">
+              {t('onboarding.welcome.hint')}
             </p>
             <button
               onClick={() => setStep(2)}
               className="w-full bg-forest-700 hover:bg-forest-800 text-white rounded-2xl py-3 text-[15px] font-semibold transition-colors mt-2"
             >
-              Los geht's →
+              {t('onboarding.start')}
             </button>
             <button
               onClick={dismiss}
-              className="w-full text-slate-400 text-[13px] py-1 hover:text-slate-500 transition-colors"
+              className="w-full text-slate-500 dark:text-slate-400 text-[13px] py-1 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
             >
-              Überspringen
+              {t('onboarding.skip')}
             </button>
           </div>
         )}
@@ -134,11 +150,11 @@ export default function OnboardingFlow({ userId }: Props) {
         {step === 2 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Wo arbeitest du?
+              <h2 id="onboarding-title-2" className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {t('onboarding.setting.title')}
               </h2>
-              <p className="text-[13px] text-slate-400 dark:text-slate-500 mt-0.5">
-                Wir passen die Praxisrelevanz der Artikel daran an.
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('onboarding.setting.subtitle')}
               </p>
             </div>
 
@@ -155,7 +171,7 @@ export default function OnboardingFlow({ userId }: Props) {
                   )}
                 >
                   <span className="text-lg shrink-0">{s.emoji}</span>
-                  <span className="leading-tight">{s.label}</span>
+                  <span className="leading-tight">{t(`onboarding.setting.${s.id}`)}</span>
                 </button>
               ))}
             </div>
@@ -165,7 +181,7 @@ export default function OnboardingFlow({ userId }: Props) {
               disabled={!selectedSetting}
               className="w-full bg-forest-700 hover:bg-forest-800 disabled:opacity-40 text-white rounded-2xl py-3 text-[15px] font-semibold transition-colors"
             >
-              Weiter →
+              {t('onboarding.next')}
             </button>
           </div>
         )}
@@ -174,11 +190,11 @@ export default function OnboardingFlow({ userId }: Props) {
         {step === 3 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Welche Themen interessieren dich?
+              <h2 id="onboarding-title-3" className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {t('onboarding.categories.title')}
               </h2>
-              <p className="text-[13px] text-slate-400 dark:text-slate-500 mt-0.5">
-                Wähle bis zu 5 Themen aus – du kannst das jederzeit im Profil ändern.
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('onboarding.categories.subtitle')}
               </p>
             </div>
 
@@ -190,6 +206,7 @@ export default function OnboardingFlow({ userId }: Props) {
                   <button
                     key={cat.id}
                     onClick={() => !atLimit && toggleCategory(cat.id)}
+                    aria-pressed={selected}
                     className={clsx(
                       'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all',
                       selected
@@ -199,15 +216,15 @@ export default function OnboardingFlow({ userId }: Props) {
                           : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-forest-300'
                     )}
                   >
-                    {cat.label}
+                    {getCategoryLabel(cat.id, locale)}
                   </button>
                 );
               })}
             </div>
 
-            <p className="text-[11px] text-slate-400 text-center">
-              {selectedCategories.length}/5 ausgewählt
-              {selectedCategories.length === 0 && ' — du kannst auch alle Themen erhalten'}
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+              {t('onboarding.categories.count', { n: selectedCategories.length })}
+              {selectedCategories.length === 0 && t('onboarding.categories.countHint')}
             </p>
 
             <button
@@ -216,7 +233,7 @@ export default function OnboardingFlow({ userId }: Props) {
               className="w-full bg-forest-700 hover:bg-forest-800 disabled:opacity-50 text-white rounded-2xl py-3 text-[15px] font-semibold transition-colors flex items-center justify-center gap-2"
             >
               {isPending && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              Feed personalisieren ✓
+              {t('onboarding.finish')}
             </button>
           </div>
         )}

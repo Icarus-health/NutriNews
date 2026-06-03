@@ -147,13 +147,15 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-none font-medium">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-none font-medium">
               {user ? user.email?.split('@')[0] : t('header.subtitle')}
             </span>
           </div>
         </div>
         <button
           onClick={() => setShowSearch(s => !s)}
+          aria-label="Suche"
+          aria-expanded={showSearch}
           className={clsx(
             'w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200',
             showSearch
@@ -173,13 +175,14 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             <input
               type="text"
               placeholder={t('header.searchPlaceholder')}
+              aria-label={t('header.searchPlaceholder')}
               value={query}
               onChange={e => handleSearch(e.target.value)}
               autoFocus
               className="w-full pl-10 pr-10 py-2.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-[14px] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:bg-white dark:focus:bg-slate-600 transition-all border border-transparent focus:border-forest-200 dark:focus:border-forest-700"
             />
             {query && (
-              <button onClick={clearSearch} className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-500 flex items-center justify-center hover:bg-slate-400 transition-colors">
+              <button onClick={clearSearch} aria-label="Suche zurücksetzen" className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-500 flex items-center justify-center hover:bg-slate-400 transition-colors">
                 <X size={11} className="text-white" strokeWidth={3} />
               </button>
             )}
@@ -199,7 +202,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
               ))}
               <button
                 onClick={() => ux.clearSearchHistory()}
-                className="px-2 py-1 text-[10px] text-slate-400 hover:text-red-400 transition-colors"
+                className="px-2 py-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-red-400 transition-colors"
               >
                 {t('header.searchDelete')}
               </button>
@@ -212,6 +215,8 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
       <div className="px-5 pb-3 relative" ref={dropdownRef}>
         <button
           onClick={() => setShowDropdown(d => !d)}
+          aria-expanded={showDropdown}
+          aria-haspopup="listbox"
           className={clsx(
             'w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all border',
             categoryCount > 0
@@ -230,6 +235,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             {categoryCount > 0 && (
               <button
                 onClick={(e) => { e.stopPropagation(); clearCategories(); }}
+                aria-label="Kategorien zurücksetzen"
                 className="w-5 h-5 rounded-full bg-forest-200 dark:bg-forest-800 flex items-center justify-center hover:bg-forest-300 dark:hover:bg-forest-700 transition-colors"
               >
                 <X size={10} className="text-forest-700 dark:text-forest-300" strokeWidth={3} />
@@ -242,7 +248,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
         {/* Restore last filter suggestion (only when no active filters) */}
         {!showDropdown && categoryCount === 0 && savedFilters && savedFilters.length > 0 && (
           <div className="flex items-center gap-2 mt-2 animate-fade-in">
-            <span className="text-[11px] text-slate-400">{t('header.recent')}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('header.recent')}</span>
             {savedFilters.slice(0, 3).map(catId => {
               const cat = CATEGORIES.find(c => c.id === catId);
               if (!cat) return null;
@@ -263,9 +269,10 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             })}
             <button
               onClick={() => setSavedFilters(null)}
-              className="text-[10px] text-slate-300 dark:text-slate-600 hover:text-slate-400 transition-colors ml-auto"
+              aria-label="Vorschlag ausblenden"
+              className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-slate-400 transition-colors ml-auto"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           </div>
         )}
@@ -299,7 +306,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 <div key={ctx.id}>
                   {/* Context group label */}
                   <div className="sticky top-0 bg-slate-50 dark:bg-slate-750 px-4 py-2 border-b border-slate-100 dark:border-slate-700">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       {ctx.label}
                     </p>
                   </div>
@@ -331,7 +338,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                         )}>
                           {getCategoryLabel(cat.id, locale)}
                         </span>
-                        <span className={clsx('ml-auto text-[10px] px-2 py-0.5 rounded-full', cat.color)}>
+                        <span className={clsx('ml-auto text-[11px] px-2 py-0.5 rounded-full', cat.color)}>
                           {cat.id.split(' ')[0]}
                         </span>
                       </button>
@@ -345,7 +352,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             <div className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
               <button
                 onClick={clearCategories}
-                className="text-[12px] text-slate-400 hover:text-red-400 transition-colors"
+                className="text-[12px] text-slate-500 dark:text-slate-400 hover:text-red-400 transition-colors"
               >
                 {t('header.resetAll')}
               </button>
@@ -364,17 +371,18 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
       <div className="px-5 pb-2">
         <button
           onClick={() => setShowFilters(f => !f)}
+          aria-expanded={showFilters}
           className={clsx(
             'flex items-center gap-1.5 text-[11px] font-semibold transition-colors',
             showFilters || selectedEvidence.size > 0 || days || relevance
               ? 'text-forest-700 dark:text-forest-400'
-              : 'text-slate-400 hover:text-slate-600'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-600'
           )}
         >
           <SlidersHorizontal size={13} />
           {t('header.filter')}
           {(selectedEvidence.size > 0 || days || relevance) && (
-            <span className="w-4 h-4 rounded-full bg-forest-700 text-white text-[9px] flex items-center justify-center font-bold">
+            <span className="w-4 h-4 rounded-full bg-forest-700 text-white text-[11px] flex items-center justify-center font-bold">
               {(selectedEvidence.size > 0 ? 1 : 0) + (days ? 1 : 0) + (relevance ? 1 : 0)}
             </span>
           )}
@@ -390,6 +398,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 return (
                   <button
                     key={level}
+                    aria-pressed={isActive}
                     onClick={() => {
                       setSelectedEvidence(prev => {
                         const next = new Set(prev);
@@ -399,7 +408,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                       });
                     }}
                     className={clsx(
-                      'px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all border',
+                      'px-2 py-0.5 rounded-full text-[11px] font-semibold transition-all border',
                       isActive
                         ? 'bg-forest-700 text-white border-forest-700'
                         : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300'
@@ -417,13 +426,14 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 {DATE_RANGES.map(dr => (
                   <button
                     key={dr.value}
+                    aria-pressed={days === dr.value}
                     onClick={() => {
                       const next = days === dr.value ? '' : dr.value;
                       setDays(next);
                       router.push(buildUrl(selected, query, undefined, next));
                     }}
                     className={clsx(
-                      'flex-1 py-1 rounded-lg text-[10px] font-semibold transition-all border text-center',
+                      'flex-1 py-1 rounded-lg text-[11px] font-semibold transition-all border text-center',
                       days === dr.value
                         ? 'bg-forest-700 text-white border-forest-700'
                         : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
@@ -437,16 +447,18 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                 {[1, 2, 3, 4, 5].map(score => (
                   <button
                     key={score}
+                    aria-label={`Mindestrelevanz ${score}`}
+                    aria-pressed={Number(relevance) >= 1 && score <= Number(relevance)}
                     onClick={() => {
                       const next = relevance === String(score) ? '' : String(score);
                       setRelevance(next);
                       router.push(buildUrl(selected, query, undefined, undefined, next));
                     }}
                     className={clsx(
-                      'w-6 h-6 rounded-md text-[10px] font-bold transition-all border text-center',
+                      'w-6 h-6 rounded-md text-[11px] font-bold transition-all border text-center',
                       Number(relevance) >= 1 && score <= Number(relevance)
                         ? 'bg-forest-700 text-white border-forest-700'
-                        : 'bg-white dark:bg-slate-700 text-slate-400 border-slate-200 dark:border-slate-600'
+                        : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
                     )}
                   >
                     {score}
@@ -464,7 +476,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                   setRelevance('');
                   router.push(buildUrl(selected, query, new Set(), '', ''));
                 }}
-                className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
+                className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-red-400 transition-colors"
               >
                 {t('header.reset')}
               </button>

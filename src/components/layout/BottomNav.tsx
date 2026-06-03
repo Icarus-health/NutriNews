@@ -99,26 +99,33 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
       <div className="flex">
         {navItems.map(({ href, label, icon: Icon, dot, badge }) => {
           const active = pathname === href;
+          const ariaLabel = badge > 0
+            ? `${label}, ${badge} ungelesen`
+            : dot
+              ? `${label}, neue Aktivität`
+              : undefined;
           return (
             <Link
               key={href}
               href={href}
+              aria-current={active ? 'page' : undefined}
+              aria-label={ariaLabel}
               className={clsx(
-                'flex-1 flex flex-col items-center pt-2 pb-1.5 text-[10px] gap-0.5 transition-all duration-200',
+                'flex-1 flex flex-col items-center pt-2 pb-1.5 text-[11px] gap-0.5 transition-all duration-200',
                 active
                   ? 'text-forest-700 dark:text-forest-400 font-semibold'
-                  : 'text-slate-400 hover:text-slate-500 active:text-slate-500'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-500 active:text-slate-500'
               )}
             >
               <span className="relative">
                 <Icon size={21} strokeWidth={active ? 2.2 : 1.5} />
                 {badge > 0 && (
-                  <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center px-0.5 leading-none">
+                  <span aria-hidden="true" className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] bg-red-500 text-white text-[11px] font-black rounded-full flex items-center justify-center px-0.5 leading-none">
                     {badge > 9 ? '9+' : badge}
                   </span>
                 )}
                 {dot && badge === 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-forest-500 rounded-full border border-white dark:border-slate-800" />
+                  <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-forest-500 rounded-full border border-white dark:border-slate-800" />
                 )}
               </span>
               <span>{label}</span>
@@ -128,11 +135,12 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
         {isAdmin && (
           <Link
             href="/admin"
+            aria-current={pathname === '/admin' ? 'page' : undefined}
             className={clsx(
-              'flex-1 flex flex-col items-center pt-2 pb-1.5 text-[10px] gap-0.5 transition-all duration-200',
+              'flex-1 flex flex-col items-center pt-2 pb-1.5 text-[11px] gap-0.5 transition-all duration-200',
               pathname === '/admin'
                 ? 'text-forest-700 dark:text-forest-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-500'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-500'
             )}
           >
             <ShieldCheck size={21} strokeWidth={pathname === '/admin' ? 2.2 : 1.5} />

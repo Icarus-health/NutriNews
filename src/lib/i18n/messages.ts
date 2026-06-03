@@ -92,6 +92,28 @@ const de: Record<string, string> = {
   // Profile
   'profile.language': 'Sprache',
   'profile.languageHint': 'Sprache der Oberfläche und der Inhalte',
+
+  // Onboarding
+  'onboarding.welcome.title': 'Willkommen bei NutriNews',
+  'onboarding.welcome.body': 'Täglich kuratierte Fachnews für Ernährungsfachkräfte – kompakt und auf den Punkt.',
+  'onboarding.welcome.hint': 'Kurze Einrichtung damit dein Feed zu dir passt.',
+  'onboarding.start': 'Los geht\'s →',
+  'onboarding.skip': 'Überspringen',
+  'onboarding.setting.title': 'Wo arbeitest du?',
+  'onboarding.setting.subtitle': 'Wir passen die Praxisrelevanz der Artikel daran an.',
+  'onboarding.next': 'Weiter →',
+  'onboarding.categories.title': 'Welche Themen interessieren dich?',
+  'onboarding.categories.subtitle': 'Wähle bis zu 5 Themen aus – du kannst das jederzeit im Profil ändern.',
+  'onboarding.categories.count': '{n}/5 ausgewählt',
+  'onboarding.categories.countHint': ' — du kannst auch alle Themen erhalten',
+  'onboarding.finish': 'Feed personalisieren ✓',
+  'onboarding.setting.akutklinik': 'Akutklinik / Intensiv',
+  'onboarding.setting.rehabilitation': 'Rehabilitation',
+  'onboarding.setting.ambulant': 'Ambulante Praxis',
+  'onboarding.setting.psychiatrie': 'Psychiatrie / Psychosomatik',
+  'onboarding.setting.langzeitpflege': 'Langzeitpflege / Geriatrie',
+  'onboarding.setting.praevention': 'Prävention & Kursleitung',
+  'onboarding.setting.forschung_lehre': 'Forschung & Lehre',
 };
 
 const en: Record<string, string> = {
@@ -184,6 +206,28 @@ const en: Record<string, string> = {
   // Profile
   'profile.language': 'Language',
   'profile.languageHint': 'Language of the interface and content',
+
+  // Onboarding
+  'onboarding.welcome.title': 'Welcome to NutriNews',
+  'onboarding.welcome.body': 'Daily curated professional news for nutrition professionals – concise and to the point.',
+  'onboarding.welcome.hint': 'A quick setup so your feed fits you.',
+  'onboarding.start': 'Let\'s go →',
+  'onboarding.skip': 'Skip',
+  'onboarding.setting.title': 'Where do you work?',
+  'onboarding.setting.subtitle': 'We tailor the practical relevance of the articles accordingly.',
+  'onboarding.next': 'Next →',
+  'onboarding.categories.title': 'Which topics interest you?',
+  'onboarding.categories.subtitle': 'Pick up to 5 topics – you can change this anytime in your profile.',
+  'onboarding.categories.count': '{n}/5 selected',
+  'onboarding.categories.countHint': ' — you can also receive all topics',
+  'onboarding.finish': 'Personalise feed ✓',
+  'onboarding.setting.akutklinik': 'Acute care / ICU',
+  'onboarding.setting.rehabilitation': 'Rehabilitation',
+  'onboarding.setting.ambulant': 'Outpatient practice',
+  'onboarding.setting.psychiatrie': 'Psychiatry / psychosomatics',
+  'onboarding.setting.langzeitpflege': 'Long-term care / geriatrics',
+  'onboarding.setting.praevention': 'Prevention & course teaching',
+  'onboarding.setting.forschung_lehre': 'Research & teaching',
 };
 
 export const MESSAGES: Record<Locale, Record<string, string>> = { de, en };
