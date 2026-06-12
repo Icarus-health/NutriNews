@@ -16,6 +16,7 @@ import { getCardTranslation } from '@/lib/actions/translate';
 import type { CardTranslation } from '@/lib/translate-fields';
 import { useUX } from '@/components/providers/UXProvider';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { sanitizeExternalUrl } from '@/lib/url';
 import type { EvidenceLevel, NewsCard as NewsCardType, SourceType } from '@/types/database';
 
 interface Props {
@@ -24,6 +25,12 @@ interface Props {
   onRequireAuth?: () => void;
   onShare?: (cardId: string) => void;
   defaultFlipped?: boolean;
+  /**
+   * Vom Feed bereitgestellte Batch-Übersetzung (locale != de).
+   * undefined = kein Batch-Kontext (z.B. Detailseite) → Karte holt selbst;
+   * null = Batch läuft/lieferte nichts → deutsches Original zeigen.
+   */
+  batchTranslation?: CardTranslation | null;
 }
 
 const SOURCE_TYPE_ACCENT: Record<string, { gradient: string; bgLight: string; bgDark: string; emoji: string }> = {
@@ -64,7 +71,7 @@ function formatTime(dateStr: string | null, t: (k: string, v?: Record<string, st
   return t(days > 1 ? 'time.days' : 'time.day', { n: days });
 }
 
-function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false }: Props) {
+function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false, batchTranslation }: Props) {
   const [flipped, setFlipped] = useState(defaultFlipped);
   const [showAllDetails, setShowAllDetails] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -123,8 +130,16 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
   }, [showNote, hasNote, card.id, userId, noteKey]);
 
   // Content translation for non-German locales — cached in localStorage + DB.
+  // Im Feed liefert NewsFeed die Übersetzung gebündelt als Prop (1 API-Call
+  // für den ganzen Batch); der Einzel-Fetch bleibt als Fallback für die
+  // Detailseite (card/[id]), wo keine Batch-Prop ankommt.
   useEffect(() => {
     if (locale === 'de') { setTranslation(null); return; }
+    if (batchTranslation !== undefined) {
+      setTranslation(batchTranslation);
+      setTranslating(batchTranslation === null);
+      return;
+    }
     const cacheKey = `nn-tr-${locale}-${card.id}`;
     try {
       const cached = localStorage.getItem(cacheKey);
@@ -140,7 +155,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
       })
       .finally(() => { if (!cancelled) setTranslating(false); });
     return () => { cancelled = true; };
-  }, [locale, card.id]);
+  }, [locale, card.id, batchTranslation]);
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();
@@ -811,15 +826,17 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                 >
                   <RotateCcw size={13} strokeWidth={1.5} /> {t('common.back')}
                 </button>
-                <a
-                  href={card.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
-                >
-                  {t('common.source')} <ExternalLink size={12} />
-                </a>
+                {sanitizeExternalUrl(card.source_url) && (
+                  <a
+                    href={sanitizeExternalUrl(card.source_url) ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
+                  >
+                    {t('common.source')} <ExternalLink size={12} />
+                  </a>
+                )}
               </div>
             </div>
           </article>
@@ -834,5 +851,6 @@ export default memo(NewsCard, (prev, next) =>
   prev.card.like_count === next.card.like_count &&
   prev.card.user_has_liked === next.card.user_has_liked &&
   prev.card.user_has_bookmarked === next.card.user_has_bookmarked &&
-  prev.userId === next.userId
+  prev.userId === next.userId &&
+  prev.batchTranslation === next.batchTranslation
 );

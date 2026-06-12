@@ -1,10 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Inbox, ExternalLink, Check } from 'lucide-react';
+import Link from 'next/link';
+import { Inbox, ExternalLink, Check, MessageCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { getCategoryStyle } from '@/lib/categories';
 import { markShareRead } from '@/lib/actions/news';
+import { markNotificationRead, markAllNotificationsRead } from '@/lib/actions/community';
+import { sanitizeExternalUrl } from '@/lib/url';
+import type { AppNotification } from '@/types/database';
 
 interface ShareItem {
   id: string;
@@ -28,19 +32,35 @@ interface ShareItem {
 
 interface Props {
   shares: ShareItem[];
+  notifications?: AppNotification[];
   userId: string;
 }
 
-export default function InboxPage({ shares: initialShares, userId }: Props) {
+export default function InboxPage({ shares: initialShares, notifications: initialNotifications = [], userId }: Props) {
   const [shares, setShares] = useState(initialShares);
+  const [notifications, setNotifications] = useState(initialNotifications);
   const [isPending, startTransition] = useTransition();
 
-  const unreadCount = shares.filter(s => !s.read).length;
+  const unreadCount = shares.filter(s => !s.read).length + notifications.filter(n => !n.read).length;
 
   function handleMarkRead(shareId: string) {
     setShares(prev => prev.map(s => s.id === shareId ? { ...s, read: true } : s));
     startTransition(async () => {
       await markShareRead(shareId);
+    });
+  }
+
+  function handleNotificationRead(id: string) {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    startTransition(async () => {
+      await markNotificationRead(id);
+    });
+  }
+
+  function handleAllNotificationsRead() {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    startTransition(async () => {
+      await markAllNotificationsRead();
     });
   }
 
@@ -64,13 +84,80 @@ export default function InboxPage({ shares: initialShares, userId }: Props) {
         )}
       </div>
 
-      {shares.length === 0 ? (
+      {/* Community-Antworten */}
+      {notifications.length > 0 && (
+        <div className="px-3 mb-4">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <p className="text-xs font-semibold text-slate-500">Antworten aus der Community</p>
+            {notifications.some(n => !n.read) && (
+              <button
+                onClick={handleAllNotificationsRead}
+                disabled={isPending}
+                className="text-[11px] text-forest-600 font-medium hover:text-forest-800 transition-colors"
+              >
+                Alle als gelesen markieren
+              </button>
+            )}
+          </div>
+          <div className="space-y-2">
+            {notifications.map(n => (
+              <div
+                key={n.id}
+                className={clsx(
+                  'bg-white rounded-xl border overflow-hidden transition-colors',
+                  n.read ? 'border-slate-100' : 'border-forest-200 bg-forest-50/30'
+                )}
+              >
+                <div className="px-4 py-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 rounded-full bg-forest-100 flex items-center justify-center flex-shrink-0">
+                      <MessageCircle size={12} className="text-forest-700" />
+                    </div>
+                    <p className="text-xs text-slate-700 flex-1 min-w-0">
+                      <span className="font-semibold">{n.actor?.full_name ?? 'Jemand'}</span>{' '}
+                      {n.type === 'quick_answer'
+                        ? 'hat auf deine Schnellfrage geantwortet'
+                        : 'hat auf deinen Beitrag geantwortet'}
+                    </p>
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-forest-500 flex-shrink-0" />}
+                    <span className="text-xs text-slate-400 flex-shrink-0">{formatTime(n.created_at)}</span>
+                  </div>
+                  {n.preview && (
+                    <p className="text-sm text-slate-600 mb-2 line-clamp-2 italic">&quot;{n.preview}&quot;</p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/community"
+                      onClick={() => { if (!n.read) handleNotificationRead(n.id); }}
+                      className="text-xs text-forest-600 font-medium hover:text-forest-800 transition-colors"
+                    >
+                      Zur Community
+                    </Link>
+                    {!n.read && (
+                      <button
+                        onClick={() => handleNotificationRead(n.id)}
+                        disabled={isPending}
+                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors ml-auto"
+                      >
+                        <Check size={14} />
+                        Gelesen
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {shares.length === 0 && notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400">
           <Inbox size={40} className="mb-3 opacity-30" />
-          <p className="text-sm">Noch keine geteilten News.</p>
-          <p className="text-xs mt-1">Wenn Kollegen dir News teilen, erscheinen sie hier.</p>
+          <p className="text-sm">Noch keine Nachrichten.</p>
+          <p className="text-xs mt-1">Geteilte News und Antworten auf deine Beiträge erscheinen hier.</p>
         </div>
-      ) : (
+      ) : shares.length === 0 ? null : (
         <div className="px-3 space-y-2">
           {shares.map(share => (
             <div
@@ -127,9 +214,9 @@ export default function InboxPage({ shares: initialShares, userId }: Props) {
                       Als gelesen markieren
                     </button>
                   )}
-                  {share.news_cards?.source_url && (
+                  {sanitizeExternalUrl(share.news_cards?.source_url) && (
                     <a
-                      href={share.news_cards.source_url}
+                      href={sanitizeExternalUrl(share.news_cards?.source_url) ?? undefined}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors ml-auto"

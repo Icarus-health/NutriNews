@@ -11,14 +11,22 @@ export async function updateSession(request: NextRequest) {
   const isProtected = PROTECTED_PATHS.some(p => pathname.startsWith(p));
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
 
-  // Fast path: anonymous visitors (no Supabase auth cookie) on non-protected
-  // routes don't need a getUser() round-trip to Supabase Auth on every
-  // navigation. Sessions for logged-in users are still validated/refreshed
-  // below because their requests carry the sb-*-auth-token cookie.
+  // Fast path: requests without a Supabase auth cookie never have a session,
+  // so the getUser() round-trip (~100-200ms) is pure overhead. Anonymous
+  // visitors on public routes pass straight through; on protected routes they
+  // can be redirected to /login without asking Supabase first. Sessions for
+  // logged-in users are still validated/refreshed below because their
+  // requests carry the sb-*-auth-token cookie.
   const hasAuthCookie = request.cookies
     .getAll()
     .some(c => c.name.startsWith('sb-') && c.name.includes('auth-token'));
-  if (!isProtected && !hasAuthCookie) {
+  if (!hasAuthCookie) {
+    if (isProtected && !isPublic) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/login';
+      loginUrl.searchParams.set('next', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
     return NextResponse.next({ request });
   }
 

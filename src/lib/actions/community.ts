@@ -67,9 +67,10 @@ export async function leaveChannel(channelId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
 
-  await supabase.from('channel_members').delete()
+  const { error } = await supabase.from('channel_members').delete()
     .eq('channel_id', channelId)
     .eq('user_id', user.id);
+  if (error) return { error: 'Verlassen fehlgeschlagen' };
 
   revalidatePath('/community');
   return { success: true };
@@ -93,7 +94,69 @@ export async function createChannelPost(channelId: string, body: string, newsCar
 
   if (error) return { error: 'Beitrag konnte nicht erstellt werden' };
 
+  // Antwort auf einen Beitrag → Autorin des Originals benachrichtigen
+  // (best effort, ein Fehler hier darf das Posten nicht scheitern lassen)
+  if (parentPostId) {
+    const { data: parent } = await supabase
+      .from('channel_posts')
+      .select('user_id')
+      .eq('id', parentPostId)
+      .single();
+    if (parent?.user_id && parent.user_id !== user.id) {
+      await supabase.from('notifications').insert({
+        user_id: parent.user_id,
+        actor_id: user.id,
+        type: 'channel_reply',
+        channel_id: channelId,
+        post_id: parentPostId,
+        preview: trimmed.slice(0, 140),
+      });
+    }
+  }
+
   revalidatePath('/community');
+  return { success: true };
+}
+
+export async function updateChannelPost(postId: string, body: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const trimmed = body.trim();
+  if (!trimmed) return { error: 'Beitrag darf nicht leer sein' };
+  if (trimmed.length > 2000) return { error: 'Beitrag zu lang (max. 2000 Zeichen)' };
+
+  const { error } = await supabase.from('channel_posts')
+    .update({ body: trimmed, edited_at: new Date().toISOString() })
+    .eq('id', postId)
+    .eq('user_id', user.id);
+
+  if (error) return { error: 'Beitrag konnte nicht bearbeitet werden' };
+
+  revalidatePath('/community');
+  return { success: true };
+}
+
+/**
+ * Meldet einen Community-Beitrag. Landet als Eintrag in app_feedback
+ * (Typ "report") — dort haben Admins bereits einen Lese-Tab im Dashboard.
+ */
+export async function reportChannelPost(postId: string, reason: string, postBody: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) return { error: 'Bitte Grund angeben' };
+
+  const { error } = await supabase.from('app_feedback').insert({
+    user_id: user.id,
+    type: 'report',
+    message: `Meldung Community-Beitrag ${postId}\nGrund: ${trimmedReason.slice(0, 500)}\nZitat: ${postBody.slice(0, 300)}`,
+  });
+
+  if (error) return { error: 'Meldung konnte nicht gesendet werden' };
   return { success: true };
 }
 
@@ -102,9 +165,10 @@ export async function deleteChannelPost(postId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
 
-  await supabase.from('channel_posts').delete()
+  const { error } = await supabase.from('channel_posts').delete()
     .eq('id', postId)
     .eq('user_id', user.id);
+  if (error) return { error: 'Beitrag konnte nicht gelöscht werden' };
 
   revalidatePath('/community');
   return { success: true };
@@ -150,7 +214,57 @@ export async function answerQuickQuestion(questionId: string, body: string) {
 
   if (error) return { error: 'Antwort konnte nicht gespeichert werden' };
 
+  // Fragestellerin benachrichtigen (best effort)
+  const { data: question } = await supabase
+    .from('quick_questions')
+    .select('user_id')
+    .eq('id', questionId)
+    .single();
+  if (question?.user_id && question.user_id !== user.id) {
+    await supabase.from('notifications').insert({
+      user_id: question.user_id,
+      actor_id: user.id,
+      type: 'quick_answer',
+      question_id: questionId,
+      preview: trimmed.slice(0, 140),
+    });
+  }
+
   revalidatePath('/community');
+  return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Benachrichtigungen
+// ═══════════════════════════════════════════════════════════════
+
+export async function markNotificationRead(notificationId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('notifications')
+    .update({ read: true })
+    .eq('id', notificationId)
+    .eq('user_id', user.id);
+  if (error) return { error: 'Konnte nicht als gelesen markiert werden' };
+
+  revalidatePath('/inbox');
+  return { success: true };
+}
+
+export async function markAllNotificationsRead() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('notifications')
+    .update({ read: true })
+    .eq('user_id', user.id)
+    .eq('read', false);
+  if (error) return { error: 'Konnte nicht als gelesen markiert werden' };
+
+  revalidatePath('/inbox');
   return { success: true };
 }
 
@@ -197,7 +311,8 @@ export async function verifyCard(newsCardId: string, verificationType: CardVerif
 
   if (existing) {
     // Remove verification (toggle)
-    await supabase.from('card_verifications').delete().eq('id', existing.id);
+    const { error } = await supabase.from('card_verifications').delete().eq('id', existing.id);
+    if (error) return { error: 'Verifikation konnte nicht entfernt werden' };
     return { success: true, removed: true };
   }
 
@@ -216,18 +331,21 @@ export async function verifyCard(newsCardId: string, verificationType: CardVerif
 export async function getCardVerifications(newsCardId: string) {
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from('card_verifications')
-    .select('verification_type')
-    .eq('news_card_id', newsCardId);
+  // Zählen in SQL (head:true ⇒ keine Zeilen über die Leitung) statt alle
+  // Verifikations-Zeilen zu laden und in JS zu zählen.
+  const TYPES: CardVerificationType[] = ['praxisrelevant', 'fachlich_korrekt', 'korrektur_noetig', 'quelle_zweifelhaft'];
+  const results = await Promise.all(TYPES.map(type =>
+    supabase
+      .from('card_verifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('news_card_id', newsCardId)
+      .eq('verification_type', type)
+  ));
 
-  if (!data) return { praxisrelevant: 0, fachlich_korrekt: 0, korrektur_noetig: 0, quelle_zweifelhaft: 0 };
-
-  const counts = { praxisrelevant: 0, fachlich_korrekt: 0, korrektur_noetig: 0, quelle_zweifelhaft: 0 };
-  data.forEach(v => {
-    const t = v.verification_type as CardVerificationType;
-    if (t in counts) counts[t]++;
-  });
-
-  return counts;
+  return {
+    praxisrelevant: results[0].count ?? 0,
+    fachlich_korrekt: results[1].count ?? 0,
+    korrektur_noetig: results[2].count ?? 0,
+    quelle_zweifelhaft: results[3].count ?? 0,
+  };
 }

@@ -3,9 +3,9 @@
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Send, Reply, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Send, Reply, ChevronDown, ChevronUp, PenLine, Flag, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { createChannelPost } from '@/lib/actions/community';
+import { createChannelPost, updateChannelPost, deleteChannelPost, reportChannelPost } from '@/lib/actions/community';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import type { Channel, ChannelPost, EvidenceLevel } from '@/types/database';
 
@@ -36,11 +36,54 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
   const [replies, setReplies] = useState<Record<string, ChannelPost[]>>({});
   const [isPending, startTransition] = useTransition();
   const [localPosts, setLocalPosts] = useState(posts);
+  // Bearbeiten / Melden — pro Beitrag ein inline-Formular
+  const [editingPost, setEditingPost] = useState<ChannelPost | null>(null);
+  const [editBody, setEditBody] = useState('');
+  const [reportingPost, setReportingPost] = useState<ChannelPost | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSent, setReportSent] = useState<Set<string>>(new Set());
 
   // Sync with server data when props change (e.g. after router.refresh())
   useEffect(() => {
     setLocalPosts(posts);
   }, [posts]);
+
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingPost || !editBody.trim()) return;
+    const postId = editingPost.id;
+    const newBody = editBody.trim();
+    setLocalPosts(prev => prev.map(p =>
+      p.id === postId ? { ...p, body: newBody, edited_at: new Date().toISOString() } : p
+    ));
+    setEditingPost(null);
+    setEditBody('');
+    startTransition(async () => {
+      await updateChannelPost(postId, newBody);
+      router.refresh();
+    });
+  }
+
+  function handleDelete(postId: string) {
+    setLocalPosts(prev => prev.filter(p => p.id !== postId));
+    startTransition(async () => {
+      await deleteChannelPost(postId);
+      router.refresh();
+    });
+  }
+
+  function handleReportSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reportingPost || !reportReason.trim()) return;
+    const post = reportingPost;
+    const reason = reportReason.trim();
+    setReportSent(prev => new Set(prev).add(post.id));
+    setReportingPost(null);
+    setReportReason('');
+    startTransition(async () => {
+      await reportChannelPost(post.id, reason, post.body);
+    });
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -189,12 +232,40 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
                   </span>
                   <span className="text-[10px] text-slate-400 ml-2">
                     {timeAgo(post.created_at)}
+                    {post.edited_at && ' · bearbeitet'}
                   </span>
                 </div>
               </div>
 
-              {/* Body */}
-              <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{post.body}</p>
+              {/* Body — oder Inline-Bearbeitung des eigenen Beitrags */}
+              {editingPost?.id === post.id ? (
+                <form onSubmit={handleEditSubmit} className="flex gap-2 animate-fade-in">
+                  <input
+                    type="text"
+                    value={editBody}
+                    onChange={e => setEditBody(e.target.value)}
+                    autoFocus
+                    className="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-[13px] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-forest-500/40"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isPending || !editBody.trim()}
+                    className="w-8 h-8 rounded-lg bg-forest-700 text-white flex items-center justify-center disabled:opacity-50"
+                    aria-label="Änderung speichern"
+                  >
+                    <Send size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingPost(null); setEditBody(''); }}
+                    className="text-[11px] text-slate-400 hover:text-slate-600"
+                  >
+                    Abbrechen
+                  </button>
+                </form>
+              ) : (
+                <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{post.body}</p>
+              )}
 
               {/* Shared news card reference */}
               {post.news_card && (
@@ -235,7 +306,61 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
                     {Math.max(replyCount, postReplies.length)} Antworten
                   </button>
                 )}
+                {userId === post.user_id && !post.id.startsWith('temp-') && (
+                  <>
+                    <button
+                      onClick={() => { setEditingPost(post); setEditBody(post.body); setReportingPost(null); }}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-forest-600 transition-colors ml-auto"
+                      aria-label="Beitrag bearbeiten"
+                    >
+                      <PenLine size={12} />
+                      Bearbeiten
+                    </button>
+                    <button
+                      onClick={() => handleDelete(post.id)}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors"
+                      aria-label="Beitrag löschen"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
+                {userId && userId !== post.user_id && !post.id.startsWith('temp-') && (
+                  reportSent.has(post.id) ? (
+                    <span className="text-[11px] text-slate-400 ml-auto">Gemeldet ✓</span>
+                  ) : (
+                    <button
+                      onClick={() => { setReportingPost(reportingPost?.id === post.id ? null : post); setReportReason(''); setEditingPost(null); }}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-amber-600 transition-colors ml-auto"
+                      aria-label="Beitrag melden"
+                    >
+                      <Flag size={12} />
+                      Melden
+                    </button>
+                  )
+                )}
               </div>
+
+              {/* Melden-Formular (inline) */}
+              {reportingPost?.id === post.id && (
+                <form onSubmit={handleReportSubmit} className="flex gap-2 mt-3 animate-fade-in">
+                  <input
+                    type="text"
+                    value={reportReason}
+                    onChange={e => setReportReason(e.target.value)}
+                    placeholder="Warum meldest du diesen Beitrag?"
+                    autoFocus
+                    className="flex-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-lg px-3 py-1.5 text-[12px] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isPending || !reportReason.trim()}
+                    className="px-3 h-8 rounded-lg bg-amber-600 text-white text-[11px] font-semibold flex items-center justify-center disabled:opacity-50"
+                  >
+                    Senden
+                  </button>
+                </form>
+              )}
 
               {/* Reply form (inline) */}
               {isReplying && (

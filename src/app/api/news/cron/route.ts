@@ -5,6 +5,7 @@ import { RSS_SOURCES } from '@/lib/agent/sources';
 import { fetchAllFeeds } from '@/lib/agent/rss';
 import { selectDiverseCandidates, runCurationPipeline } from '@/lib/agent/pipeline';
 import { rateLimit } from '@/lib/rate-limit';
+import { safeEqual } from '@/lib/security';
 
 // Vercel Hobby max: 60s — genug für RSS-Fetch + ~10 Claude-Haiku-Aufrufe
 export const maxDuration = 60;
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
 
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !safeEqual(authHeader, `Bearer ${cronSecret}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -88,7 +89,10 @@ export async function GET(request: Request) {
     }
 
     const candidates = selectDiverseCandidates(newItems);
-    const { created, published, drafts, curationFailed, errors } = await runCurationPipeline(candidates, supabase);
+    const { created, published, drafts, curationFailed, skippedThinContent, rejectedInvalid, inputTokens, outputTokens, errors } = await runCurationPipeline(candidates, supabase);
+
+    // Token-/Kosten-Tracking: Gesamtsumme in den Vercel-Logs als Budget-Sicht
+    console.log(`[cron] Token-Verbrauch: ${inputTokens} input + ${outputTokens} output = ${inputTokens + outputTokens} total`);
 
     revalidateTag('news-cards');
 
@@ -100,6 +104,9 @@ export async function GET(request: Request) {
       candidates: candidates.length,
       newItems: newItems.length,
       curationFailed,
+      skippedThinContent,
+      rejectedInvalid,
+      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
       sourcesOk: sourceHealth.filter(s => s.items > 0).length,
       sourcesFailed: failed.length,
       errors: errors.length > 0 ? errors.slice(0, 10) : undefined,

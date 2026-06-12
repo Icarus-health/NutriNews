@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 import { EVIDENCE_CONFIG, getEvidenceLabel } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel } from '@/lib/categories';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { sanitizeExternalUrl } from '@/lib/url';
 import type { BriefingItem, EvidenceLevel } from '@/types/database';
 import { ExternalLink, Newspaper, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -123,13 +124,13 @@ export default function DailyBriefing({ items, date, isYesterday }: Props) {
                   )}
 
                   {/* Source link */}
-                  {item.source_url && (
+                  {sanitizeExternalUrl(item.source_url) && (
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-[10px] text-forest-300">
                         {item.source_name}
                       </span>
                       <a
-                        href={item.source_url}
+                        href={sanitizeExternalUrl(item.source_url) ?? undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-[10px] text-forest-200 hover:text-white transition-colors"

@@ -12,14 +12,15 @@ export default function SplashScreen() {
     // Kurz warten bis DOM bereit, dann einblenden
     const enterTimer = setTimeout(() => setPhase('enter'), 50);
 
-    // Nach 1.6s: Ausblenden beginnen
-    const exitTimer = setTimeout(() => setPhase('exit'), 1800);
+    // Nach ~0.9s: Ausblenden beginnen (kurz halten — die App soll sich
+    // schnell anfühlen, der Splash ist nur Markenmoment, keine Wartezeit)
+    const exitTimer = setTimeout(() => setPhase('exit'), 900);
 
-    // Nach 2.4s: komplett entfernen
+    // Nach ~1.3s: komplett entfernen
     const goneTimer = setTimeout(() => {
       setPhase('gone');
       sessionStorage.setItem('nn-splash-shown', '1');
-    }, 2500);
+    }, 1300);
 
     return () => {
       clearTimeout(enterTimer);
@@ -35,14 +36,14 @@ export default function SplashScreen() {
       className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
       style={{
         background: 'linear-gradient(160deg, #2a6b32 0%, #1a4a20 55%, #0f2e14 100%)',
-        animation: phase === 'exit' ? 'splash-out 0.7s ease-in forwards' : undefined,
+        animation: phase === 'exit' ? 'splash-out 0.4s ease-in forwards' : undefined,
       }}
     >
       {/* Icon with entrance animation */}
       <div
         style={{
           animation: phase === 'enter' || phase === 'hold'
-            ? 'splash-logo-in 0.65s cubic-bezier(0.2, 0, 0, 1) forwards'
+            ? 'splash-logo-in 0.45s cubic-bezier(0.2, 0, 0, 1) forwards'
             : undefined,
           opacity: 0,
         }}
@@ -54,7 +55,7 @@ export default function SplashScreen() {
       <div
         style={{
           animation: phase === 'enter' || phase === 'hold'
-            ? 'splash-text-in 0.65s cubic-bezier(0.2, 0, 0, 1) 0.2s forwards'
+            ? 'splash-text-in 0.45s cubic-bezier(0.2, 0, 0, 1) 0.1s forwards'
             : undefined,
           opacity: 0,
           marginTop: '20px',

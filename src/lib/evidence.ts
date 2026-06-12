@@ -10,6 +10,9 @@ export const EVIDENCE_CONFIG: Record<EvidenceLevel, { label: string; labelEn: st
   'Laienpresse/Trend':   { label: 'Trend/Laienpresse',  labelEn: 'Trend/Lay press',color: 'bg-orange-400 text-white', icon: '📰', key: 'trend' },
 };
 
+/** Alle bekannten Evidenz-Level — Single Source of Truth für die Output-Validierung der Pipeline. */
+export const EVIDENCE_LEVELS = Object.keys(EVIDENCE_CONFIG) as EvidenceLevel[];
+
 /** Returns the evidence label for the given locale ('en' falls back to German label if missing). */
 export function getEvidenceLabel(level: EvidenceLevel, locale: string = 'de'): string {
   const cfg = EVIDENCE_CONFIG[level];
