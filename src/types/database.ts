@@ -177,8 +177,24 @@ export interface ChannelPost {
   parent_post_id: string | null;
   reply_count?: number;
   created_at: string;
+  edited_at?: string | null;
   profile?: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'role'>;
   news_card?: Pick<NewsCard, 'id' | 'headline' | 'source_name' | 'evidence_level'>;
+}
+
+/** In-App-Benachrichtigung (Antwort auf Schnellfrage / Channel-Beitrag) */
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  type: 'quick_answer' | 'channel_reply';
+  channel_id: string | null;
+  question_id: string | null;
+  post_id: string | null;
+  preview: string;
+  read: boolean;
+  created_at: string;
+  actor?: Pick<Profile, 'full_name' | 'avatar_url'> | null;
 }
 
 export interface ChannelMember {

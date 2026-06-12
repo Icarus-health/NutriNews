@@ -46,16 +46,23 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase
-        .from('shares')
-        .select('id', { count: 'exact', head: true })
-        .eq('receiver_id', user.id)
-        .eq('read', false)
-        .then(({ count }) => {
-          const n = count ?? 0;
-          setInboxUnread(n);
-          try { localStorage.setItem(CACHE_KEY, JSON.stringify({ count: n, ts: Date.now() })); } catch { /* ignore */ }
-        });
+      // Ungelesene Shares + Community-Benachrichtigungen zusammenzählen
+      Promise.all([
+        supabase
+          .from('shares')
+          .select('id', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('read', false),
+        supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false),
+      ]).then(([sharesRes, notifRes]) => {
+        const n = (sharesRes.count ?? 0) + (notifRes.count ?? 0);
+        setInboxUnread(n);
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ count: n, ts: Date.now() })); } catch { /* ignore */ }
+      });
     });
   }, []);
 
