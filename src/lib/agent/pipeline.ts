@@ -67,6 +67,13 @@ export interface PipelineResult {
   published: number;
   drafts: number;
   curationFailed: number;
+  /** Artikel mit zu wenig Quelltext — Kuration uebersprungen (Paywall-Schutz) */
+  skippedThinContent: number;
+  /** Karten, die die strikte Output-Validierung nicht bestanden haben */
+  rejectedInvalid: number;
+  /** Akkumulierter Token-Verbrauch aller Anthropic-Calls dieses Laufs */
+  inputTokens: number;
+  outputTokens: number;
   errors: string[];
 }
 
@@ -84,18 +91,34 @@ export async function runCurationPipeline(
   let published = 0;
   let drafts = 0;
   let curationFailed = 0;
+  let skippedThinContent = 0;
+  let rejectedInvalid = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
   const errors: string[] = [];
 
   for (let i = 0; i < candidates.length && created < TARGET; i += CURATE_BATCH_SIZE) {
     const batch = candidates.slice(i, i + CURATE_BATCH_SIZE);
     const outcomes = await Promise.all(batch.map(item => curateArticle(item)));
 
+    // Token-Verbrauch des kompletten Batches akkumulieren — auch fuer
+    // Outcomes, die unten wegen erreichtem TARGET nicht mehr verarbeitet werden
+    for (const outcome of outcomes) {
+      if (outcome.usage) {
+        inputTokens += outcome.usage.inputTokens;
+        outputTokens += outcome.usage.outputTokens;
+      }
+    }
+
     for (let j = 0; j < outcomes.length; j++) {
       if (created >= TARGET) break;
 
-      const { result, error: curationError } = outcomes[j];
+      const { result, error: curationError, rejection } = outcomes[j];
       if (!result) {
-        curationFailed++;
+        // Gezielte Ablehnungen getrennt zaehlen (Mindesttext-Gate / Validierung)
+        if (rejection === 'thin_content') skippedThinContent++;
+        else if (rejection === 'invalid_output') rejectedInvalid++;
+        else curationFailed++;
         errors.push(curationError || batch[j].title?.slice(0, 60) || 'unknown');
         continue;
       }
@@ -149,5 +172,5 @@ export async function runCurationPipeline(
     }
   }
 
-  return { created, published, drafts, curationFailed, errors };
+  return { created, published, drafts, curationFailed, skippedThinContent, rejectedInvalid, inputTokens, outputTokens, errors };
 }

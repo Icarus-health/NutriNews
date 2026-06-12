@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { RSSItem } from './rss';
 import type { SourceType } from '@/types/database';
+import { EVIDENCE_LEVELS } from '@/lib/evidence';
 
 // ═══════════════════════════════════════════════════════════════
 // System-Prompt: Erweitert um Evidenz-Bewertung, Praxisrelevanz,
@@ -243,6 +244,33 @@ async function fetchEuropePmcAbstract(item: RSSItem): Promise<string> {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Mindesttext-Gate gegen Paywall-Halluzinationen: Liegt zu wenig
+// Quelltext vor (Paywall, leere Beschreibung, gescheiterter Fetch),
+// darf KEINE Kuration stattfinden — das LLM wuerde sonst aus einer
+// blossen Schlagzeile Fachinhalte erfinden.
+// ═══════════════════════════════════════════════════════════════
+
+// Schwelle fuer Fachquellen: ~400 Zeichen finaler Artikeltext noetig
+const MIN_CONTENT_CHARS = 400;
+// Laienpresse: niedrigere Schwelle (250) — die Karten leben von der
+// fachlichen Einordnung, die Artikel sind meist frei zugaenglich
+const MIN_CONTENT_CHARS_LAY_PRESS = 250;
+
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface CurationOutcome {
+  result: CurationResult | null;
+  error?: string;
+  /** Grund einer gezielten Ablehnung — fuer getrennte Zaehlung im PipelineResult */
+  rejection?: 'thin_content' | 'invalid_output';
+  /** Token-Verbrauch des Anthropic-Calls (falls einer stattgefunden hat) */
+  usage?: TokenUsage;
+}
+
 interface CurationResult {
   kernbotschaft: string;
   headline: string;
@@ -323,42 +351,142 @@ ${isLayPress
     : `WICHTIG: Erstelle nur dann eine Card, wenn echter Fachinhalt extrahierbar ist. Gibt die Quelle keinen konkreten Inhalt her (Paywall, reine Schlagzeile, inhaltslose Beschreibung), antworte AUSSCHLIESSLICH mit {"insufficient": true}. Erfinde KEINE Inhalte und schreibe keinen Fuelltext ueber fehlende Informationen.`}`;
 }
 
-function parseResult(content: string, item: RSSItem): CurationResult | null {
+// ═══════════════════════════════════════════════════════════════
+// Strikte Output-Validierung: fehlende oder fehlerhafte Pflichtfelder
+// fuehren zur Ablehnung der Karte — KEINE stillen Default-Fallbacks.
+// Zu lange Werte werden NICHT abgeschnitten, sondern abgelehnt —
+// abgeschnittene Fachinhalte (Dosierungen, Grenzwerte) sind gefaehrlich.
+// ═══════════════════════════════════════════════════════════════
+
+const REQUIRED_STRING_FIELDS = [
+  'kernbotschaft',
+  'headline',
+  'snack_what',
+  'snack_result',
+  'snack_consequence',
+  'therapist_check',
+  'category_main',
+  'evidence_level',
+] as const;
+
+// Laengen-Caps (Zeichen) pro Pflichtfeld — bewusst mit Puffer ueber den
+// Prompt-Vorgaben, damit leicht ueberlange, aber inhaltlich valide Karten
+// nicht unnoetig verworfen werden
+const MAX_FIELD_LENGTHS: Record<string, number> = {
+  kernbotschaft: 160,
+  headline: 120,
+  snack_what: 400,
+  snack_result: 400,
+  snack_consequence: 400,
+  therapist_check: 600,
+};
+
+/** Prueft Pflichtfelder auf Vorhandensein, Typ, Inhalt und Laenge. Gibt Fehlerliste zurueck (leer = valide). */
+function validateParsed(parsed: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+
+  for (const field of REQUIRED_STRING_FIELDS) {
+    const value = parsed[field];
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      errors.push(`${field}: fehlt, leer oder kein String`);
+      continue;
+    }
+    const max = MAX_FIELD_LENGTHS[field];
+    if (max !== undefined && value.length > max) {
+      errors.push(`${field}: ${value.length} Zeichen > max ${max}`);
+    }
+  }
+
+  // evidence_level muss einer der bekannten Werte aus evidence.ts sein
+  if (typeof parsed.evidence_level === 'string' && !(EVIDENCE_LEVELS as string[]).includes(parsed.evidence_level)) {
+    errors.push(`evidence_level: unbekannter Wert "${parsed.evidence_level}"`);
+  }
+
+  // practice_relevance_score: Integer 1-5 erzwingen
+  const score = parsed.practice_relevance_score;
+  if (typeof score !== 'number' || !Number.isInteger(score) || score < 1 || score > 5) {
+    errors.push(`practice_relevance_score: muss Integer 1-5 sein (war: ${JSON.stringify(score)})`);
+  }
+
+  return errors;
+}
+
+type ParseOutcome =
+  | { status: 'ok'; result: CurationResult }
+  | { status: 'insufficient' }
+  | { status: 'invalid'; errors: string[] }
+  | { status: 'parse_failed'; raw: string };
+
+function parseResult(content: string): ParseOutcome {
+  let parsed: Record<string, unknown>;
   try {
     // Extract JSON from response (handle markdown code blocks)
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    // If Claude only returned {"insufficient": true} without card fields, return null
-    if (parsed.insufficient && !parsed.headline) return null;
-    if (!parsed.headline || !parsed.snack_what) return null;
-
-    const totalText = [parsed.snack_what, parsed.snack_result, parsed.snack_consequence, parsed.therapist_check, parsed.evidence_summary].filter(Boolean).join(' ');
-    const readTimeSec = Math.ceil(totalText.split(/\s+/).length / 3.5);
-
-    return {
-      kernbotschaft: parsed.kernbotschaft || '',
-      headline: parsed.headline,
-      snack_what: parsed.snack_what,
-      snack_result: parsed.snack_result || '',
-      snack_consequence: parsed.snack_consequence || '',
-      therapist_check: parsed.therapist_check || '',
-      category_main: parsed.category_main || item.source.defaultCategory,
-      evidence_level: parsed.evidence_level || 'Expertenmeinung',
-      read_time_sec: readTimeSec,
-      practice_relevance_score: Math.min(5, Math.max(1, Number(parsed.practice_relevance_score) || 3)),
-      action_recommendation: parsed.action_recommendation || '',
-      patient_question_anticipation: parsed.patient_question_anticipation || '',
-      evidence_summary: parsed.evidence_summary || '',
-      lay_press_fact_check: parsed.lay_press_fact_check || null,
-      policy_impact: ['info', 'beobachten', 'handeln'].includes(parsed.policy_impact) ? parsed.policy_impact : null,
-      policy_action_needed: parsed.policy_action_needed || null,
-      international_relevance_de: parsed.international_relevance_de || null,
-    };
+    if (!jsonMatch) return { status: 'parse_failed', raw: content };
+    parsed = JSON.parse(jsonMatch[0]);
   } catch {
-    return null;
+    return { status: 'parse_failed', raw: content };
   }
+
+  // If Claude only returned {"insufficient": true} without card fields
+  if (parsed.insufficient && !parsed.headline) return { status: 'insufficient' };
+
+  const validationErrors = validateParsed(parsed);
+  if (validationErrors.length > 0) return { status: 'invalid', errors: validationErrors };
+
+  const totalText = [parsed.snack_what, parsed.snack_result, parsed.snack_consequence, parsed.therapist_check, parsed.evidence_summary].filter(Boolean).join(' ');
+  const readTimeSec = Math.ceil(totalText.split(/\s+/).length / 3.5);
+
+  return {
+    status: 'ok',
+    result: {
+      kernbotschaft: parsed.kernbotschaft as string,
+      headline: parsed.headline as string,
+      snack_what: parsed.snack_what as string,
+      snack_result: parsed.snack_result as string,
+      snack_consequence: parsed.snack_consequence as string,
+      therapist_check: parsed.therapist_check as string,
+      category_main: parsed.category_main as string,
+      evidence_level: parsed.evidence_level as string,
+      read_time_sec: readTimeSec,
+      practice_relevance_score: parsed.practice_relevance_score as number,
+      action_recommendation: typeof parsed.action_recommendation === 'string' ? parsed.action_recommendation : '',
+      patient_question_anticipation: typeof parsed.patient_question_anticipation === 'string' ? parsed.patient_question_anticipation : '',
+      evidence_summary: typeof parsed.evidence_summary === 'string' ? parsed.evidence_summary : '',
+      lay_press_fact_check: typeof parsed.lay_press_fact_check === 'string' && parsed.lay_press_fact_check ? parsed.lay_press_fact_check : null,
+      policy_impact: typeof parsed.policy_impact === 'string' && ['info', 'beobachten', 'handeln'].includes(parsed.policy_impact) ? parsed.policy_impact : null,
+      policy_action_needed: typeof parsed.policy_action_needed === 'string' && parsed.policy_action_needed ? parsed.policy_action_needed : null,
+      international_relevance_de: typeof parsed.international_relevance_de === 'string' && parsed.international_relevance_de ? parsed.international_relevance_de : null,
+    },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Regelbasierte Evidenz-Plausibilisierung: Das LLM raet das
+// evidence_level — hohe Stufen (Meta-Analyse, Systematische Review,
+// RCT) sind nur plausibel, wenn Titel oder Artikeltext entsprechende
+// Signalwoerter enthalten. Fehlen sie, wird konservativ auf die
+// naechstniedrigere plausible Stufe herabgestuft (nie abgelehnt).
+// ═══════════════════════════════════════════════════════════════
+
+// Signalwoerter pro hoher Evidenzstufe (deutsch + englisch, case-insensitive)
+const HIGH_EVIDENCE_SIGNALS: Record<string, RegExp> = {
+  'Meta-Analyse': /meta-?analy/i,
+  'Systematische Review': /systematic\s+review|systematische[rsn]?\s+(?:review|übersicht|uebersicht)/i,
+  'RCT': /randomi[sz]ed|randomisiert|\brct\b|double-?blind|doppelblind/i,
+};
+
+// Downgrade-Reihenfolge: jeweils eine Stufe konservativer
+const EVIDENCE_DOWNGRADE_ORDER = ['Meta-Analyse', 'Systematische Review', 'RCT', 'Kohortenstudie'];
+
+/** Stuft ein hohes Evidenz-Level schrittweise herab, bis Signalwoerter es stuetzen oder eine unkritische Stufe erreicht ist. */
+function plausibilizeEvidenceLevel(claimed: string, searchText: string): string {
+  let level = claimed;
+  while (HIGH_EVIDENCE_SIGNALS[level] && !HIGH_EVIDENCE_SIGNALS[level].test(searchText)) {
+    const idx = EVIDENCE_DOWNGRADE_ORDER.indexOf(level);
+    level = EVIDENCE_DOWNGRADE_ORDER[idx + 1];
+  }
+  return level;
 }
 
 function buildSystemPrompt(sourceType: SourceType): string {
@@ -375,7 +503,7 @@ function buildSystemPrompt(sourceType: SourceType): string {
 const anthropic = new Anthropic();
 
 // --- Anthropic Claude Haiku (~$0.001/Artikel) ---
-async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
+async function curateWithClaude(item: RSSItem): Promise<CurationOutcome> {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY nicht gesetzt');
 
   // Fetch full article text for better curation quality
@@ -388,32 +516,77 @@ async function curateWithClaude(item: RSSItem): Promise<CurationResult | null> {
     if (abstract.length > articleText.length) articleText = abstract;
   }
 
+  // Mindesttext-Gate: Artikeltext + RSS-Beschreibung zusammen muessen die
+  // Schwelle erreichen (die Beschreibung enthaelt bei Forschungsfeeds oft
+  // das komplette Abstract und ist Teil des Prompt-Materials). Zu wenig
+  // Quelltext → keine Kuration, sonst drohen Paywall-Halluzinationen.
+  const isLayPress = item.source.sourceType === 'laienpresse';
+  const minChars = isLayPress ? MIN_CONTENT_CHARS_LAY_PRESS : MIN_CONTENT_CHARS;
+  const availableChars = articleText.length + (item.description?.trim().length ?? 0);
+  if (availableChars < minChars) {
+    console.warn(`[curate] Zu wenig Quelltext (${availableChars} < ${minChars} Zeichen), keine Kuration: ${item.title?.slice(0, 60)}`);
+    return {
+      result: null,
+      rejection: 'thin_content',
+      error: `thin content (${availableChars} Zeichen): ${item.title?.slice(0, 60)}`,
+    };
+  }
+
   const systemPrompt = buildSystemPrompt(item.source.sourceType);
 
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1500,
-    temperature: 0.2,
+    // temperature 0: Faktenextraktion, keine Kreativitaet — reduziert Halluzinationen
+    temperature: 0,
     system: systemPrompt,
     messages: [{ role: 'user', content: buildUserPrompt(item, articleText || undefined) }],
   });
 
+  // Token-Verbrauch fuer Kosten-Tracking im PipelineResult
+  const usage: TokenUsage = {
+    inputTokens: response.usage?.input_tokens ?? 0,
+    outputTokens: response.usage?.output_tokens ?? 0,
+  };
+
   const block = response.content[0];
   if (block.type !== 'text') {
-    throw new Error('Claude returned non-text block');
+    return { result: null, error: 'Claude returned non-text block', usage };
   }
 
-  const result = parseResult(block.text, item);
-  if (!result) {
+  const outcome = parseResult(block.text);
+
+  if (outcome.status === 'insufficient') {
     // "insufficient" is a valid Claude response, not an error
-    const isInsufficient = block.text.includes('"insufficient"');
-    if (isInsufficient) {
-      throw new Error(`insufficient: ${item.title?.slice(0, 80)}`);
-    }
-    throw new Error(`Parse failed: ${block.text.slice(0, 150)}`);
+    return { result: null, error: `insufficient: ${item.title?.slice(0, 80)}`, usage };
   }
+  if (outcome.status === 'invalid') {
+    // Strikte Validierung fehlgeschlagen → Karte ablehnen, Grund loggen
+    console.warn(`[curate] Karte abgelehnt (Validierung) fuer "${item.title?.slice(0, 50)}": ${outcome.errors.join('; ')}`);
+    return {
+      result: null,
+      rejection: 'invalid_output',
+      error: `invalid: ${outcome.errors.join('; ').slice(0, 160)}`,
+      usage,
+    };
+  }
+  if (outcome.status === 'parse_failed') {
+    return { result: null, error: `Parse failed: ${outcome.raw.slice(0, 150)}`, usage };
+  }
+
+  const result = outcome.result;
+
+  // Evidenz-Plausibilisierung: hohe Stufen brauchen Signalwoerter in
+  // Titel, Beschreibung oder Artikeltext — sonst konservativ herabstufen
+  const searchText = `${item.title ?? ''} ${item.description ?? ''} ${articleText}`;
+  const plausibleLevel = plausibilizeEvidenceLevel(result.evidence_level, searchText);
+  if (plausibleLevel !== result.evidence_level) {
+    console.warn(`[curate] Evidenz-Level herabgestuft: "${result.evidence_level}" → "${plausibleLevel}" (keine Signalwoerter im Quelltext) — ${item.title?.slice(0, 60)}`);
+    result.evidence_level = plausibleLevel;
+  }
+
   console.log(`Curated with Claude Haiku: ${item.title?.slice(0, 60)}`);
-  return result;
+  return { result, usage };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -443,15 +616,15 @@ function shouldSkipItem(item: RSSItem): boolean {
 }
 
 // --- Main entry: Claude Haiku only ---
-// Returns { result, error } so the caller can see WHY it failed
-export async function curateArticle(item: RSSItem): Promise<{ result: CurationResult | null; error?: string }> {
+// Returns { result, error, rejection, usage } so the caller can see WHY it
+// failed and how many Tokens der Call verbraucht hat
+export async function curateArticle(item: RSSItem): Promise<CurationOutcome> {
   if (shouldSkipItem(item)) {
     return { result: null, error: `skip: ${item.title?.slice(0, 40)}` };
   }
 
   try {
-    const result = await curateWithClaude(item);
-    return { result };
+    return await curateWithClaude(item);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`Curation failed for "${item.title?.slice(0, 50)}": ${msg}`);

@@ -51,7 +51,10 @@ export async function POST(request: Request) {
     }
 
     const candidates = selectDiverseCandidates(newItems);
-    const { created, published, drafts, curationFailed, errors } = await runCurationPipeline(candidates, supabase, user.id);
+    const { created, published, drafts, curationFailed, skippedThinContent, rejectedInvalid, inputTokens, outputTokens, errors } = await runCurationPipeline(candidates, supabase, user.id);
+
+    // Token-/Kosten-Tracking: Gesamtsumme in den Vercel-Logs als Budget-Sicht
+    console.log(`[auto] Token-Verbrauch: ${inputTokens} input + ${outputTokens} output = ${inputTokens + outputTokens} total`);
 
     revalidatePath('/admin');
     revalidatePath('/');
@@ -63,6 +66,9 @@ export async function POST(request: Request) {
       drafts,
       total_checked: candidates.length,
       skipped: curationFailed,
+      skippedThinContent,
+      rejectedInvalid,
+      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
       source_types_checked: [...new Set(candidates.map(c => c.source.sourceType))],
       errors: errors.length > 0 ? errors : undefined,
     });

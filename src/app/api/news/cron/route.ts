@@ -89,7 +89,10 @@ export async function GET(request: Request) {
     }
 
     const candidates = selectDiverseCandidates(newItems);
-    const { created, published, drafts, curationFailed, errors } = await runCurationPipeline(candidates, supabase);
+    const { created, published, drafts, curationFailed, skippedThinContent, rejectedInvalid, inputTokens, outputTokens, errors } = await runCurationPipeline(candidates, supabase);
+
+    // Token-/Kosten-Tracking: Gesamtsumme in den Vercel-Logs als Budget-Sicht
+    console.log(`[cron] Token-Verbrauch: ${inputTokens} input + ${outputTokens} output = ${inputTokens + outputTokens} total`);
 
     revalidateTag('news-cards');
 
@@ -101,6 +104,9 @@ export async function GET(request: Request) {
       candidates: candidates.length,
       newItems: newItems.length,
       curationFailed,
+      skippedThinContent,
+      rejectedInvalid,
+      usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
       sourcesOk: sourceHealth.filter(s => s.items > 0).length,
       sourcesFailed: failed.length,
       errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
