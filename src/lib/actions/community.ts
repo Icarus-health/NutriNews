@@ -219,18 +219,21 @@ export async function verifyCard(newsCardId: string, verificationType: CardVerif
 export async function getCardVerifications(newsCardId: string) {
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from('card_verifications')
-    .select('verification_type')
-    .eq('news_card_id', newsCardId);
+  // Zählen in SQL (head:true ⇒ keine Zeilen über die Leitung) statt alle
+  // Verifikations-Zeilen zu laden und in JS zu zählen.
+  const TYPES: CardVerificationType[] = ['praxisrelevant', 'fachlich_korrekt', 'korrektur_noetig', 'quelle_zweifelhaft'];
+  const results = await Promise.all(TYPES.map(type =>
+    supabase
+      .from('card_verifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('news_card_id', newsCardId)
+      .eq('verification_type', type)
+  ));
 
-  if (!data) return { praxisrelevant: 0, fachlich_korrekt: 0, korrektur_noetig: 0, quelle_zweifelhaft: 0 };
-
-  const counts = { praxisrelevant: 0, fachlich_korrekt: 0, korrektur_noetig: 0, quelle_zweifelhaft: 0 };
-  data.forEach(v => {
-    const t = v.verification_type as CardVerificationType;
-    if (t in counts) counts[t]++;
-  });
-
-  return counts;
+  return {
+    praxisrelevant: results[0].count ?? 0,
+    fachlich_korrekt: results[1].count ?? 0,
+    korrektur_noetig: results[2].count ?? 0,
+    quelle_zweifelhaft: results[3].count ?? 0,
+  };
 }

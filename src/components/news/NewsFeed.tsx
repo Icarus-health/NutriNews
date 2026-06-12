@@ -5,7 +5,9 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, WifiOff, Loader2 } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
-import { loadMoreCards } from '@/lib/actions/news';
+import { loadMoreCards, loadNewCards } from '@/lib/actions/news';
+import { getCardTranslations } from '@/lib/actions/translate';
+import type { CardTranslation } from '@/lib/translate-fields';
 import { useUX } from '@/components/providers/UXProvider';
 import { useI18n } from '@/components/providers/I18nProvider';
 
@@ -27,7 +29,7 @@ interface Props {
 export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const router = useRouter();
   const ux = useUX();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [cards, setCards] = useState(initialCards);
   const [hasMore, setHasMore] = useState(initialCards.length >= 15);
   const [shareCardId, setShareCardId] = useState<string | null>(null);
@@ -35,6 +37,10 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Batch-Übersetzungen (locale != de): ein Server-Call pro Karten-Batch
+  // statt ein Call pro Karte. requested verhindert doppelte Anfragen.
+  const [translations, setTranslations] = useState<Record<string, CardTranslation>>({});
+  const requestedTranslations = useRef<Set<string>>(new Set());
 
   // Pull-to-refresh — use refs to avoid re-renders on every touchmove
   const pullStartY = useRef(0);
@@ -80,14 +86,69 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
     return () => document.removeEventListener('visibilitychange', clearBadge);
   }, []);
 
+  // Übersetzungen für alle geladenen Karten besorgen (localStorage → DB-Cache → Claude-Batch)
+  useEffect(() => {
+    if (locale === 'de') return;
+    const fromLocal: Record<string, CardTranslation> = {};
+    const missing: string[] = [];
+    for (const card of cards) {
+      if (requestedTranslations.current.has(card.id)) continue;
+      requestedTranslations.current.add(card.id);
+      try {
+        const cached = localStorage.getItem(`nn-tr-${locale}-${card.id}`);
+        if (cached) { fromLocal[card.id] = JSON.parse(cached); continue; }
+      } catch { /* ignore */ }
+      missing.push(card.id);
+    }
+    if (Object.keys(fromLocal).length > 0) setTranslations(prev => ({ ...prev, ...fromLocal }));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    getCardTranslations(missing, locale).then(map => {
+      if (cancelled) return;
+      setTranslations(prev => ({ ...prev, ...map }));
+      for (const [id, tr] of Object.entries(map)) {
+        try { localStorage.setItem(`nn-tr-${locale}-${id}`, JSON.stringify(tr)); } catch { /* ignore */ }
+      }
+    });
+    return () => { cancelled = true; };
+  }, [cards, locale]);
+
+  // Sprachwechsel: bereits angefragte IDs neu zulassen
+  useEffect(() => {
+    requestedTranslations.current = new Set();
+    setTranslations({});
+  }, [locale]);
+
   function handleRequireAuth() {
     router.push('/login');
   }
 
+  // Pull-to-Refresh: nur NEUE Karten oben anhängen statt die ganze Seite neu
+  // zu evaluieren (router.refresh() lief gegen den 30-Min-Cache und fühlte
+  // sich träge an). loadNewCards fragt die DB direkt ab.
   function handleRefresh() {
+    if (isRefreshing) return;
     setIsRefreshing(true);
-    router.refresh();
-    setTimeout(() => setIsRefreshing(false), 1500);
+    (async () => {
+      try {
+        const newest = cards[0]?.published_at;
+        if (!newest) {
+          router.refresh();
+          return;
+        }
+        const result = await loadNewCards(newest, filters);
+        if (result.cards.length > 0) {
+          setCards(prev => {
+            const known = new Set(prev.map(c => c.id));
+            const fresh = result.cards.filter(c => !known.has(c.id));
+            return fresh.length > 0 ? [...fresh, ...prev] : prev;
+          });
+        }
+      } catch { /* Offline o.ä. — Indikator einfach wieder ausblenden */ }
+      finally {
+        setTimeout(() => setIsRefreshing(false), 400);
+      }
+    })();
   }
 
   const handleLoadMore = useCallback(() => {
@@ -198,6 +259,7 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
             userId={userId}
             onRequireAuth={handleRequireAuth}
             onShare={(cardId) => setShareCardId(cardId)}
+            batchTranslation={locale === 'de' ? undefined : (translations[card.id] ?? null)}
           />
         </div>
       ))}

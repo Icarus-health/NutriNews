@@ -133,14 +133,14 @@ export async function deleteComment(commentId: string) {
   return { success: true };
 }
 
-export async function getComments(newsCardId: string) {
+export async function getComments(newsCardId: string, limit: number = 10) {
   const supabase = await createClient();
   const { data } = await supabase
     .from('comments')
     .select('id, body, created_at, user_id, profiles:user_id(full_name, avatar_url)')
     .eq('news_card_id', newsCardId)
     .order('created_at', { ascending: true })
-    .limit(50);
+    .limit(Math.min(Math.max(limit, 1), 100));
 
   return data ?? [];
 }
@@ -311,6 +311,78 @@ export async function loadMoreCards(cursor: string, filters?: {
   }
 
   return { cards: enriched, hasMore: hasMoreCards };
+}
+
+/**
+ * Lädt Karten, die NEUER als der Cursor sind (Pull-to-Refresh-Prepend).
+ * Umgeht den unstable_cache des Feeds — frische Artikel erscheinen sofort,
+ * ohne dass die ganze Seite neu gerendert werden muss.
+ */
+export async function loadNewCards(sinceCursor: string, filters?: {
+  categories?: string[];
+  q?: string;
+  evidence?: string[];
+  days?: number;
+  minRelevance?: number;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let query = supabase
+    .from('news_cards')
+    .select('*')
+    .eq('status', 'published')
+    .gt('published_at', sinceCursor)
+    .order('published_at', { ascending: false })
+    .limit(15);
+
+  if (filters?.categories?.length === 1) {
+    query = query.eq('category_main', filters.categories[0]);
+  } else if (filters?.categories && filters.categories.length > 1) {
+    query = query.in('category_main', filters.categories);
+  }
+
+  if (filters?.evidence?.length === 1) {
+    query = query.eq('evidence_level', filters.evidence[0]);
+  } else if (filters?.evidence && filters.evidence.length > 1) {
+    query = query.in('evidence_level', filters.evidence);
+  }
+
+  if (filters?.minRelevance && filters.minRelevance >= 1) {
+    query = query.gte('practice_relevance_score', filters.minRelevance);
+  }
+
+  if (filters?.q) {
+    const q = sanitizeFilterValue(filters.q);
+    if (q) {
+      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+    }
+  }
+
+  const { data: rawCards } = await query;
+  if (!rawCards || rawCards.length === 0) return { cards: [] };
+
+  let enriched = rawCards.map(card => ({
+    ...card,
+    like_count: card.like_count ?? 0,
+  }));
+
+  if (user) {
+    const cardIds = rawCards.map(c => c.id);
+    const [{ data: userLikes }, { data: userBookmarks }] = await Promise.all([
+      supabase.from('likes').select('news_card_id').eq('user_id', user.id).in('news_card_id', cardIds),
+      supabase.from('bookmarks').select('news_card_id').eq('user_id', user.id).in('news_card_id', cardIds),
+    ]);
+    const userLikeSet = new Set(userLikes?.map(l => l.news_card_id));
+    const userBookmarkSet = new Set(userBookmarks?.map(b => b.news_card_id));
+    enriched = enriched.map(card => ({
+      ...card,
+      user_has_liked: userLikeSet.has(card.id),
+      user_has_bookmarked: userBookmarkSet.has(card.id),
+    }));
+  }
+
+  return { cards: enriched };
 }
 
 export async function updateProfile(data: { full_name?: string; alias?: string; specialties?: string[]; preferred_categories?: string[]; notify_new_news?: boolean; setting?: string }) {

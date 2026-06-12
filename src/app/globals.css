@@ -38,6 +38,19 @@
   transform-style: preserve-3d;
 }
 
+/* Barrierefreiheit: Nutzer mit Bewegungsempfindlichkeit bekommen
+   Flip/Fade/Scale praktisch ohne Animation (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  .flip-card-inner,
+  .animate-slide-up,
+  .animate-fade-in,
+  .animate-scale-in {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+}
+
 .flip-card-inner.flipped {
   transform: rotateY(180deg);
 }

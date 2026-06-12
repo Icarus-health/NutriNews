@@ -23,6 +23,8 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
   const [body, setBody] = useState('');
   const [replyTo, setReplyTo] = useState<CommentData | null>(null);
   const [loading, setLoading] = useState(true);
+  // Initial nur 10 Kommentare laden; "Alle laden" erweitert auf 100
+  const [showAll, setShowAll] = useState(false);
   const [isPending, startTransition] = useTransition();
   const mountedRef = useRef(true);
   // Track pending comments that haven't been confirmed by the server yet
@@ -32,11 +34,11 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
     mountedRef.current = true;
     loadComments();
     return () => { mountedRef.current = false; };
-  }, [newsCardId]);
+  }, [newsCardId, showAll]);
 
   async function loadComments() {
     try {
-      const data = await getComments(newsCardId);
+      const data = await getComments(newsCardId, showAll ? 100 : 10);
       if (mountedRef.current) {
         setComments(data as unknown as CommentData[]);
         setLoading(false);
@@ -84,7 +86,7 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
         // Small delay to ensure DB write is committed, then refresh
         await new Promise(r => setTimeout(r, 300));
         if (mountedRef.current) {
-          const fresh = await getComments(newsCardId);
+          const fresh = await getComments(newsCardId, showAll ? 100 : 10);
           if (mountedRef.current) {
             setComments(fresh as unknown as CommentData[]);
           }
@@ -179,6 +181,14 @@ export default function CommentSection({ newsCardId, userId, onRequireAuth }: Pr
               </div>
             </div>
           ))}
+          {!showAll && comments.length >= 10 && (
+            <button
+              onClick={() => { setShowAll(true); setLoading(true); }}
+              className="text-[11px] font-semibold text-forest-600 dark:text-forest-400 hover:underline"
+            >
+              Alle Kommentare laden
+            </button>
+          )}
         </div>
       )}
 

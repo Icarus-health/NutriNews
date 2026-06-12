@@ -25,6 +25,12 @@ interface Props {
   onRequireAuth?: () => void;
   onShare?: (cardId: string) => void;
   defaultFlipped?: boolean;
+  /**
+   * Vom Feed bereitgestellte Batch-Übersetzung (locale != de).
+   * undefined = kein Batch-Kontext (z.B. Detailseite) → Karte holt selbst;
+   * null = Batch läuft/lieferte nichts → deutsches Original zeigen.
+   */
+  batchTranslation?: CardTranslation | null;
 }
 
 const SOURCE_TYPE_ACCENT: Record<string, { gradient: string; bgLight: string; bgDark: string; emoji: string }> = {
@@ -65,7 +71,7 @@ function formatTime(dateStr: string | null, t: (k: string, v?: Record<string, st
   return t(days > 1 ? 'time.days' : 'time.day', { n: days });
 }
 
-function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false }: Props) {
+function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false, batchTranslation }: Props) {
   const [flipped, setFlipped] = useState(defaultFlipped);
   const [showAllDetails, setShowAllDetails] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -124,8 +130,16 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
   }, [showNote, hasNote, card.id, userId, noteKey]);
 
   // Content translation for non-German locales — cached in localStorage + DB.
+  // Im Feed liefert NewsFeed die Übersetzung gebündelt als Prop (1 API-Call
+  // für den ganzen Batch); der Einzel-Fetch bleibt als Fallback für die
+  // Detailseite (card/[id]), wo keine Batch-Prop ankommt.
   useEffect(() => {
     if (locale === 'de') { setTranslation(null); return; }
+    if (batchTranslation !== undefined) {
+      setTranslation(batchTranslation);
+      setTranslating(batchTranslation === null);
+      return;
+    }
     const cacheKey = `nn-tr-${locale}-${card.id}`;
     try {
       const cached = localStorage.getItem(cacheKey);
@@ -141,7 +155,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
       })
       .finally(() => { if (!cancelled) setTranslating(false); });
     return () => { cancelled = true; };
-  }, [locale, card.id]);
+  }, [locale, card.id, batchTranslation]);
 
   // Update relative time every 60s via shared singleton timer
   useMinuteTick();
@@ -837,5 +851,6 @@ export default memo(NewsCard, (prev, next) =>
   prev.card.like_count === next.card.like_count &&
   prev.card.user_has_liked === next.card.user_has_liked &&
   prev.card.user_has_bookmarked === next.card.user_has_bookmarked &&
-  prev.userId === next.userId
+  prev.userId === next.userId &&
+  prev.batchTranslation === next.batchTranslation
 );

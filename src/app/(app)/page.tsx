@@ -140,8 +140,9 @@ export default async function HomePage({ searchParams }: PageProps) {
       ? supabase.from('bookmarks').select('news_card_id').eq('user_id', user.id).in('news_card_id', cardIds)
       : null;
 
+    // Nur die fürs Ranking benötigten Felder laden (statt select('*'))
     const profilePromise = user
-      ? supabase.from('profiles').select('*').eq('id', user.id).single()
+      ? supabase.from('profiles').select('setting, preferred_categories').eq('id', user.id).single()
       : null;
 
     const [userLikesResult, userBookmarksResult, profileResult] = await Promise.all([
@@ -152,7 +153,7 @@ export default async function HomePage({ searchParams }: PageProps) {
 
     const userLikeSet = new Set(userLikesResult?.data?.map(l => l.news_card_id));
     const userBookmarkSet = new Set(userBookmarksResult?.data?.map(b => b.news_card_id));
-    const profile = profileResult?.data as Profile | null;
+    const profile = profileResult?.data as Pick<Profile, 'setting' | 'preferred_categories'> | null;
 
     allCards = allCards.map(card => ({
       ...card,
