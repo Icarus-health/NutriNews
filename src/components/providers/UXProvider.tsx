@@ -66,6 +66,18 @@ function setStored(key: string, value: unknown) {
   } catch { /* quota exceeded */ }
 }
 
+/**
+ * Spiegelt die letzten gelesenen Karten-IDs in ein Cookie, damit das
+ * serverseitige Feed-Ranking (page.tsx) Gelesenes herabstufen kann.
+ * Bewusst klein gehalten (30 IDs ≈ 1,1 KB), da Cookies jede Anfrage begleiten.
+ */
+function syncReadCookie(entries: ReadHistoryEntry[]) {
+  try {
+    const ids = entries.slice(0, 30).map(e => e.cardId).join(',');
+    document.cookie = `nn-read-ids=${ids}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+  } catch { /* Cookie-Schreiben kann z.B. im Privatmodus scheitern */ }
+}
+
 function isDarkBySchedule(hour: number, s: DarkSchedule): boolean {
   if (!s.enabled) return false;
   // Overnight schedule (e.g. 20-7): active when hour >= 20 OR hour < 7
@@ -91,7 +103,10 @@ export default function UXProvider({ children }: { children: ReactNode }) {
     setThemeState(getStored('nn-theme', 'light'));
     setDarkScheduleState(getStored('nn-dark-schedule', { enabled: false, fromHour: 20, toHour: 7 }));
     setTextSizeState(getStored('nn-text-size', 'medium'));
-    setReadHistory(getStored('nn-read-history', []));
+    const storedReadHistory = getStored<ReadHistoryEntry[]>('nn-read-history', []);
+    setReadHistory(storedReadHistory);
+    // Bestandsnutzer: Cookie einmalig aus der lokalen Historie befüllen
+    if (storedReadHistory.length > 0) syncReadCookie(storedReadHistory);
     setSearchHistory(getStored('nn-search-history', []));
     setReadLaterQueue(getStored('nn-read-later', []));
     setStreakData(getStored('nn-streak', { days: 0, lastReadDate: null }));
@@ -160,6 +175,7 @@ export default function UXProvider({ children }: { children: ReactNode }) {
       if (prev.some(e => e.cardId === cardId)) return prev;
       const next = [{ cardId, headline, category, timestamp: Date.now() }, ...prev].slice(0, 200);
       setStored('nn-read-history', next);
+      syncReadCookie(next);
       return next;
     });
     setStreakData(prev => {

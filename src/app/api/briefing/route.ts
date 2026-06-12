@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { safeEqual } from '@/lib/security';
 import { generateDailyBriefing } from '@/lib/agent/briefing';
 
 /** Get today's date in Europe/Berlin timezone as YYYY-MM-DD */
@@ -14,7 +16,7 @@ export async function POST(request: Request) {
 
   // Auth check: entweder Admin-User oder Cron-Secret
   const cronSecret = request.headers.get('x-cron-secret');
-  const isValidCron = cronSecret && cronSecret === process.env.CRON_SECRET;
+  const isValidCron = safeEqual(cronSecret, process.env.CRON_SECRET);
 
   if (!isValidCron) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -28,8 +30,13 @@ export async function POST(request: Request) {
   try {
     const today = getTodayBerlin();
 
+    // daily_briefings hat bewusst keine Schreib-Policies (RLS):
+    // Lesen/Schreiben hier über die Service-Role, damit auch der
+    // Cron-Aufruf (ohne User-Session) das Briefing speichern kann.
+    const admin = createAdminClient();
+
     // Check if briefing already exists for today
-    const { data: existing } = await supabase
+    const { data: existing } = await admin
       .from('daily_briefings')
       .select('id')
       .eq('date', today)
@@ -61,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     // Save to database (use upsert to avoid race condition with duplicate dates)
-    const { data: briefing, error } = await supabase
+    const { data: briefing, error } = await admin
       .from('daily_briefings')
       .upsert({
         date: today,

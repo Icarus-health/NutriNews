@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache';
+import { cookies } from 'next/headers';
 import { createClient as createPublicClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import NewsFeed from '@/components/news/NewsFeed';
@@ -162,12 +163,20 @@ export default async function HomePage({ searchParams }: PageProps) {
       } : {}),
     }));
 
+    // Lesehistorie: vom UXProvider als Cookie gepflegt (letzte ~30 IDs),
+    // damit das Server-Ranking bereits gelesene Karten herabstufen kann.
+    const cookieStore = await cookies();
+    const readCookie = cookieStore.get('nn-read-ids')?.value ?? '';
+    const readCardIds = new Set(
+      readCookie.split(',').filter(id => /^[0-9a-f-]{36}$/i.test(id))
+    );
+
     // Personalized ranking (within same day)
-    if (profile && (profile.setting || profile.preferred_categories.length > 0)) {
+    if (readCardIds.size > 0 || (profile && (profile.setting || profile.preferred_categories.length > 0))) {
       allCards = rankCards(allCards, {
-        setting: profile.setting,
-        preferredCategories: profile.preferred_categories,
-        readCardIds: new Set<string>(),
+        setting: profile?.setting ?? null,
+        preferredCategories: profile?.preferred_categories ?? [],
+        readCardIds,
       });
     }
 

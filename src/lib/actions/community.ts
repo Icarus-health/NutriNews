@@ -67,9 +67,10 @@ export async function leaveChannel(channelId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
 
-  await supabase.from('channel_members').delete()
+  const { error } = await supabase.from('channel_members').delete()
     .eq('channel_id', channelId)
     .eq('user_id', user.id);
+  if (error) return { error: 'Verlassen fehlgeschlagen' };
 
   revalidatePath('/community');
   return { success: true };
@@ -102,9 +103,10 @@ export async function deleteChannelPost(postId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
 
-  await supabase.from('channel_posts').delete()
+  const { error } = await supabase.from('channel_posts').delete()
     .eq('id', postId)
     .eq('user_id', user.id);
+  if (error) return { error: 'Beitrag konnte nicht gelöscht werden' };
 
   revalidatePath('/community');
   return { success: true };
@@ -197,7 +199,8 @@ export async function verifyCard(newsCardId: string, verificationType: CardVerif
 
   if (existing) {
     // Remove verification (toggle)
-    await supabase.from('card_verifications').delete().eq('id', existing.id);
+    const { error } = await supabase.from('card_verifications').delete().eq('id', existing.id);
+    if (error) return { error: 'Verifikation konnte nicht entfernt werden' };
     return { success: true, removed: true };
   }
 

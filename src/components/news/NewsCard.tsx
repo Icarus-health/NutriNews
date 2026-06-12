@@ -16,6 +16,7 @@ import { getCardTranslation } from '@/lib/actions/translate';
 import type { CardTranslation } from '@/lib/translate-fields';
 import { useUX } from '@/components/providers/UXProvider';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { sanitizeExternalUrl } from '@/lib/url';
 import type { EvidenceLevel, NewsCard as NewsCardType, SourceType } from '@/types/database';
 
 interface Props {
@@ -811,15 +812,17 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                 >
                   <RotateCcw size={13} strokeWidth={1.5} /> {t('common.back')}
                 </button>
-                <a
-                  href={card.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
-                >
-                  {t('common.source')} <ExternalLink size={12} />
-                </a>
+                {sanitizeExternalUrl(card.source_url) && (
+                  <a
+                    href={sanitizeExternalUrl(card.source_url) ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="flex items-center gap-1 text-[12px] text-forest-600 dark:text-forest-400 font-semibold"
+                  >
+                    {t('common.source')} <ExternalLink size={12} />
+                  </a>
+                )}
               </div>
             </div>
           </article>

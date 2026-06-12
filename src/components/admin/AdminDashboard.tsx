@@ -9,6 +9,7 @@ import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { createNewsCard, publishNewsCard, deleteNewsCard } from '@/lib/actions/news';
 import { createClient } from '@/lib/supabase/client';
 import { getCategoryStyle } from '@/lib/categories';
+import { sanitizeExternalUrl } from '@/lib/url';
 import type { NewsCard, EvidenceLevel } from '@/types/database';
 
 interface Props {
@@ -330,9 +331,9 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
                                 <strong className="text-amber-700 dark:text-amber-400">Handlung:</strong> {d.action_recommendation}
                               </p>
                             )}
-                            {d.source_url && (
+                            {sanitizeExternalUrl(d.source_url) && (
                               <a
-                                href={d.source_url}
+                                href={sanitizeExternalUrl(d.source_url) ?? undefined}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-forest-600 dark:text-forest-400 hover:underline truncate block"

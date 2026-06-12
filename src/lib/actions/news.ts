@@ -125,9 +125,10 @@ export async function deleteComment(commentId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
 
-  await supabase.from('comments').delete()
+  const { error } = await supabase.from('comments').delete()
     .eq('id', commentId)
     .eq('user_id', user.id);
+  if (error) return { error: 'Kommentar konnte nicht gelöscht werden' };
 
   return { success: true };
 }
@@ -149,9 +150,10 @@ export async function markShareRead(shareId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Nicht angemeldet' };
 
-  await supabase.from('shares').update({ read: true })
+  const { error } = await supabase.from('shares').update({ read: true })
     .eq('id', shareId)
     .eq('receiver_id', user.id);
+  if (error) return { error: 'Konnte nicht als gelesen markiert werden' };
 
   revalidatePath('/inbox');
   return { success: true };
@@ -223,7 +225,8 @@ export async function deleteNewsCard(newsCardId: string) {
     .from('profiles').select('role').eq('id', user.id).single();
   if (profile?.role !== 'admin') return { error: 'Keine Berechtigung' };
 
-  await supabase.from('news_cards').delete().eq('id', newsCardId);
+  const { error } = await supabase.from('news_cards').delete().eq('id', newsCardId);
+  if (error) return { error: 'Karte konnte nicht gelöscht werden' };
 
   revalidatePath('/');
   revalidatePath('/admin');
@@ -375,16 +378,18 @@ export async function upsertNote(newsCardId: string, content: string) {
   if (!user) return { error: 'Nicht angemeldet' };
 
   if (!content.trim()) {
-    await supabase.from('notes').delete()
+    const { error } = await supabase.from('notes').delete()
       .eq('user_id', user.id)
       .eq('news_card_id', newsCardId);
+    if (error) return { error: 'Notiz konnte nicht gelöscht werden' };
     return { success: true };
   }
 
-  await supabase.from('notes').upsert(
+  const { error } = await supabase.from('notes').upsert(
     { user_id: user.id, news_card_id: newsCardId, content: content.trim(), updated_at: new Date().toISOString() },
     { onConflict: 'user_id,news_card_id' }
   );
+  if (error) return { error: 'Notiz konnte nicht gespeichert werden' };
   return { success: true };
 }
 

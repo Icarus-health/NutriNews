@@ -5,6 +5,7 @@ import { Inbox, ExternalLink, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { getCategoryStyle } from '@/lib/categories';
 import { markShareRead } from '@/lib/actions/news';
+import { sanitizeExternalUrl } from '@/lib/url';
 
 interface ShareItem {
   id: string;
@@ -127,9 +128,9 @@ export default function InboxPage({ shares: initialShares, userId }: Props) {
                       Als gelesen markieren
                     </button>
                   )}
-                  {share.news_cards?.source_url && (
+                  {sanitizeExternalUrl(share.news_cards?.source_url) && (
                     <a
-                      href={share.news_cards.source_url}
+                      href={sanitizeExternalUrl(share.news_cards?.source_url) ?? undefined}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors ml-auto"
