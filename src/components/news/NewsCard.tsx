@@ -228,6 +228,7 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
   function handleBookmark(e: React.MouseEvent) {
     e.stopPropagation();
+    vibrate(bookmarked ? 3 : 4);
     if (!userId) {
       setBookmarked(prev => {
         const next = !prev;

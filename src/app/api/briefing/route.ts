@@ -83,6 +83,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Briefing konnte nicht gespeichert werden.' }, { status: 500 });
     }
 
+    // Fire push notification to all subscribers (best-effort, non-blocking)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    fetch(`${baseUrl}/api/push/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cron-secret': process.env.CRON_SECRET ?? '',
+      },
+      body: JSON.stringify({
+        title: '☀️ Dein tägliches Briefing ist da',
+        body: `${items.length} neue Meldungen für deine Kaffeepause`,
+        url: '/',
+      }),
+    }).catch(() => { /* non-blocking */ });
+
     return NextResponse.json({
       message: `Briefing mit ${items.length} Meldungen erstellt.`,
       id: briefing.id,
