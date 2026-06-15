@@ -527,7 +527,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
             {/* Tap hint — kompakter CTA */}
             <div className="px-4 pb-2">
-              <div className="flex items-center justify-center gap-1 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-1.5 rounded-xl transition-colors">
+              <div className="flex items-center justify-center gap-1.5 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-1.5 rounded-xl transition-colors">
+                {card.read_time_sec && card.read_time_sec > 0 && (
+                  <>
+                    <span className="text-[10px] font-medium text-white/60">~{Math.ceil(card.read_time_sec / 60)} Min</span>
+                    <span className="text-white/30 text-[10px]">·</span>
+                  </>
+                )}
                 <span className="text-[12px] font-bold text-white">{t('card.readDetails')}</span>
                 <ChevronRight size={13} strokeWidth={2.5} className="text-white/80" />
               </div>
