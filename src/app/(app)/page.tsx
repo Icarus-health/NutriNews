@@ -76,7 +76,7 @@ const fetchCachedCards = unstable_cache(
         .trim()
         .slice(0, 200);
       if (q) {
-        query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+        query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
       }
     }
 

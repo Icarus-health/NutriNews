@@ -275,7 +275,7 @@ export async function loadMoreCards(cursor: string, filters?: {
   if (filters?.q) {
     const q = sanitizeFilterValue(filters.q);
     if (q) {
-      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+      query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
     }
   }
 
@@ -355,7 +355,7 @@ export async function loadNewCards(sinceCursor: string, filters?: {
   if (filters?.q) {
     const q = sanitizeFilterValue(filters.q);
     if (q) {
-      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+      query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
     }
   }
 
@@ -426,6 +426,20 @@ export async function createCollection(name: string, emoji: string) {
   return { success: true, id: data.id };
 }
 
+export async function deleteCollection(collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('collections').delete()
+    .eq('id', collectionId)
+    .eq('user_id', user.id);
+  if (error) return { error: 'Sammlung konnte nicht gelöscht werden' };
+
+  revalidatePath('/saved');
+  return { success: true };
+}
+
 export async function submitAppFeedback(type: string, message: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -477,6 +491,67 @@ export async function getNote(newsCardId: string) {
     .eq('news_card_id', newsCardId)
     .single();
   return data?.content ?? null;
+}
+
+export async function getUserCollections() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('collections')
+    .select('id, name, emoji, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
+export async function addToCollection(newsCardId: string, collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { data: col } = await supabase
+    .from('collections').select('id').eq('id', collectionId).eq('user_id', user.id).single();
+  if (!col) return { error: 'Sammlung nicht gefunden' };
+
+  const { error } = await supabase.from('collection_items').upsert(
+    { collection_id: collectionId, news_card_id: newsCardId },
+    { onConflict: 'collection_id,news_card_id' }
+  );
+  if (error) return { error: 'Hinzufügen fehlgeschlagen' };
+  return { success: true };
+}
+
+export async function removeFromCollection(newsCardId: string, collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('collection_items').delete()
+    .eq('collection_id', collectionId)
+    .eq('news_card_id', newsCardId);
+  if (error) return { error: 'Entfernen fehlgeschlagen' };
+  return { success: true };
+}
+
+export async function getCollectionItems(collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: col } = await supabase
+    .from('collections').select('id').eq('id', collectionId).eq('user_id', user.id).single();
+  if (!col) return [];
+
+  const { data } = await supabase
+    .from('collection_items')
+    .select('news_cards(*)')
+    .eq('collection_id', collectionId)
+    .order('created_at', { ascending: false });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data?.map(item => item.news_cards).filter(Boolean) ?? []) as unknown as import('@/types/database').NewsCard[];
 }
 
 export async function getCardsByIds(ids: string[]) {

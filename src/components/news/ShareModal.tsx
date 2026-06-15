@@ -27,19 +27,13 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Clean up search timer on unmount
   useEffect(() => {
-    return () => {
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-    };
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, []);
 
-  // Autofocus first input + close on Escape for accessible dialog semantics
   useEffect(() => {
     searchInputRef.current?.focus();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
@@ -76,7 +70,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-slate-900 dark:text-slate-100">News teilen</h3>
-          <button onClick={onClose} aria-label="Schließen" className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} aria-label="Schließen" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
             <X size={20} />
           </button>
         </div>
@@ -93,7 +87,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
           }}
           className="w-full flex items-center gap-3 px-3 py-2.5 mb-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          {linkCopied ? <Check size={18} className="text-forest-600" /> : <Link2 size={18} className="text-slate-400" />}
+          {linkCopied ? <Check size={18} className="text-forest-600 dark:text-forest-400" /> : <Link2 size={18} className="text-slate-400 dark:text-slate-500" />}
           <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
             {linkCopied ? 'Link kopiert!' : 'Link kopieren'}
           </span>
@@ -104,14 +98,14 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
             <div className="w-full border-t border-slate-200 dark:border-slate-700" />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-white dark:bg-slate-800 px-3 text-[11px] text-slate-500 dark:text-slate-500">oder an Kolleg:in senden</span>
+            <span className="bg-white dark:bg-slate-800 px-3 text-[11px] text-slate-500 dark:text-slate-400">oder an Kolleg:in senden</span>
           </div>
         </div>
 
         {sent ? (
           <div className="text-center py-6">
             <p className="text-2xl mb-2">✅</p>
-            <p className="text-sm text-slate-600">Erfolgreich geteilt!</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Erfolgreich geteilt!</p>
           </div>
         ) : (
           <>
@@ -123,24 +117,24 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
                 placeholder="Kollegen suchen (Name oder E-Mail)..."
                 value={query}
                 onChange={e => handleSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:bg-white dark:focus:bg-slate-600 transition-all"
               />
             </div>
 
             {results.length > 0 && !selectedEmail && (
-              <div className="mb-3 border border-slate-100 rounded-lg overflow-hidden">
+              <div className="mb-3 border border-slate-100 dark:border-slate-700 rounded-xl overflow-hidden">
                 {results.map(p => (
                   <button
                     key={p.id}
                     onClick={() => { setSelectedEmail(p.email ?? ''); setQuery(p.full_name || p.email || ''); setResults([]); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
                   >
-                    <div className="w-7 h-7 rounded-full bg-forest-100 flex items-center justify-center text-xs font-bold text-forest-700">
+                    <div className="w-7 h-7 rounded-full bg-forest-100 dark:bg-forest-800 flex items-center justify-center text-xs font-bold text-forest-700 dark:text-forest-300 flex-shrink-0">
                       {(p.full_name || p.email || '?')[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{p.full_name || 'Unbekannt'}</p>
-                      <p className="text-xs text-slate-500">{p.email}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{p.full_name || 'Unbekannt'}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{p.email}</p>
                     </div>
                   </button>
                 ))}
@@ -149,9 +143,9 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
 
             {selectedEmail && (
               <div className="mb-3">
-                <span className="inline-flex items-center gap-1 bg-forest-100 text-forest-800 text-xs font-medium px-2 py-1 rounded-full">
+                <span className="inline-flex items-center gap-1 bg-forest-100 dark:bg-forest-900/40 text-forest-800 dark:text-forest-300 text-xs font-medium px-2 py-1 rounded-full">
                   {query}
-                  <button onClick={() => { setSelectedEmail(''); setQuery(''); }} aria-label="Auswahl entfernen" className="hover:text-forest-600">
+                  <button onClick={() => { setSelectedEmail(''); setQuery(''); }} aria-label="Auswahl entfernen" className="hover:text-forest-600 dark:hover:text-forest-400">
                     <X size={12} />
                   </button>
                 </span>
@@ -163,7 +157,7 @@ export default function ShareModal({ newsCardId, onClose }: Props) {
               value={message}
               onChange={e => setMessage(e.target.value)}
               rows={2}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-forest-500 resize-none"
+              className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm mb-3 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:bg-white dark:focus:bg-slate-600 resize-none transition-all"
             />
 
             <button

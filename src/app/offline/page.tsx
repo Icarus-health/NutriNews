@@ -2,11 +2,11 @@
 
 export default function OfflinePage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+    <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center bg-white dark:bg-slate-900">
       <div className="text-6xl mb-4">📡</div>
-      <h1 className="text-xl font-bold text-slate-900 mb-2">Keine Verbindung</h1>
-      <p className="text-sm text-slate-500 max-w-xs">
-        Du bist gerade offline. Sobald du wieder verbunden bist, kannst du Nutri News wie gewohnt nutzen.
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Keine Verbindung</h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+        Du bist gerade offline. Sobald du wieder verbunden bist, kannst du NutriNews wie gewohnt nutzen.
       </p>
       <button
         onClick={() => window.location.reload()}

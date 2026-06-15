@@ -27,10 +27,10 @@
   },
   "shortcuts": [
     {
-      "name": "Forschung",
-      "short_name": "Forschung",
-      "description": "Aktuelle Forschungsergebnisse",
-      "url": "/?categories=Forschung",
+      "name": "GLP-1 & Adipositas",
+      "short_name": "GLP-1",
+      "description": "Aktuelle GLP-1 & Adipositastherapie-News",
+      "url": "/?categories=GLP-1+%26+Adipositastherapie",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {

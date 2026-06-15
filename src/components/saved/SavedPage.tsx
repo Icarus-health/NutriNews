@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { Bookmark, FolderOpen, Plus, X, Clock, Loader2 } from 'lucide-react';
+import { Bookmark, FolderOpen, Plus, X, Clock, Loader2, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import NewsCardComponent from '@/components/news/NewsCard';
-import { createCollection, getCardsByIds } from '@/lib/actions/news';
+import { createCollection, deleteCollection, getCardsByIds, getCollectionItems } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
 import type { NewsCard, Collection } from '@/types/database';
 
@@ -14,6 +14,97 @@ interface Props {
   cards: NewsCard[];
   collections: Collection[];
   userId: string | null;
+}
+
+function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: string | null; onDelete: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [items, setItems] = useState<NewsCard[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, startDeleteTransition] = useTransition();
+
+  async function handleToggle() {
+    setExpanded(p => !p);
+    if (items !== null) return;
+    setLoading(true);
+    const result = await getCollectionItems(col.id);
+    setItems(result as NewsCard[]);
+    setLoading(false);
+  }
+
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      // Auto-reset confirmation after 3 s if user doesn't proceed
+      setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
+    startDeleteTransition(async () => {
+      await deleteCollection(col.id);
+      onDelete(col.id);
+    });
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+      <button
+        onClick={handleToggle}
+        className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+      >
+        <span className="text-xl flex-shrink-0">{col.emoji}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{col.name}</p>
+          <p className="text-xs text-slate-400">
+            {items !== null
+              ? `${items.length} Artikel`
+              : `Erstellt am ${new Date(col.created_at).toLocaleDateString('de-DE')}`}
+          </p>
+        </div>
+        {loading ? (
+          <Loader2 size={16} className="animate-spin text-slate-400 flex-shrink-0" />
+        ) : expanded ? (
+          <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />
+        ) : (
+          <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
+        )}
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className={clsx(
+            'flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ml-1',
+            confirmDelete
+              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+              : 'text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500'
+          )}
+        >
+          {isDeleting ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <Trash2 size={12} />
+          )}
+          {confirmDelete && <span>Löschen?</span>}
+        </button>
+      </button>
+
+      {expanded && items !== null && (
+        <div className="border-t border-slate-100 dark:border-slate-700">
+          {items.length === 0 ? (
+            <p className="text-xs text-slate-400 px-4 py-4 text-center">
+              Noch keine Artikel in dieser Sammlung.<br />
+              Tippe auf der Rückseite einer Karte auf „Zur Sammlung hinzufügen".
+            </p>
+          ) : (
+            <div className="px-3 pt-3">
+              {items.map(card => (
+                <NewsCardComponent key={card.id} card={card} userId={userId} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SavedPage({ cards, collections: initialCollections, userId }: Props) {
@@ -32,6 +123,7 @@ export default function SavedPage({ cards, collections: initialCollections, user
       setReadLaterLoading(false);
     });
   }, [tab, ux.readLaterQueue, readLaterCards.length]);
+
   const [showNewForm, setShowNewForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmoji, setNewEmoji] = useState('📁');
@@ -46,7 +138,6 @@ export default function SavedPage({ cards, collections: initialCollections, user
       if (result.error) {
         setError(result.error);
       } else {
-        // Optimistically add to list
         setCollections(prev => [
           {
             id: result.id ?? crypto.randomUUID(),
@@ -142,16 +233,18 @@ export default function SavedPage({ cards, collections: initialCollections, user
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">
               <Clock size={40} className="mb-3 opacity-30" />
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Noch nichts in der Leseliste.</p>
-              <p className="text-xs mt-1 text-center">Tippe auf das Lesezeichen-Symbol und halte es gedrückt, oder nutze „Später lesen" auf einer Karte.</p>
+              <p className="text-xs mt-1 text-center">Tippe auf das Uhr-Symbol auf der Rückseite einer News-Karte.</p>
             </div>
           ) : (
-            readLaterCards.map(card => (
-              <NewsCardComponent
-                key={card.id}
-                card={card}
-                userId={userId}
-              />
-            ))
+            readLaterCards
+              .filter(c => ux.readLaterQueue.includes(c.id))
+              .map(card => (
+                <NewsCardComponent
+                  key={card.id}
+                  card={card}
+                  userId={userId}
+                />
+              ))
           )}
         </div>
       )}
@@ -182,7 +275,6 @@ export default function SavedPage({ cards, collections: initialCollections, user
                 </button>
               </div>
 
-              {/* Emoji picker */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {COLLECTION_EMOJIS.map(em => (
                   <button
@@ -200,7 +292,6 @@ export default function SavedPage({ cards, collections: initialCollections, user
                 ))}
               </div>
 
-              {/* Name input */}
               <input
                 type="text"
                 value={newName}
@@ -212,9 +303,7 @@ export default function SavedPage({ cards, collections: initialCollections, user
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-forest-500/40 mb-3"
               />
 
-              {error && (
-                <p className="text-xs text-red-500 mb-2">{error}</p>
-              )}
+              {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
               <button
                 onClick={handleCreate}
@@ -235,15 +324,12 @@ export default function SavedPage({ cards, collections: initialCollections, user
           ) : (
             <div className="space-y-2">
               {collections.map(col => (
-                <div key={col.id} className="bg-white dark:bg-slate-800 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex items-center gap-3">
-                  <span className="text-xl">{col.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{col.name}</p>
-                    <p className="text-xs text-slate-400">
-                      Erstellt am {new Date(col.created_at).toLocaleDateString('de-DE')}
-                    </p>
-                  </div>
-                </div>
+                <CollectionRow
+                  key={col.id}
+                  col={col}
+                  userId={userId}
+                  onDelete={(id) => setCollections(prev => prev.filter(c => c.id !== id))}
+                />
               ))}
             </div>
           )}
