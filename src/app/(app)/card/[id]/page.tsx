@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import NewsCardComponent from '@/components/news/NewsCard';
+import BackButton from '@/components/ui/BackButton';
 import { getCategoryLabel, getCategoryStyle } from '@/lib/categories';
 import type { NewsCard } from '@/types/database';
 import type { Metadata } from 'next';
@@ -95,12 +96,11 @@ export default async function CardPage({ params }: PageProps) {
   return (
     <div className="pt-2">
       <div className="px-4 mb-3">
-        <a
-          href="/"
+        <BackButton
+          fallbackHref="/"
+          label="← Zurück zum Feed"
           className="text-[13px] text-forest-600 dark:text-forest-400 font-medium hover:text-forest-700 transition-colors"
-        >
-          &larr; Zurück zum Feed
-        </a>
+        />
       </div>
       <div className="px-4">
         <NewsCardComponent
