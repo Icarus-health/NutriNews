@@ -53,20 +53,25 @@ export default async function CommunityRoute() {
     channelList = channelList.map(c => ({ ...c, is_member: memberSet.has(c.id) }));
   }
 
-  // Load recent posts for each channel (top 20 per channel)
+  // Load recent posts for each channel in parallel (top 20 per channel)
   const channelPosts: Record<string, ChannelPost[]> = {};
-  for (const channel of channelList.slice(0, 8)) {
-    if (channel.id.startsWith('default-')) continue;
-
-    const { data: posts } = await supabase
-      .from('channel_posts')
-      .select('*, profile:user_id(id, full_name, avatar_url, role)')
-      .eq('channel_id', channel.id)
-      .is('parent_post_id', null)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    channelPosts[channel.id] = (posts ?? []) as ChannelPost[];
+  const channelsToLoad = channelList.slice(0, 8).filter(c => !c.id.startsWith('default-'));
+  if (channelsToLoad.length > 0) {
+    const postResults = await Promise.all(
+      channelsToLoad.map(channel =>
+        supabase
+          .from('channel_posts')
+          .select('*, profile:user_id(id, full_name, avatar_url, role)')
+          .eq('channel_id', channel.id)
+          .is('parent_post_id', null)
+          .order('created_at', { ascending: false })
+          .limit(20)
+          .then(({ data }) => ({ channelId: channel.id, posts: (data ?? []) as ChannelPost[] }))
+      )
+    );
+    for (const { channelId, posts } of postResults) {
+      channelPosts[channelId] = posts;
+    }
   }
 
   // Load quick questions
