@@ -26,7 +26,7 @@ function ErrorBanner() {
 export default function LoginPage() {
   const { t } = useI18n();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-forest-50 via-white to-slate-50 px-5">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-forest-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 px-5">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <Image
