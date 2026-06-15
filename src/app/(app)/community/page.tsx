@@ -85,36 +85,26 @@ export default async function CommunityRoute() {
   let questionList: QuickQuestion[] = (questions ?? []) as QuickQuestion[];
   if (questionList.length > 0) {
     const questionIds = questionList.map(q => q.id);
-    const { data: sameVotes } = await supabase
-      .from('same_question_votes')
-      .select('question_id')
-      .in('question_id', questionIds);
+
+    // Fetch all votes and user's votes in parallel
+    const [{ data: sameVotes }, { data: userVotes }] = await Promise.all([
+      supabase.from('same_question_votes').select('question_id').in('question_id', questionIds),
+      user
+        ? supabase.from('same_question_votes').select('question_id').eq('user_id', user.id).in('question_id', questionIds)
+        : Promise.resolve({ data: null }),
+    ]);
 
     const voteCountMap: Record<string, number> = {};
     sameVotes?.forEach(v => {
       voteCountMap[v.question_id] = (voteCountMap[v.question_id] ?? 0) + 1;
     });
+    const userVoteSet = new Set(userVotes?.map(v => v.question_id));
 
-    if (user) {
-      const { data: userVotes } = await supabase
-        .from('same_question_votes')
-        .select('question_id')
-        .eq('user_id', user.id)
-        .in('question_id', questionIds);
-
-      const userVoteSet = new Set(userVotes?.map(v => v.question_id));
-
-      questionList = questionList.map(q => ({
-        ...q,
-        same_question_count: voteCountMap[q.id] ?? 0,
-        user_has_same_question: userVoteSet.has(q.id),
-      }));
-    } else {
-      questionList = questionList.map(q => ({
-        ...q,
-        same_question_count: voteCountMap[q.id] ?? 0,
-      }));
-    }
+    questionList = questionList.map(q => ({
+      ...q,
+      same_question_count: voteCountMap[q.id] ?? 0,
+      ...(user ? { user_has_same_question: userVoteSet.has(q.id) } : {}),
+    }));
   }
 
   // Load answers for the first 5 questions (server-side pre-fetch)
