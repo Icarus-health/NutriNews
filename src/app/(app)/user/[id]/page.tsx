@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { getCategoryLabel } from '@/lib/categories';
 import type { Metadata } from 'next';
 
@@ -61,7 +62,19 @@ export default async function PublicProfilePage({ params }: PageProps) {
   });
 
   return (
-    <div className="px-4 pt-6 pb-24">
+    <div>
+      <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 dark:border-slate-700/60 safe-top">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Link
+            href="/community"
+            className="text-[13px] text-forest-600 dark:text-forest-400 font-medium hover:text-forest-700 transition-colors"
+          >
+            &larr; Community
+          </Link>
+          <h1 className="text-[17px] font-bold text-slate-900 dark:text-slate-100 tracking-tight ml-2">{displayName}</h1>
+        </div>
+      </header>
+      <div className="px-4 pt-6 pb-24">
       {/* Avatar & Name */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-16 h-16 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -120,6 +133,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
         <span className="text-[11px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full">
           {profile.role === 'admin' ? 'Admin' : 'Fachkraft'}
         </span>
+      </div>
       </div>
     </div>
   );

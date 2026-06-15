@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Heart } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface TopItem {
@@ -10,6 +10,7 @@ interface TopItem {
   headline: string;
   categoryStyle: string;
   categoryLabel: string;
+  likeCount: number;
   rank: number;
 }
 
@@ -57,9 +58,17 @@ export default function TopOfWeekClient({ items }: { items: TopItem[] }) {
                   <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">
                     {item.headline}
                   </p>
-                  <span className={clsx('inline-block mt-1 text-[9px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full', item.categoryStyle)}>
-                    {item.categoryLabel}
-                  </span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={clsx('text-[9px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full', item.categoryStyle)}>
+                      {item.categoryLabel}
+                    </span>
+                    {item.likeCount > 0 && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-slate-400">
+                        <Heart size={9} fill="currentColor" className="text-rose-400" />
+                        {item.likeCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Link>
             </li>
