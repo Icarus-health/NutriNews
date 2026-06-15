@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info, MessageSquare, Activity, Wifi, WifiOff } from 'lucide-react';
+import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info, MessageSquare, Activity, Wifi, WifiOff, BarChart2, Users, Newspaper, Bell, TrendingUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
@@ -11,9 +11,11 @@ import { createClient } from '@/lib/supabase/client';
 import { getCategoryStyle } from '@/lib/categories';
 import { sanitizeExternalUrl } from '@/lib/url';
 import type { NewsCard, EvidenceLevel } from '@/types/database';
+import type { AdminStats } from '@/lib/actions/admin';
 
 interface Props {
   drafts: NewsCard[];
+  stats: AdminStats | null;
 }
 
 interface AgentResult {
@@ -43,9 +45,9 @@ interface SourceHealthEntry {
   disabled: boolean;
 }
 
-export default function AdminDashboard({ drafts: initialDrafts }: Props) {
+export default function AdminDashboard({ drafts: initialDrafts, stats }: Props) {
   const router = useRouter();
-  const [tab, setTab] = useState<'drafts' | 'create' | 'auto' | 'feedback' | 'sources'>('drafts');
+  const [tab, setTab] = useState<'drafts' | 'create' | 'auto' | 'feedback' | 'sources' | 'stats'>('drafts');
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [sourceHealthList, setSourceHealthList] = useState<SourceHealthEntry[]>([]);
@@ -218,6 +220,7 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
           { id: 'auto',     label: 'Auto-Agent' },
           { id: 'feedback', label: 'Feedback' },
           { id: 'sources',  label: 'Quellen' },
+          { id: 'stats',    label: 'Statistiken' },
         ] as const).map(({ id, label }) => (
           <button
             key={id}
@@ -551,6 +554,58 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
       )}
 
       {/* ─── SOURCES TAB ─── */}
+      {/* ─── STATISTIKEN TAB ─── */}
+      {tab === 'stats' && (
+        <div>
+          {!stats ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <BarChart2 size={28} className="mb-2 opacity-30" />
+              <p className="text-sm">Statistiken nicht verfügbar</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* KPI Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: Users, label: 'Nutzer gesamt', value: stats.totalUsers, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                  { icon: Bell, label: 'Push-Abonnenten', value: stats.pushSubscribers, color: 'text-forest-600 dark:text-forest-400', bg: 'bg-forest-50 dark:bg-forest-900/20' },
+                  { icon: Newspaper, label: 'Karten heute', value: stats.cardsToday, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                  { icon: Newspaper, label: 'Karten diese Woche', value: stats.cardsThisWeek, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+                  { icon: TrendingUp, label: '⌀ Likes/Karte (7d)', value: stats.avgLikesThisWeek, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20' },
+                  { icon: MessageSquare, label: 'Feedback (7d)', value: stats.feedbackLast7d, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+                ].map(({ icon: Icon, label, value, color, bg }) => (
+                  <div key={label} className={clsx('rounded-xl p-4 border', bg, 'border-transparent')}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Icon size={15} className={color} />
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">{label}</span>
+                    </div>
+                    <p className={clsx('text-2xl font-black', color)}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Briefing status */}
+              <div className={clsx(
+                'flex items-center gap-3 rounded-xl px-4 py-3 border',
+                stats.briefingToday
+                  ? 'bg-forest-50 dark:bg-forest-900/20 border-forest-200 dark:border-forest-800'
+                  : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+              )}>
+                <span className="text-xl">{stats.briefingToday ? '✅' : '⏳'}</span>
+                <div>
+                  <p className={clsx('text-sm font-semibold', stats.briefingToday ? 'text-forest-700 dark:text-forest-400' : 'text-amber-700 dark:text-amber-400')}>
+                    Briefing heute: {stats.briefingToday ? 'Erstellt' : 'Noch nicht erstellt'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {stats.briefingsThisWeek} Briefings diese Woche
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'sources' && (
         <div>
           <div className="flex items-center justify-between mb-3">
