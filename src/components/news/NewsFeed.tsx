@@ -36,11 +36,15 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [pendingCards, setPendingCards] = useState<import('@/types/database').NewsCard[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
   // Batch-Übersetzungen (locale != de): ein Server-Call pro Karten-Batch
   // statt ein Call pro Karte. requested verhindert doppelte Anfragen.
   const [translations, setTranslations] = useState<Record<string, CardTranslation>>({});
   const requestedTranslations = useRef<Set<string>>(new Set());
+  // Stable refs for use inside event listeners / intervals (avoid stale closures)
+  const cardsRef = useRef(initialCards);
+  const filtersRef = useRef(filters);
 
   // Pull-to-refresh — use refs to avoid re-renders on every touchmove
   const pullStartY = useRef(0);
@@ -50,7 +54,12 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   useEffect(() => {
     setCards(initialCards);
     setHasMore(initialCards.length >= 15);
+    setPendingCards([]);
+    cardsRef.current = initialCards;
   }, [initialCards]);
+
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { cardsRef.current = cards; }, [cards]);
 
   // Online/offline detection
   useEffect(() => {
@@ -64,6 +73,39 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
       window.removeEventListener('offline', goOffline);
     };
   }, []);
+
+  // Check for new articles on visibility change and every 15 min — shows a banner instead of
+  // silently auto-prepending (lets the user decide when to refresh their reading position).
+  useEffect(() => {
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || !isOnline) return;
+      const latestTs = cardsRef.current[0]?.published_at;
+      if (!latestTs) return;
+      try {
+        const result = await loadNewCards(latestTs, filtersRef.current);
+        if (result.cards.length === 0) return;
+        const known = new Set(cardsRef.current.map(c => c.id));
+        const fresh = result.cards.filter(c => !known.has(c.id));
+        if (fresh.length > 0) setPendingCards(fresh);
+      } catch { /* offline or transient error */ }
+    };
+    document.addEventListener('visibilitychange', check);
+    const interval = setInterval(check, 15 * 60 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', check);
+      clearInterval(interval);
+    };
+  }, [isOnline]);
+
+  function handleLoadPending() {
+    if (pendingCards.length === 0) return;
+    setCards(prev => {
+      const known = new Set(prev.map(c => c.id));
+      return [...pendingCards.filter(c => !known.has(c.id)), ...prev];
+    });
+    setPendingCards([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   // App badge: unread count (Badging API, iOS 16.4+ when installed as PWA)
   useEffect(() => {
@@ -243,6 +285,17 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
           <RefreshCw size={16} className="text-forest-600 dark:text-forest-400" />
         </div>
       </div>
+
+      {/* New articles banner — appears when fresh content is detected */}
+      {pendingCards.length > 0 && (
+        <button
+          onClick={handleLoadPending}
+          className="w-full flex items-center justify-center gap-2 mb-3 py-2.5 bg-forest-700 text-white text-[13px] font-semibold rounded-2xl shadow-lg shadow-forest-900/20 animate-fade-in hover:bg-forest-800 active:scale-[0.98] transition-all"
+        >
+          <RefreshCw size={14} />
+          {pendingCards.length === 1 ? '1 neuer Artikel' : `${pendingCards.length} neue Artikel`}
+        </button>
+      )}
 
       {/* Offline banner */}
       {!isOnline && (

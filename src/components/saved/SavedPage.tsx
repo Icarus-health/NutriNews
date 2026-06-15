@@ -142,16 +142,18 @@ export default function SavedPage({ cards, collections: initialCollections, user
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">
               <Clock size={40} className="mb-3 opacity-30" />
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Noch nichts in der Leseliste.</p>
-              <p className="text-xs mt-1 text-center">Tippe auf das Lesezeichen-Symbol und halte es gedrückt, oder nutze „Später lesen" auf einer Karte.</p>
+              <p className="text-xs mt-1 text-center">Tippe auf das Uhr-Symbol auf der Rückseite einer News-Karte.</p>
             </div>
           ) : (
-            readLaterCards.map(card => (
-              <NewsCardComponent
-                key={card.id}
-                card={card}
-                userId={userId}
-              />
-            ))
+            readLaterCards
+              .filter(c => ux.readLaterQueue.includes(c.id))
+              .map(card => (
+                <NewsCardComponent
+                  key={card.id}
+                  card={card}
+                  userId={userId}
+                />
+              ))
           )}
         </div>
       )}
