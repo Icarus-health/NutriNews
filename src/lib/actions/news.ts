@@ -426,6 +426,20 @@ export async function createCollection(name: string, emoji: string) {
   return { success: true, id: data.id };
 }
 
+export async function deleteCollection(collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('collections').delete()
+    .eq('id', collectionId)
+    .eq('user_id', user.id);
+  if (error) return { error: 'Sammlung konnte nicht gelöscht werden' };
+
+  revalidatePath('/saved');
+  return { success: true };
+}
+
 export async function submitAppFeedback(type: string, message: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

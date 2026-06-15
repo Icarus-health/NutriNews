@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { Bookmark, FolderOpen, Plus, X, Clock, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Bookmark, FolderOpen, Plus, X, Clock, Loader2, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import NewsCardComponent from '@/components/news/NewsCard';
-import { createCollection, getCardsByIds, getCollectionItems } from '@/lib/actions/news';
+import { createCollection, deleteCollection, getCardsByIds, getCollectionItems } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
 import type { NewsCard, Collection } from '@/types/database';
 
@@ -16,10 +16,12 @@ interface Props {
   userId: string | null;
 }
 
-function CollectionRow({ col, userId }: { col: Collection; userId: string | null }) {
+function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: string | null; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<NewsCard[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, startDeleteTransition] = useTransition();
 
   async function handleToggle() {
     setExpanded(p => !p);
@@ -28,6 +30,20 @@ function CollectionRow({ col, userId }: { col: Collection; userId: string | null
     const result = await getCollectionItems(col.id);
     setItems(result as NewsCard[]);
     setLoading(false);
+  }
+
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      // Auto-reset confirmation after 3 s if user doesn't proceed
+      setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
+    startDeleteTransition(async () => {
+      await deleteCollection(col.id);
+      onDelete(col.id);
+    });
   }
 
   return (
@@ -52,6 +68,23 @@ function CollectionRow({ col, userId }: { col: Collection; userId: string | null
         ) : (
           <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
         )}
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className={clsx(
+            'flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ml-1',
+            confirmDelete
+              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+              : 'text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500'
+          )}
+        >
+          {isDeleting ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <Trash2 size={12} />
+          )}
+          {confirmDelete && <span>Löschen?</span>}
+        </button>
       </button>
 
       {expanded && items !== null && (
@@ -291,7 +324,12 @@ export default function SavedPage({ cards, collections: initialCollections, user
           ) : (
             <div className="space-y-2">
               {collections.map(col => (
-                <CollectionRow key={col.id} col={col} userId={userId} />
+                <CollectionRow
+                  key={col.id}
+                  col={col}
+                  userId={userId}
+                  onDelete={(id) => setCollections(prev => prev.filter(c => c.id !== id))}
+                />
               ))}
             </div>
           )}
