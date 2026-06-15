@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect, useCallback, memo } from 'react';
 import { useMinuteTick } from '@/hooks/useMinuteTick';
-import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, ChevronDown, Link2, PenLine, Printer, EyeOff, Languages, FolderPlus, Check } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, ChevronDown, Link2, PenLine, Printer, EyeOff, Languages, FolderPlus, Check, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -808,19 +808,31 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </div>
             )}
 
-            {/* Personal note */}
+            {/* Personal note + Read later */}
             <div className="px-4 pb-3">
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowNote(n => !n); }}
-                className={clsx(
-                  'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
-                  showNote || hasNote ? 'text-amber-500' : 'text-slate-400 hover:text-amber-400'
-                )}
-              >
-                <PenLine size={14} strokeWidth={2} />
-                {showNote ? t('card.hideNote') : hasNote ? t('card.editNote') : t('card.addNote')}
-                {hasNote && !showNote && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />}
-              </button>
+              <div className="flex items-center gap-3 mb-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowNote(n => !n); }}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+                    showNote || hasNote ? 'text-amber-500' : 'text-slate-400 hover:text-amber-400'
+                  )}
+                >
+                  <PenLine size={14} strokeWidth={2} />
+                  {showNote ? t('card.hideNote') : hasNote ? t('card.editNote') : t('card.addNote')}
+                  {hasNote && !showNote && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); ux.toggleReadLater(card.id); }}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+                    ux.isInReadLater(card.id) ? 'text-sky-500' : 'text-slate-400 hover:text-sky-400'
+                  )}
+                >
+                  <Clock size={14} strokeWidth={2} />
+                  {ux.isInReadLater(card.id) ? 'Aus Liste entfernen' : 'Später lesen'}
+                </button>
+              </div>
               {showNote && (
                 <div className="mt-2 animate-fade-in" onClick={e => e.stopPropagation()}>
                   <textarea
