@@ -479,6 +479,67 @@ export async function getNote(newsCardId: string) {
   return data?.content ?? null;
 }
 
+export async function getUserCollections() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('collections')
+    .select('id, name, emoji, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
+export async function addToCollection(newsCardId: string, collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { data: col } = await supabase
+    .from('collections').select('id').eq('id', collectionId).eq('user_id', user.id).single();
+  if (!col) return { error: 'Sammlung nicht gefunden' };
+
+  const { error } = await supabase.from('collection_items').upsert(
+    { collection_id: collectionId, news_card_id: newsCardId },
+    { onConflict: 'collection_id,news_card_id' }
+  );
+  if (error) return { error: 'Hinzufügen fehlgeschlagen' };
+  return { success: true };
+}
+
+export async function removeFromCollection(newsCardId: string, collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('collection_items').delete()
+    .eq('collection_id', collectionId)
+    .eq('news_card_id', newsCardId);
+  if (error) return { error: 'Entfernen fehlgeschlagen' };
+  return { success: true };
+}
+
+export async function getCollectionItems(collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: col } = await supabase
+    .from('collections').select('id').eq('id', collectionId).eq('user_id', user.id).single();
+  if (!col) return [];
+
+  const { data } = await supabase
+    .from('collection_items')
+    .select('news_cards(*)')
+    .eq('collection_id', collectionId)
+    .order('created_at', { ascending: false });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data?.map(item => item.news_cards).filter(Boolean) ?? []) as unknown as import('@/types/database').NewsCard[];
+}
+
 export async function getCardsByIds(ids: string[]) {
   if (ids.length === 0) return [];
   // Limit to prevent oversized queries
