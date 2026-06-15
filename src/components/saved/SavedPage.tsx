@@ -6,6 +6,7 @@ import { clsx } from 'clsx';
 import NewsCardComponent from '@/components/news/NewsCard';
 import { createCollection, deleteCollection, getCardsByIds, getCollectionItems } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
+import { useToast } from '@/components/ui/Toast';
 import type { NewsCard, Collection } from '@/types/database';
 
 const COLLECTION_EMOJIS = ['📁', '🥗', '💊', '🧪', '🫀', '🧬', '📋', '⭐', '🔬', '🏥', '🌿', '🍎'];
@@ -16,7 +17,7 @@ interface Props {
   userId: string | null;
 }
 
-function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: string | null; onDelete: (id: string) => void }) {
+function CollectionRow({ col, userId, onDelete, toast }: { col: Collection; userId: string | null; onDelete: (id: string) => void; toast: (msg: string, type?: 'success' | 'error' | 'info') => void }) {
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<NewsCard[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,8 +42,13 @@ function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: str
       return;
     }
     startDeleteTransition(async () => {
-      await deleteCollection(col.id);
-      onDelete(col.id);
+      const result = await deleteCollection(col.id);
+      if (result.error) {
+        toast(result.error, 'error');
+      } else {
+        onDelete(col.id);
+        toast(`"${col.name}" gelöscht`);
+      }
     });
   }
 
@@ -109,6 +115,7 @@ function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: str
 
 export default function SavedPage({ cards, collections: initialCollections, userId }: Props) {
   const ux = useUX();
+  const { toast } = useToast();
   const [tab, setTab] = useState<'bookmarks' | 'collections' | 'readlater'>('bookmarks');
   const [collections, setCollections] = useState<Collection[]>(initialCollections);
   const [readLaterCards, setReadLaterCards] = useState<NewsCard[]>([]);
@@ -138,16 +145,15 @@ export default function SavedPage({ cards, collections: initialCollections, user
       if (result.error) {
         setError(result.error);
       } else {
-        setCollections(prev => [
-          {
-            id: result.id ?? crypto.randomUUID(),
-            user_id: userId ?? '',
-            name: newName.trim(),
-            emoji: newEmoji,
-            created_at: new Date().toISOString(),
-          } as Collection,
-          ...prev,
-        ]);
+        const created = {
+          id: result.id ?? crypto.randomUUID(),
+          user_id: userId ?? '',
+          name: newName.trim(),
+          emoji: newEmoji,
+          created_at: new Date().toISOString(),
+        } as Collection;
+        setCollections(prev => [created, ...prev]);
+        toast(`${newEmoji} "${newName.trim()}" erstellt`);
         setNewName('');
         setNewEmoji('📁');
         setShowNewForm(false);
@@ -329,6 +335,7 @@ export default function SavedPage({ cards, collections: initialCollections, user
                   col={col}
                   userId={userId}
                   onDelete={(id) => setCollections(prev => prev.filter(c => c.id !== id))}
+                  toast={toast}
                 />
               ))}
             </div>
