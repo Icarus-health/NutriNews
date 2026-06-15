@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { getCategoryStyle } from '@/lib/categories';
 import { sanitizeExternalUrl } from '@/lib/url';
 import type { NewsCard, EvidenceLevel } from '@/types/database';
+import VapidSetup from '@/components/admin/VapidSetup';
 
 interface Props {
   drafts: NewsCard[];
@@ -499,6 +500,8 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
               <li>Karten landen als Entwürfe → du prüfst &amp; veröffentlichst</li>
             </ol>
           </div>
+
+          <VapidSetup />
         </div>
       )}
 

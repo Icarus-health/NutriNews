@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       locale: 'de_DE',
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: card.headline,
       description,
     },
@@ -66,15 +66,8 @@ export default async function CardPage({ params }: PageProps) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Enrich with like/bookmark data
-  const enrichedCard: NewsCard = { ...card, like_count: 0 };
-
-  const { data: likeCounts } = await supabase
-    .from('likes')
-    .select('news_card_id')
-    .eq('news_card_id', id);
-
-  enrichedCard.like_count = likeCounts?.length ?? 0;
+  // like_count is denormalized on the card row — no extra join needed
+  const enrichedCard: NewsCard = { ...card };
 
   // Fetch similar articles and user data in parallel
   const similarPromise = supabase
