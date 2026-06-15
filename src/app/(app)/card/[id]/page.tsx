@@ -66,36 +66,31 @@ export default async function CardPage({ params }: PageProps) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Enrich with like/bookmark data
-  const enrichedCard: NewsCard = { ...card, like_count: 0 };
+  // like_count is denormalized on news_cards (kept in sync by DB trigger)
+  const enrichedCard: NewsCard = { ...card, like_count: card.like_count ?? 0 };
 
-  const { data: likeCounts } = await supabase
-    .from('likes')
-    .select('news_card_id')
-    .eq('news_card_id', id);
-
-  enrichedCard.like_count = likeCounts?.length ?? 0;
-
-  // Fetch similar articles and user data in parallel
-  const similarPromise = supabase
-    .from('news_cards')
-    .select('id, headline, category_main, practice_relevance_score')
-    .eq('status', 'published')
-    .eq('category_main', card.category_main)
-    .neq('id', id)
-    .order('published_at', { ascending: false })
-    .limit(3);
+  // Fetch similar articles and user like/bookmark status in parallel
+  const [{ data: similarCards }, userLikeResult, userBookmarkResult] = await Promise.all([
+    supabase
+      .from('news_cards')
+      .select('id, headline, category_main, practice_relevance_score')
+      .eq('status', 'published')
+      .eq('category_main', card.category_main)
+      .neq('id', id)
+      .order('published_at', { ascending: false })
+      .limit(3),
+    user
+      ? supabase.from('likes').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single()
+      : Promise.resolve(null),
+    user
+      ? supabase.from('bookmarks').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single()
+      : Promise.resolve(null),
+  ]);
 
   if (user) {
-    const [{ data: userLike }, { data: userBookmark }] = await Promise.all([
-      supabase.from('likes').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single(),
-      supabase.from('bookmarks').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single(),
-    ]);
-    enrichedCard.user_has_liked = !!userLike;
-    enrichedCard.user_has_bookmarked = !!userBookmark;
+    enrichedCard.user_has_liked = !!userLikeResult?.data;
+    enrichedCard.user_has_bookmarked = !!userBookmarkResult?.data;
   }
-
-  const { data: similarCards } = await similarPromise;
 
   return (
     <div className="pt-2">
