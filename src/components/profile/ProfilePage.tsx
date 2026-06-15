@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare, UserPlus, Link2, Check, Trash2, Languages } from 'lucide-react';
+import { Save, LogOut, Bell, Stethoscope, Moon, Sun, Monitor, Type, FileText, Shield, Scale, Bot, Pencil, Camera, Flame, Award, MessageSquare, UserPlus, Link2, Check, Trash2, Languages, BookOpen, TrendingUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CATEGORIES } from '@/lib/categories';
 import { updateProfile, submitAppFeedback } from '@/lib/actions/news';
@@ -253,6 +253,56 @@ export default function ProfilePage({ profile, stats }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Weekly reading activity */}
+      {(ux.weeklyStats.count > 0 || ux.streak.days > 0) && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={16} className="text-forest-600 dark:text-forest-400" />
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Diese Woche</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                <BookOpen size={14} className="text-forest-500" />
+              </div>
+              <p className="text-xl font-bold text-forest-700 dark:text-forest-400">{ux.weeklyStats.count}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Artikel gelesen</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                <Flame size={14} className={ux.streak.days >= 1 ? 'text-orange-500' : 'text-slate-400'} />
+              </div>
+              <p className={clsx('text-xl font-bold', ux.streak.days >= 1 ? 'text-orange-500' : 'text-slate-400 dark:text-slate-500')}>
+                {ux.streak.days}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Tage Streak</p>
+            </div>
+          </div>
+          {ux.weeklyStats.topCategories.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">Deine Top-Themen</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ux.weeklyStats.topCategories.map((cat, i) => {
+                  const catObj = CATEGORIES.find(c => c.id === cat);
+                  return (
+                    <span
+                      key={cat}
+                      className={clsx(
+                        'text-[11px] font-semibold px-2.5 py-1 rounded-full',
+                        catObj?.color ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+                        i === 0 && 'ring-1 ring-offset-1 ring-current ring-opacity-30'
+                      )}
+                    >
+                      {i === 0 ? '⭐ ' : ''}{catObj?.label ?? cat}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Invite colleagues */}
       <div className="bg-gradient-to-br from-forest-50 to-emerald-50/50 dark:from-forest-900/20 dark:to-emerald-900/10 rounded-xl border border-forest-100/60 dark:border-forest-800/30 p-4 mb-4">
