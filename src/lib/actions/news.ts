@@ -506,6 +506,19 @@ export async function getUserCollections() {
   return data ?? [];
 }
 
+export async function getCardCollectionIds(newsCardId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('collection_items')
+    .select('collection_id, collections!inner(user_id)')
+    .eq('news_card_id', newsCardId)
+    .eq('collections.user_id', user.id);
+  return data?.map(r => r.collection_id) ?? [];
+}
+
 export async function addToCollection(newsCardId: string, collectionId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

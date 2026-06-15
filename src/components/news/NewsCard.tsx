@@ -10,7 +10,7 @@ const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false })
 const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG, getEvidenceLabel } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel, getCategoryCardAccent } from '@/lib/categories';
-import { toggleLike, toggleBookmark, upsertNote, getNote, getUserCollections, addToCollection, removeFromCollection } from '@/lib/actions/news';
+import { toggleLike, toggleBookmark, upsertNote, getNote, getUserCollections, getCardCollectionIds, addToCollection, removeFromCollection } from '@/lib/actions/news';
 import { getCardVerifications } from '@/lib/actions/community';
 import { getCardTranslation } from '@/lib/actions/translate';
 import type { CardTranslation } from '@/lib/translate-fields';
@@ -314,8 +314,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
     setShowCollectionPicker(p => !p);
     if (collections !== null) return;
     setCollectionsLoading(true);
-    const cols = await getUserCollections();
+    const [cols, collectionIds] = await Promise.all([
+      getUserCollections(),
+      getCardCollectionIds(card.id),
+    ]);
     setCollections(cols as { id: string; name: string; emoji: string }[]);
+    setCardCollectionIds(new Set(collectionIds));
     setCollectionsLoading(false);
   }
 
