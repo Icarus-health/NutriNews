@@ -275,7 +275,7 @@ export async function loadMoreCards(cursor: string, filters?: {
   if (filters?.q) {
     const q = sanitizeFilterValue(filters.q);
     if (q) {
-      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+      query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
     }
   }
 
@@ -355,7 +355,7 @@ export async function loadNewCards(sinceCursor: string, filters?: {
   if (filters?.q) {
     const q = sanitizeFilterValue(filters.q);
     if (q) {
-      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+      query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
     }
   }
 
