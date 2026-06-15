@@ -54,6 +54,8 @@ export default function ProfilePage({ profile, stats }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
   const [deleteError, setDeleteError] = useState('');
+  const [notifyNewNews, setNotifyNewNews] = useState(profile?.notify_new_news ?? false);
+  const [isNotifyPending, startNotifyTransition] = useTransition();
 
   function handleDeleteAccount() {
     startDeleteTransition(async () => {
@@ -387,20 +389,39 @@ export default function ProfilePage({ profile, stats }: Props) {
         </div>
       </div>
 
-      {/* Notifications — coming soon */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4 opacity-60">
+      {/* Notifications */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell size={18} className="text-slate-400" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Benachrichtigungen</span>
+            <Bell size={18} className="text-slate-500 dark:text-slate-400" />
+            <div>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Neue Artikel</span>
+              <p className="text-[11px] text-slate-400 mt-0.5">E-Mail-Digest bei neuen relevanten Artikeln</p>
+            </div>
           </div>
-          <span className="text-[11px] font-semibold text-forest-600 bg-forest-50 dark:bg-forest-900/30 px-2 py-0.5 rounded-full">
-            Kommt bald
-          </span>
+          <button
+            role="switch"
+            aria-checked={notifyNewNews}
+            disabled={isNotifyPending}
+            onClick={() => {
+              const next = !notifyNewNews;
+              setNotifyNewNews(next);
+              startNotifyTransition(async () => {
+                await updateProfile({ notify_new_news: next });
+              });
+            }}
+            className={clsx(
+              'relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0',
+              notifyNewNews ? 'bg-forest-600' : 'bg-slate-200 dark:bg-slate-600',
+              isNotifyPending && 'opacity-60'
+            )}
+          >
+            <span className={clsx(
+              'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+              notifyNewNews ? 'translate-x-6' : 'translate-x-1'
+            )} />
+          </button>
         </div>
-        <p className="text-[11px] text-slate-400 mt-1.5">
-          Push-Benachrichtigungen und E-Mail-Digest werden in einem zukünftigen Update verfügbar sein.
-        </p>
       </div>
 
       {/* Preferred categories */}
