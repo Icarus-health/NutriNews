@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect, useCallback, memo } from 'react';
 import { useMinuteTick } from '@/hooks/useMinuteTick';
-import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, ChevronDown, Link2, PenLine, Printer, EyeOff, Languages } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, ChevronDown, Link2, PenLine, Printer, EyeOff, Languages, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -778,8 +778,9 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </div>
             )}
 
-            {/* Personal note */}
-            <div className="px-4 pb-3">
+            {/* Personal note + Read Later */}
+            <div className="px-4 pb-3 flex items-start justify-between gap-3">
+              <div className="flex-1">
               <button
                 onClick={(e) => { e.stopPropagation(); setShowNote(n => !n); }}
                 className={clsx(
@@ -802,6 +803,22 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                   />
                 </div>
               )}
+              </div>
+              {/* Read Later toggle */}
+              <button
+                onClick={(e) => { e.stopPropagation(); vibrate(ux.isInReadLater(card.id) ? 3 : [4,1,4]); ux.toggleReadLater(card.id); }}
+                aria-label={ux.isInReadLater(card.id) ? 'Aus "Später lesen" entfernen' : 'Für später merken'}
+                aria-pressed={ux.isInReadLater(card.id)}
+                className={clsx(
+                  'flex items-center gap-1 text-[12px] font-semibold transition-colors px-2 py-1 rounded-lg shrink-0 mt-0.5',
+                  ux.isInReadLater(card.id)
+                    ? 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20'
+                    : 'text-slate-400 hover:text-sky-500 hover:bg-sky-50/60 dark:hover:bg-sky-900/10'
+                )}
+              >
+                <Clock size={14} strokeWidth={ux.isInReadLater(card.id) ? 2.5 : 1.5} />
+                <span className="hidden sm:inline">{ux.isInReadLater(card.id) ? 'Gemerkt' : 'Später'}</span>
+              </button>
             </div>
 
             {/* Source footer */}
