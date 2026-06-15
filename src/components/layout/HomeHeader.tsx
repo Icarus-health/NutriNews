@@ -3,9 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Search, X, Clock, ChevronDown, Check, SlidersHorizontal } from 'lucide-react';
+import { Search, X, Clock, SlidersHorizontal } from 'lucide-react';
 import { clsx } from 'clsx';
-import { CATEGORIES, CATEGORY_CONTEXTS, getCategoryLabel } from '@/lib/categories';
+import { CATEGORIES, getCategoryLabel } from '@/lib/categories';
 import { EVIDENCE_CONFIG, evidenceLevelToKey, getEvidenceLabel } from '@/lib/evidence';
 import { useUX } from '@/components/providers/UXProvider';
 import { useI18n } from '@/components/providers/I18nProvider';
@@ -34,7 +34,6 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
   const ux = useUX();
   const { locale, t } = useI18n();
   const [showSearch, setShowSearch] = useState(!!searchQuery);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [showFilters, setShowFilters] = useState(evidenceFilter.length > 0 || !!daysFilter || !!minRelevance);
   const [query, setQuery] = useState(searchQuery);
   const [selected, setSelected] = useState<Set<string>>(new Set(activeCategories));
@@ -42,7 +41,6 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
   const [days, setDays] = useState(daysFilter ?? '');
   const [relevance, setRelevance] = useState(minRelevance ?? '');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const [savedFilters, setSavedFilters] = useState<string[] | null>(null);
 
   // Sync selected with URL on prop change
@@ -63,19 +61,6 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategories.join(',')]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-      }
-    }
-    if (showDropdown) {
-      document.addEventListener('mousedown', handleClick);
-      return () => document.removeEventListener('mousedown', handleClick);
-    }
-  }, [showDropdown]);
 
   function buildUrl(cats: Set<string>, q: string, ev?: Set<string>, d?: string, r?: string) {
     const params = new URLSearchParams();
@@ -107,7 +92,6 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
   function clearCategories() {
     setSelected(new Set());
     router.push(buildUrl(new Set(), query));
-    setShowDropdown(false);
   }
 
   const handleSearch = useCallback((value: string) => {
@@ -211,44 +195,47 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
         </div>
       )}
 
-      {/* Category dropdown trigger */}
-      <div className="px-5 pb-3 relative" ref={dropdownRef}>
-        <button
-          onClick={() => setShowDropdown(d => !d)}
-          aria-expanded={showDropdown}
-          aria-haspopup="listbox"
-          className={clsx(
-            'w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all border',
-            categoryCount > 0
-              ? 'bg-forest-50 dark:bg-forest-900/20 border-forest-200 dark:border-forest-800 text-forest-700 dark:text-forest-400'
-              : 'bg-slate-100 dark:bg-slate-700 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
-          )}
+      {/* Category quick-filter pills — horizontal scroll */}
+      <div className="pb-2">
+        <div
+          className="flex gap-1.5 overflow-x-auto px-5 pb-1"
+          style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
-          <span>
-            {categoryCount === 0
-              ? t('header.allCategories')
-              : categoryCount === 1
-                ? getCategoryLabel(Array.from(selected)[0], locale)
-                : t('header.categoriesN', { n: categoryCount })}
-          </span>
-          <div className="flex items-center gap-2">
-            {categoryCount > 0 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); clearCategories(); }}
-                aria-label="Kategorien zurücksetzen"
-                className="w-5 h-5 rounded-full bg-forest-200 dark:bg-forest-800 flex items-center justify-center hover:bg-forest-300 dark:hover:bg-forest-700 transition-colors"
-              >
-                <X size={10} className="text-forest-700 dark:text-forest-300" strokeWidth={3} />
-              </button>
+          <button
+            onClick={clearCategories}
+            className={clsx(
+              'flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap',
+              selected.size === 0
+                ? 'bg-forest-700 text-white'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
             )}
-            <ChevronDown size={16} className={clsx('transition-transform', showDropdown && 'rotate-180')} />
-          </div>
-        </button>
+          >
+            {t('header.allCategories')}
+          </button>
+          {CATEGORIES.map(cat => {
+            const isActive = selected.has(cat.id);
+            return (
+              <button
+                key={cat.id}
+                aria-pressed={isActive}
+                onClick={() => toggleCategory(cat.id)}
+                className={clsx(
+                  'flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap',
+                  isActive
+                    ? 'bg-forest-700 text-white'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                )}
+              >
+                {getCategoryLabel(cat.id, locale)}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Restore last filter suggestion (only when no active filters) */}
-        {!showDropdown && categoryCount === 0 && savedFilters && savedFilters.length > 0 && (
-          <div className="flex items-center gap-2 mt-2 animate-fade-in">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('header.recent')}</span>
+        {/* Restore last filter suggestion */}
+        {categoryCount === 0 && savedFilters && savedFilters.length > 0 && (
+          <div className="flex items-center gap-2 mt-1.5 px-5 animate-fade-in">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 flex-shrink-0">{t('header.recent')}</span>
             {savedFilters.slice(0, 3).map(catId => {
               const cat = CATEGORIES.find(c => c.id === catId);
               if (!cat) return null;
@@ -261,7 +248,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                     router.push(buildUrl(next, query));
                     setSavedFilters(null);
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] text-slate-500 dark:text-slate-400 hover:bg-forest-50 hover:text-forest-700 dark:hover:bg-forest-900/20 dark:hover:text-forest-400 transition-colors border border-slate-200 dark:border-slate-600"
+                  className="flex-shrink-0 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] text-slate-500 dark:text-slate-400 hover:bg-forest-50 hover:text-forest-700 dark:hover:bg-forest-900/20 dark:hover:text-forest-400 transition-colors border border-slate-200 dark:border-slate-600"
                 >
                   {getCategoryLabel(cat.id, locale)}
                 </button>
@@ -274,95 +261,6 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
             >
               <span aria-hidden="true">✕</span>
             </button>
-          </div>
-        )}
-
-        {/* Selected chips (shown when dropdown closed and categories selected) */}
-        {!showDropdown && categoryCount > 0 && categoryCount <= 5 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {Array.from(selected).map(catId => {
-              const cat = CATEGORIES.find(c => c.id === catId);
-              if (!cat) return null;
-              return (
-                <button
-                  key={catId}
-                  onClick={() => toggleCategory(catId)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-forest-700 text-white text-[11px] font-semibold transition-colors hover:bg-forest-800"
-                >
-                  {getCategoryLabel(cat.id, locale)}
-                  <X size={10} strokeWidth={3} />
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Dropdown panel */}
-        {showDropdown && (
-          <div className="absolute left-5 right-5 top-full mt-1 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-900/10 dark:shadow-black/30 max-h-[60vh] overflow-y-auto z-20 animate-fade-in">
-            {CATEGORY_CONTEXTS.map((ctx) => {
-              const ctxCategories = CATEGORIES.filter(cat => (ctx.topics as readonly string[]).includes(cat.id));
-              return (
-                <div key={ctx.id}>
-                  {/* Context group label */}
-                  <div className="sticky top-0 bg-slate-50 dark:bg-slate-750 px-4 py-2 border-b border-slate-100 dark:border-slate-700">
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                      {ctx.label}
-                    </p>
-                  </div>
-                  {/* Category items */}
-                  {ctxCategories.map(cat => {
-                    const isSelected = selected.has(cat.id);
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => toggleCategory(cat.id)}
-                        className={clsx(
-                          'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors',
-                          isSelected
-                            ? 'bg-forest-50 dark:bg-forest-900/20'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                        )}
-                      >
-                        <div className={clsx(
-                          'w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors flex-shrink-0',
-                          isSelected
-                            ? 'bg-forest-700 border-forest-700'
-                            : 'border-slate-300 dark:border-slate-600'
-                        )}>
-                          {isSelected && <Check size={12} className="text-white" strokeWidth={3} />}
-                        </div>
-                        <span className={clsx(
-                          'text-[13px] font-medium',
-                          isSelected ? 'text-forest-700 dark:text-forest-400' : 'text-slate-700 dark:text-slate-300'
-                        )}>
-                          {getCategoryLabel(cat.id, locale)}
-                        </span>
-                        <span className={clsx('ml-auto text-[11px] px-2 py-0.5 rounded-full', cat.color)}>
-                          {cat.id.split(' ')[0]}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-
-            {/* Footer */}
-            <div className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
-              <button
-                onClick={clearCategories}
-                className="text-[12px] text-slate-500 dark:text-slate-400 hover:text-red-400 transition-colors"
-              >
-                {t('header.resetAll')}
-              </button>
-              <button
-                onClick={() => setShowDropdown(false)}
-                className="bg-forest-700 text-white px-4 py-1.5 rounded-lg text-[12px] font-semibold hover:bg-forest-800 transition-colors"
-              >
-                {t('header.done')} {categoryCount > 0 && `(${categoryCount})`}
-              </button>
-            </div>
           </div>
         )}
       </div>

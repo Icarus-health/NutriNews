@@ -68,7 +68,7 @@ const de: Record<string, string> = {
   // Header
   'header.subtitle': 'News für Ernährungsfachkräfte',
   'header.searchPlaceholder': 'News durchsuchen...',
-  'header.allCategories': 'Alle Kategorien',
+  'header.allCategories': 'Alle',
   'header.categoriesN': '{n} Kategorien',
   'header.filter': 'Filter',
   'header.done': 'Fertig',
@@ -182,7 +182,7 @@ const en: Record<string, string> = {
   // Header
   'header.subtitle': 'News for nutrition professionals',
   'header.searchPlaceholder': 'Search news...',
-  'header.allCategories': 'All categories',
+  'header.allCategories': 'All',
   'header.categoriesN': '{n} categories',
   'header.filter': 'Filters',
   'header.done': 'Done',
