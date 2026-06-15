@@ -3,7 +3,8 @@
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, WifiOff, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { RefreshCw, WifiOff, Loader2, CheckCircle2, Flame, Users, Bookmark } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
 import { loadMoreCards, loadNewCards } from '@/lib/actions/news';
 import { getCardTranslations } from '@/lib/actions/translate';
@@ -331,6 +332,54 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
           )}
         </div>
       )}
+
+      {/* End-of-feed state — appears when all available articles are loaded */}
+      {!hasMore && cards.length > 0 && (() => {
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayReads = ux.readHistory.filter(e => e.timestamp >= todayStart.getTime()).length;
+        const streakDays = ux.streak.days;
+        return (
+          <div className="mt-4 mb-2 mx-1 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/60 dark:from-slate-800/60 dark:to-slate-800/30 border border-slate-200/60 dark:border-slate-700/30 px-5 py-6 flex flex-col items-center text-center">
+            <div className="w-11 h-11 rounded-full bg-forest-100 dark:bg-forest-900/40 flex items-center justify-center mb-3">
+              <CheckCircle2 size={22} className="text-forest-600 dark:text-forest-400" />
+            </div>
+            <p className="text-[14px] font-bold text-slate-700 dark:text-slate-200">
+              Alle Artikel gelesen
+            </p>
+            {todayReads > 0 && (
+              <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-1">
+                {todayReads} {todayReads === 1 ? 'Artikel' : 'Artikel'} heute gelesen
+                {streakDays >= 2 && <span className="ml-1.5 text-orange-500">🔥 {streakDays} Tage</span>}
+              </p>
+            )}
+            <div className="flex gap-2 mt-4">
+              <Link
+                href="/community"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-forest-700 text-white text-[12px] font-semibold hover:bg-forest-800 transition-colors"
+              >
+                <Users size={13} />
+                Community
+              </Link>
+              <Link
+                href="/saved"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-[12px] font-semibold hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+              >
+                <Bookmark size={13} />
+                Gespeichert
+              </Link>
+              {streakDays >= 1 && (
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-orange-50 dark:bg-orange-900/20 border border-orange-200/60 dark:border-orange-800/30 text-orange-600 dark:text-orange-400 text-[12px] font-semibold hover:bg-orange-100 transition-colors"
+                >
+                  <Flame size={13} />
+                  Streak
+                </Link>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {shareCardId && (
         <ShareModal
