@@ -84,14 +84,14 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
       } else {
         next.add(catId);
       }
-      router.push(buildUrl(next, query));
+      router.replace(buildUrl(next, query));
       return next;
     });
   }
 
   function clearCategories() {
     setSelected(new Set());
-    router.push(buildUrl(new Set(), query));
+    router.replace(buildUrl(new Set(), query));
   }
 
   const handleSearch = useCallback((value: string) => {
@@ -99,7 +99,8 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       if (value) ux.addSearchQuery(value);
-      router.push(buildUrl(selected, value));
+      // replace instead of push: avoids polluting history with every debounced keystroke
+      router.replace(buildUrl(selected, value));
     }, 400);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, router, ux, selectedEvidence, days, relevance]);
@@ -107,7 +108,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
   function clearSearch() {
     setQuery('');
     setShowSearch(false);
-    router.push(buildUrl(selected, ''));
+    router.replace(buildUrl(selected, ''));
   }
 
   const categoryCount = selected.size;
@@ -245,7 +246,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                   onClick={() => {
                     const next = new Set(savedFilters);
                     setSelected(next);
-                    router.push(buildUrl(next, query));
+                    router.replace(buildUrl(next, query));
                     setSavedFilters(null);
                   }}
                   className="flex-shrink-0 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[11px] text-slate-500 dark:text-slate-400 hover:bg-forest-50 hover:text-forest-700 dark:hover:bg-forest-900/20 dark:hover:text-forest-400 transition-colors border border-slate-200 dark:border-slate-600"
@@ -301,7 +302,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                       setSelectedEvidence(prev => {
                         const next = new Set(prev);
                         if (next.has(level)) next.delete(level); else next.add(level);
-                        router.push(buildUrl(selected, query, next));
+                        router.replace(buildUrl(selected, query, next));
                         return next;
                       });
                     }}
@@ -328,7 +329,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                     onClick={() => {
                       const next = days === dr.value ? '' : dr.value;
                       setDays(next);
-                      router.push(buildUrl(selected, query, undefined, next));
+                      router.replace(buildUrl(selected, query, undefined, next));
                     }}
                     className={clsx(
                       'flex-1 py-1 rounded-lg text-[11px] font-semibold transition-all border text-center',
@@ -350,7 +351,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                     onClick={() => {
                       const next = relevance === String(score) ? '' : String(score);
                       setRelevance(next);
-                      router.push(buildUrl(selected, query, undefined, undefined, next));
+                      router.replace(buildUrl(selected, query, undefined, undefined, next));
                     }}
                     className={clsx(
                       'w-6 h-6 rounded-md text-[11px] font-bold transition-all border text-center',
@@ -372,7 +373,7 @@ export default function HomeHeader({ user, activeCategories, searchQuery, eviden
                   setSelectedEvidence(new Set());
                   setDays('');
                   setRelevance('');
-                  router.push(buildUrl(selected, query, new Set(), '', ''));
+                  router.replace(buildUrl(selected, query, new Set(), '', ''));
                 }}
                 className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-red-400 transition-colors"
               >
