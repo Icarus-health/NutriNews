@@ -7,10 +7,12 @@ import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useI18n } from '@/components/providers/I18nProvider';
+import { useUX } from '@/components/providers/UXProvider';
 
 export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const ux = useUX();
   const [isAdmin, setIsAdmin] = useState(isAdminProp ?? false);
   const [inboxUnread, setInboxUnread] = useState(0);
   const [communityDot, setCommunityDot] = useState(false);
@@ -96,11 +98,11 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
   // restoreScroll: ScrollRestoration setzt die Position selbst — Next soll
   // hier nicht vorab nach oben springen (verhindert Flackern beim Tab-Wechsel).
   const navItems = [
-    { href: '/',          label: t('nav.home'),      icon: Home,    dot: false,        badge: 0,           restoreScroll: true },
-    { href: '/community', label: t('nav.community'), icon: Users,   dot: communityDot, badge: 0,           restoreScroll: true },
-    { href: '/inbox',     label: t('nav.inbox'),     icon: Inbox,   dot: false,        badge: inboxUnread, restoreScroll: true },
-    { href: '/saved',     label: t('nav.saved'),     icon: Bookmark,dot: false,        badge: 0,           restoreScroll: true },
-    { href: '/profile',   label: t('nav.profile'),   icon: User,    dot: false,        badge: 0,           restoreScroll: false },
+    { href: '/',          label: t('nav.home'),      icon: Home,    dot: false,        badge: 0,                        restoreScroll: true },
+    { href: '/community', label: t('nav.community'), icon: Users,   dot: communityDot, badge: 0,                        restoreScroll: true },
+    { href: '/inbox',     label: t('nav.inbox'),     icon: Inbox,   dot: false,        badge: inboxUnread,              restoreScroll: true },
+    { href: '/saved',     label: t('nav.saved'),     icon: Bookmark,dot: false,        badge: ux.readLaterQueue.length, restoreScroll: true },
+    { href: '/profile',   label: t('nav.profile'),   icon: User,    dot: false,        badge: 0,                        restoreScroll: false },
   ];
 
   return (
