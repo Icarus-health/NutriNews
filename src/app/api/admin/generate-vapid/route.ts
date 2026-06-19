@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
-import webpush from 'web-push';
+import crypto from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 
-// POST /api/admin/generate-vapid
-// Admin-only: generates a fresh VAPID key pair for copy-paste into Vercel env vars.
-// Keys are NOT saved — admin must set them as environment variables manually.
+function generateVAPIDKeys() {
+  const ecdh = crypto.createECDH('prime256v1');
+  ecdh.generateKeys();
+  const publicKey = ecdh.getPublicKey().toString('base64url');
+  const privateKey = ecdh.getPrivateKey().toString('base64url');
+  return { publicKey, privateKey };
+}
+
 export async function POST() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -17,7 +22,7 @@ export async function POST() {
     .single();
   if (profile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const keys = webpush.generateVAPIDKeys();
+  const keys = generateVAPIDKeys();
   return NextResponse.json({
     publicKey: keys.publicKey,
     privateKey: keys.privateKey,
