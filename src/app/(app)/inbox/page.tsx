@@ -23,7 +23,8 @@ export default async function Inbox() {
       .from('shares')
       .select('*, news_cards:news_card_id(id, headline, category_main, therapist_check, source_url, evidence_level), sender:sender_id(full_name, avatar_url, email)')
       .eq('receiver_id', user.id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .limit(50),
     supabase
       .from('notifications')
       .select('*, actor:actor_id(full_name, avatar_url)')

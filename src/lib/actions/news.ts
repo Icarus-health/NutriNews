@@ -150,6 +150,20 @@ export async function markShareRead(shareId: string) {
   return { success: true };
 }
 
+export async function markAllSharesRead() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('shares').update({ read: true })
+    .eq('receiver_id', user.id)
+    .eq('read', false);
+  if (error) return { error: 'Konnte nicht als gelesen markiert werden' };
+
+  revalidatePath('/inbox');
+  return { success: true };
+}
+
 export async function createNewsCard(data: {
   headline: string;
   snack_what: string;
