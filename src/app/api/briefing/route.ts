@@ -103,28 +103,18 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const today = getTodayBerlin();
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
 
+  // Fetch today or yesterday in one query (most-recent first)
   const { data: briefing } = await supabase
     .from('daily_briefings')
     .select('*')
-    .eq('date', today)
-    .single();
+    .in('date', [today, yesterday])
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (!briefing) {
-    // Fallback: gestrige Briefing
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const { data: yesterdayBriefing } = await supabase
-      .from('daily_briefings')
-      .select('*')
-      .eq('date', yesterday)
-      .single();
+  if (!briefing) return NextResponse.json({ briefing: null });
 
-    if (yesterdayBriefing) {
-      return NextResponse.json({ briefing: yesterdayBriefing, isYesterday: true });
-    }
-
-    return NextResponse.json({ briefing: null });
-  }
-
-  return NextResponse.json({ briefing, isYesterday: false });
+  return NextResponse.json({ briefing, isYesterday: briefing.date !== today });
 }
