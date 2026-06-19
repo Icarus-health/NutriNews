@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Send, Reply, ChevronDown, ChevronUp, PenLine, Flag, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { createChannelPost, updateChannelPost, deleteChannelPost, reportChannelPost } from '@/lib/actions/community';
+import { createChannelPost, updateChannelPost, deleteChannelPost, reportChannelPost, getChannelPostReplies } from '@/lib/actions/community';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import type { Channel, ChannelPost, EvidenceLevel } from '@/types/database';
 
@@ -144,10 +144,20 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
     });
   }
 
-  function toggleReplies(postId: string) {
+  function toggleReplies(postId: string, replyCount: number) {
     setExpandedReplies(prev => {
       const next = new Set(prev);
-      if (next.has(postId)) next.delete(postId); else next.add(postId);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+        // Fetch from server if we have replies but none loaded yet
+        if (replyCount > 0 && !replies[postId]) {
+          getChannelPostReplies(postId).then(data => {
+            setReplies(r => ({ ...r, [postId]: data as import('@/types/database').ChannelPost[] }));
+          });
+        }
+      }
       return next;
     });
   }
@@ -299,7 +309,7 @@ export default function ChannelDetail({ channel, posts, userId, onBack }: Props)
                 )}
                 {(replyCount > 0 || postReplies.length > 0) && (
                   <button
-                    onClick={() => toggleReplies(post.id)}
+                    onClick={() => toggleReplies(post.id, replyCount)}
                     className="flex items-center gap-1 text-[11px] font-semibold text-forest-600"
                   >
                     {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}

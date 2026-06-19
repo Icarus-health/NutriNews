@@ -10,7 +10,7 @@ const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false })
 const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG, getEvidenceLabel } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel, getCategoryCardAccent } from '@/lib/categories';
-import { toggleLike, toggleBookmark, upsertNote, getNote, getUserCollections, addToCollection, removeFromCollection } from '@/lib/actions/news';
+import { toggleLike, toggleBookmark, upsertNote, getNote, getUserCollections, getCardCollectionIds, addToCollection, removeFromCollection } from '@/lib/actions/news';
 import { getCardVerifications } from '@/lib/actions/community';
 import { getCardTranslation } from '@/lib/actions/translate';
 import type { CardTranslation } from '@/lib/translate-fields';
@@ -314,8 +314,12 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
     setShowCollectionPicker(p => !p);
     if (collections !== null) return;
     setCollectionsLoading(true);
-    const cols = await getUserCollections();
+    const [cols, collectionIds] = await Promise.all([
+      getUserCollections(),
+      getCardCollectionIds(card.id),
+    ]);
     setCollections(cols as { id: string; name: string; emoji: string }[]);
+    setCardCollectionIds(new Set(collectionIds));
     setCollectionsLoading(false);
   }
 
@@ -527,7 +531,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
             {/* Tap hint — kompakter CTA */}
             <div className="px-4 pb-2">
-              <div className="flex items-center justify-center gap-1 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-1.5 rounded-xl transition-colors">
+              <div className="flex items-center justify-center gap-1.5 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-1.5 rounded-xl transition-colors">
+                {card.read_time_sec && card.read_time_sec > 0 && (
+                  <>
+                    <span className="text-[10px] font-medium text-white/60">~{Math.ceil(card.read_time_sec / 60)} Min</span>
+                    <span className="text-white/30 text-[10px]">·</span>
+                  </>
+                )}
                 <span className="text-[12px] font-bold text-white">{t('card.readDetails')}</span>
                 <ChevronRight size={13} strokeWidth={2.5} className="text-white/80" />
               </div>

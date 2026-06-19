@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -11,15 +12,20 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
+// Deduplicated per-request: generateMetadata and the page share one DB call
+const getProfile = cache(async (id: string) => {
   const supabase = await createClient();
-  const { data: profile } = await supabase
+  const { data } = await supabase
     .from('profiles')
-    .select('full_name, alias')
+    .select('id, full_name, alias, avatar_url, role, setting, preferred_categories, created_at')
     .eq('id', id)
     .single();
+  return data;
+});
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const profile = await getProfile(id);
   const name = profile?.alias || profile?.full_name || 'Nutzer';
   return {
     title: `${name} — NutriNews`,
@@ -41,19 +47,16 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, full_name, alias, avatar_url, role, setting, preferred_categories, created_at')
-    .eq('id', id)
-    .single();
+  // Profile (deduped with generateMetadata via cache) and activity counts in parallel
+  const [profile, [{ count: verifications }, { count: comments }]] = await Promise.all([
+    getProfile(id),
+    Promise.all([
+      supabase.from('card_verifications').select('*', { count: 'exact', head: true }).eq('user_id', id),
+      supabase.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', id),
+    ]),
+  ]);
 
   if (!profile) notFound();
-
-  // Load activity counts
-  const [{ count: verifications }, { count: comments }] = await Promise.all([
-    supabase.from('card_verifications').select('*', { count: 'exact', head: true }).eq('user_id', id),
-    supabase.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', id),
-  ]);
 
   const displayName = profile.alias || profile.full_name || 'Anonym';
   const memberSince = new Date(profile.created_at).toLocaleDateString('de-DE', {

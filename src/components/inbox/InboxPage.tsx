@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Inbox, ExternalLink, Check, CheckCheck, MessageCircle } from 'lucide-react';
 import { clsx } from 'clsx';
-import { getCategoryStyle } from '@/lib/categories';
-import { markShareRead } from '@/lib/actions/news';
+import { getCategoryLabel, getCategoryStyle } from '@/lib/categories';
+import { markShareRead, markAllSharesRead } from '@/lib/actions/news';
 import { markNotificationRead, markAllNotificationsRead } from '@/lib/actions/community';
 import { sanitizeExternalUrl } from '@/lib/url';
 import type { AppNotification } from '@/types/database';
@@ -52,9 +52,7 @@ export default function InboxPage({ shares: initialShares, notifications: initia
 
   function handleMarkAllSharesRead() {
     setShares(prev => prev.map(s => ({ ...s, read: true })));
-    startTransition(async () => {
-      await Promise.all(shares.filter(s => !s.read).map(s => markShareRead(s.id)));
-    });
+    startTransition(async () => { await markAllSharesRead(); });
   }
 
   function handleNotificationRead(id: string) {
@@ -216,7 +214,7 @@ export default function InboxPage({ shares: initialShares, notifications: initia
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <span className={clsx('text-xs font-semibold px-2 py-0.5 rounded-full', getCategoryStyle(share.news_cards.category_main))}>
-                            {share.news_cards.category_main}
+                            {getCategoryLabel(share.news_cards.category_main)}
                           </span>
                         </div>
                         <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-snug">{share.news_cards.headline}</p>

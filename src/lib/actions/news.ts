@@ -3,16 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { rateLimit } from '@/lib/rate-limit';
-
-/** Escape special characters for PostgREST ilike filter strings */
-function sanitizeFilterValue(value: string): string {
-  return value
-    .replace(/[,().\\]/g, '')   // remove PostgREST filter-syntax characters
-    .replace(/%/g, '\\%')       // escape SQL LIKE wildcard %
-    .replace(/_/g, '\\_')       // escape SQL LIKE wildcard _
-    .trim()
-    .slice(0, 200);             // cap length to prevent oversized queries
-}
+import { sanitizeFilterValue } from '@/lib/sanitize';
 
 export async function toggleLike(newsCardId: string) {
   const supabase = await createClient();
@@ -153,6 +144,20 @@ export async function markShareRead(shareId: string) {
   const { error } = await supabase.from('shares').update({ read: true })
     .eq('id', shareId)
     .eq('receiver_id', user.id);
+  if (error) return { error: 'Konnte nicht als gelesen markiert werden' };
+
+  revalidatePath('/inbox');
+  return { success: true };
+}
+
+export async function markAllSharesRead() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('shares').update({ read: true })
+    .eq('receiver_id', user.id)
+    .eq('read', false);
   if (error) return { error: 'Konnte nicht als gelesen markiert werden' };
 
   revalidatePath('/inbox');
@@ -504,6 +509,20 @@ export async function getUserCollections() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   return data ?? [];
+}
+
+export async function getCardCollectionIds(newsCardId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // !inner join with collections table — RLS on collections already restricts to user's own rows,
+  // so only collection_items belonging to this user are returned.
+  const { data } = await supabase
+    .from('collection_items')
+    .select('collection_id, collections!inner(id)')
+    .eq('news_card_id', newsCardId);
+  return data?.map(r => r.collection_id) ?? [];
 }
 
 export async function addToCollection(newsCardId: string, collectionId: string) {

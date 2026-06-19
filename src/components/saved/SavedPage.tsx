@@ -6,6 +6,7 @@ import { clsx } from 'clsx';
 import NewsCardComponent from '@/components/news/NewsCard';
 import { createCollection, deleteCollection, getCardsByIds, getCollectionItems } from '@/lib/actions/news';
 import { useUX } from '@/components/providers/UXProvider';
+import { useToast } from '@/components/ui/Toast';
 import type { NewsCard, Collection } from '@/types/database';
 
 const COLLECTION_EMOJIS = ['📁', '🥗', '💊', '🧪', '🫀', '🧬', '📋', '⭐', '🔬', '🏥', '🌿', '🍎'];
@@ -16,7 +17,7 @@ interface Props {
   userId: string | null;
 }
 
-function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: string | null; onDelete: (id: string) => void }) {
+function CollectionRow({ col, userId, onDelete, toast }: { col: Collection; userId: string | null; onDelete: (id: string) => void; toast: (msg: string, type?: 'success' | 'error' | 'info') => void }) {
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<NewsCard[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,38 +42,45 @@ function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: str
       return;
     }
     startDeleteTransition(async () => {
-      await deleteCollection(col.id);
-      onDelete(col.id);
+      const result = await deleteCollection(col.id);
+      if (result.error) {
+        toast(result.error, 'error');
+      } else {
+        onDelete(col.id);
+        toast(`"${col.name}" gelöscht`);
+      }
     });
   }
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
-      <button
-        onClick={handleToggle}
-        className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-      >
-        <span className="text-xl flex-shrink-0">{col.emoji}</span>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{col.name}</p>
-          <p className="text-xs text-slate-400">
-            {items !== null
-              ? `${items.length} Artikel`
-              : `Erstellt am ${new Date(col.created_at).toLocaleDateString('de-DE')}`}
-          </p>
-        </div>
-        {loading ? (
-          <Loader2 size={16} className="animate-spin text-slate-400 flex-shrink-0" />
-        ) : expanded ? (
-          <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />
-        ) : (
-          <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
-        )}
+      <div className="flex items-center">
+        <button
+          onClick={handleToggle}
+          className="flex-1 flex items-center gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors min-w-0"
+        >
+          <span className="text-xl flex-shrink-0">{col.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{col.name}</p>
+            <p className="text-xs text-slate-400">
+              {items !== null
+                ? `${items.length} Artikel`
+                : `Erstellt am ${new Date(col.created_at).toLocaleDateString('de-DE')}`}
+            </p>
+          </div>
+          {loading ? (
+            <Loader2 size={16} className="animate-spin text-slate-400 flex-shrink-0" />
+          ) : expanded ? (
+            <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />
+          ) : (
+            <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
+          )}
+        </button>
         <button
           onClick={handleDelete}
           disabled={isDeleting}
           className={clsx(
-            'flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ml-1',
+            'flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold px-3 py-2 rounded-lg transition-colors mr-2',
             confirmDelete
               ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
               : 'text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500'
@@ -85,7 +93,7 @@ function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: str
           )}
           {confirmDelete && <span>Löschen?</span>}
         </button>
-      </button>
+      </div>
 
       {expanded && items !== null && (
         <div className="border-t border-slate-100 dark:border-slate-700">
@@ -109,6 +117,7 @@ function CollectionRow({ col, userId, onDelete }: { col: Collection; userId: str
 
 export default function SavedPage({ cards, collections: initialCollections, userId }: Props) {
   const ux = useUX();
+  const { toast } = useToast();
   const [tab, setTab] = useState<'bookmarks' | 'collections' | 'readlater'>('bookmarks');
   const [collections, setCollections] = useState<Collection[]>(initialCollections);
   const [readLaterCards, setReadLaterCards] = useState<NewsCard[]>([]);
@@ -138,16 +147,15 @@ export default function SavedPage({ cards, collections: initialCollections, user
       if (result.error) {
         setError(result.error);
       } else {
-        setCollections(prev => [
-          {
-            id: result.id ?? crypto.randomUUID(),
-            user_id: userId ?? '',
-            name: newName.trim(),
-            emoji: newEmoji,
-            created_at: new Date().toISOString(),
-          } as Collection,
-          ...prev,
-        ]);
+        const created = {
+          id: result.id ?? crypto.randomUUID(),
+          user_id: userId ?? '',
+          name: newName.trim(),
+          emoji: newEmoji,
+          created_at: new Date().toISOString(),
+        } as Collection;
+        setCollections(prev => [created, ...prev]);
+        toast(`${newEmoji} "${newName.trim()}" erstellt`);
         setNewName('');
         setNewEmoji('📁');
         setShowNewForm(false);
@@ -329,6 +337,7 @@ export default function SavedPage({ cards, collections: initialCollections, user
                   col={col}
                   userId={userId}
                   onDelete={(id) => setCollections(prev => prev.filter(c => c.id !== id))}
+                  toast={toast}
                 />
               ))}
             </div>

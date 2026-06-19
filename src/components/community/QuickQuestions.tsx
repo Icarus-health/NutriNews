@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { HelpCircle, MessageCircle, Users, ChevronDown, Send } from 'lucide-react';
 import { clsx } from 'clsx';
 import { createQuickQuestion, answerQuickQuestion, markSameQuestion } from '@/lib/actions/community';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, getCategoryLabel, getCategoryStyle } from '@/lib/categories';
 import type { QuickQuestion, QuickAnswer } from '@/types/database';
 
 interface Props {
@@ -158,8 +158,8 @@ export default function QuickQuestions({ questions, userId, initialAnswers }: Pr
           <div key={q.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
             {/* Category badge */}
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-50 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                {q.category}
+              <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${getCategoryStyle(q.category)}`}>
+                {getCategoryLabel(q.category)}
               </span>
               <span className="text-[10px] text-slate-300">{timeAgo(q.created_at)}</span>
             </div>

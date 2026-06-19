@@ -165,15 +165,23 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
       {localChannels.map(channel => {
         const isPrivateAndNotMember = channel.is_private && !channel.is_member;
         return (
-        <button
+        <div
           key={channel.id}
+          role="button"
+          tabIndex={isPrivateAndNotMember ? -1 : 0}
           onClick={() => {
-            if (isPrivateAndNotMember) return; // Can't view private channels without joining
+            if (isPrivateAndNotMember) return;
             onSelectChannel(channel.id);
           }}
+          onKeyDown={(e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && !isPrivateAndNotMember) {
+              e.preventDefault();
+              onSelectChannel(channel.id);
+            }
+          }}
           className={clsx(
-            'w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 text-left transition-colors active:scale-[0.99]',
-            isPrivateAndNotMember ? 'opacity-70' : 'hover:border-slate-200 dark:hover:border-slate-600'
+            'w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 text-left transition-colors active:scale-[0.99] cursor-pointer',
+            isPrivateAndNotMember ? 'opacity-70 cursor-default' : 'hover:border-slate-200 dark:hover:border-slate-600'
           )}
         >
           <div className="flex items-start gap-3">
@@ -226,7 +234,7 @@ export default function ChannelList({ channels, userId, onSelectChannel }: Props
               </div>
             </div>
           </div>
-        </button>
+        </div>
         );
       })}
     </div>
