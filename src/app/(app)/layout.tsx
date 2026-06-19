@@ -2,6 +2,7 @@
 
 import BottomNav from '@/components/layout/BottomNav';
 import ScrollToTop from '@/components/ui/ScrollToTop';
+import ScrollRestoration from '@/components/ui/ScrollRestoration';
 import { ToastProvider } from '@/components/ui/Toast';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
         <BottomNav />
         <ScrollToTop />
+        <ScrollRestoration />
       </div>
     </ToastProvider>
   );

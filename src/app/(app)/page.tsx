@@ -9,6 +9,7 @@ import TopOfWeek from '@/components/news/TopOfWeek';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import { rankCards, interleaveBySourceType } from '@/lib/feed-ranking';
 import { evidenceKeyToLevel } from '@/lib/evidence';
+import { sanitizeFilterValue } from '@/lib/sanitize';
 import type { NewsCard, DailyBriefing as DailyBriefingType, Profile, EvidenceLevel } from '@/types/database';
 
 // Dynamic: page uses auth + searchParams, must be rendered per-request.
@@ -69,14 +70,9 @@ const fetchCachedCards = unstable_cache(
     }
 
     if (filters.q) {
-      const q = filters.q
-        .replace(/[,().\\]/g, '')
-        .replace(/%/g, '\\%')
-        .replace(/_/g, '\\_')
-        .trim()
-        .slice(0, 200);
+      const q = sanitizeFilterValue(filters.q);
       if (q) {
-        query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+        query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
       }
     }
 
@@ -100,8 +96,8 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   // Cached cards query + per-request auth + daily briefing, all in parallel
   const supabase = await createClient();
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
   const [cachedCards, { data: { user } }, briefingResult] = await Promise.all([
     fetchCachedCards({
       categories: activeCategories,

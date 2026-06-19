@@ -37,3 +37,31 @@ jobs:
             echo "::error::Cron-Aufruf fehlgeschlagen mit Status $HTTP_STATUS"
             exit 1
           fi
+
+  briefing:
+    name: Daily Briefing generieren
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: curate
+    # Einmal täglich nach dem Frühmorgen-Lauf (frische Artikel sind dann kuratiert),
+    # zusätzlich bei manuellem Start. Ohne diesen Job wird /api/briefing nie
+    # aufgerufen und das Daily Briefing bleibt leer.
+    if: github.event.schedule == '0 5 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Briefing-Endpoint aufrufen
+        run: |
+          BASE_URL="${{ secrets.APP_URL }}"
+          BASE_URL="${BASE_URL%/}"
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST "${BASE_URL}/api/briefing" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 120)
+
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response:"
+          cat /tmp/response.json
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Briefing-Aufruf fehlgeschlagen mit Status $HTTP_STATUS"
+            exit 1
+          fi

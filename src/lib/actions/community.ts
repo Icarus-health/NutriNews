@@ -174,6 +174,17 @@ export async function deleteChannelPost(postId: string) {
   return { success: true };
 }
 
+export async function getChannelPostReplies(parentPostId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('channel_posts')
+    .select('*, profile:user_id(id, full_name, avatar_url, role)')
+    .eq('parent_post_id', parentPostId)
+    .order('created_at', { ascending: true })
+    .limit(50);
+  return data ?? [];
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Schnellfragen Actions
 // ═══════════════════════════════════════════════════════════════

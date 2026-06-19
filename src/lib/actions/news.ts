@@ -3,16 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { rateLimit } from '@/lib/rate-limit';
-
-/** Escape special characters for PostgREST ilike filter strings */
-function sanitizeFilterValue(value: string): string {
-  return value
-    .replace(/[,().\\]/g, '')   // remove PostgREST filter-syntax characters
-    .replace(/%/g, '\\%')       // escape SQL LIKE wildcard %
-    .replace(/_/g, '\\_')       // escape SQL LIKE wildcard _
-    .trim()
-    .slice(0, 200);             // cap length to prevent oversized queries
-}
+import { sanitizeFilterValue } from '@/lib/sanitize';
 
 export async function toggleLike(newsCardId: string) {
   const supabase = await createClient();
@@ -159,6 +150,20 @@ export async function markShareRead(shareId: string) {
   return { success: true };
 }
 
+export async function markAllSharesRead() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('shares').update({ read: true })
+    .eq('receiver_id', user.id)
+    .eq('read', false);
+  if (error) return { error: 'Konnte nicht als gelesen markiert werden' };
+
+  revalidatePath('/inbox');
+  return { success: true };
+}
+
 export async function createNewsCard(data: {
   headline: string;
   snack_what: string;
@@ -275,7 +280,7 @@ export async function loadMoreCards(cursor: string, filters?: {
   if (filters?.q) {
     const q = sanitizeFilterValue(filters.q);
     if (q) {
-      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+      query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
     }
   }
 
@@ -355,7 +360,7 @@ export async function loadNewCards(sinceCursor: string, filters?: {
   if (filters?.q) {
     const q = sanitizeFilterValue(filters.q);
     if (q) {
-      query = query.or(`headline.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
+      query = query.or(`headline.ilike.%${q}%,kernbotschaft.ilike.%${q}%,snack_what.ilike.%${q}%,therapist_check.ilike.%${q}%`);
     }
   }
 
@@ -426,6 +431,20 @@ export async function createCollection(name: string, emoji: string) {
   return { success: true, id: data.id };
 }
 
+export async function deleteCollection(collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('collections').delete()
+    .eq('id', collectionId)
+    .eq('user_id', user.id);
+  if (error) return { error: 'Sammlung konnte nicht gelöscht werden' };
+
+  revalidatePath('/saved');
+  return { success: true };
+}
+
 export async function submitAppFeedback(type: string, message: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -477,6 +496,81 @@ export async function getNote(newsCardId: string) {
     .eq('news_card_id', newsCardId)
     .single();
   return data?.content ?? null;
+}
+
+export async function getUserCollections() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('collections')
+    .select('id, name, emoji, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
+export async function getCardCollectionIds(newsCardId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // !inner join with collections table — RLS on collections already restricts to user's own rows,
+  // so only collection_items belonging to this user are returned.
+  const { data } = await supabase
+    .from('collection_items')
+    .select('collection_id, collections!inner(id)')
+    .eq('news_card_id', newsCardId);
+  return data?.map(r => r.collection_id) ?? [];
+}
+
+export async function addToCollection(newsCardId: string, collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { data: col } = await supabase
+    .from('collections').select('id').eq('id', collectionId).eq('user_id', user.id).single();
+  if (!col) return { error: 'Sammlung nicht gefunden' };
+
+  const { error } = await supabase.from('collection_items').upsert(
+    { collection_id: collectionId, news_card_id: newsCardId },
+    { onConflict: 'collection_id,news_card_id' }
+  );
+  if (error) return { error: 'Hinzufügen fehlgeschlagen' };
+  return { success: true };
+}
+
+export async function removeFromCollection(newsCardId: string, collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Nicht angemeldet' };
+
+  const { error } = await supabase.from('collection_items').delete()
+    .eq('collection_id', collectionId)
+    .eq('news_card_id', newsCardId);
+  if (error) return { error: 'Entfernen fehlgeschlagen' };
+  return { success: true };
+}
+
+export async function getCollectionItems(collectionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: col } = await supabase
+    .from('collections').select('id').eq('id', collectionId).eq('user_id', user.id).single();
+  if (!col) return [];
+
+  const { data } = await supabase
+    .from('collection_items')
+    .select('news_cards(*)')
+    .eq('collection_id', collectionId)
+    .order('created_at', { ascending: false });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data?.map(item => item.news_cards).filter(Boolean) ?? []) as unknown as import('@/types/database').NewsCard[];
 }
 
 export async function getCardsByIds(ids: string[]) {

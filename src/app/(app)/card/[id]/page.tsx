@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import NewsCardComponent from '@/components/news/NewsCard';
+import BackButton from '@/components/ui/BackButton';
 import { getCategoryLabel, getCategoryStyle } from '@/lib/categories';
 import type { NewsCard } from '@/types/database';
 import type { Metadata } from 'next';
@@ -66,39 +67,40 @@ export default async function CardPage({ params }: PageProps) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // like_count is denormalized on the card row — no extra join needed
-  const enrichedCard: NewsCard = { ...card };
+  // like_count is denormalized on news_cards (kept in sync by DB trigger)
+  const enrichedCard: NewsCard = { ...card, like_count: card.like_count ?? 0 };
 
-  // Fetch similar articles and user data in parallel
-  const similarPromise = supabase
-    .from('news_cards')
-    .select('id, headline, category_main, practice_relevance_score')
-    .eq('status', 'published')
-    .eq('category_main', card.category_main)
-    .neq('id', id)
-    .order('published_at', { ascending: false })
-    .limit(3);
+  // Fetch similar articles and user like/bookmark status in parallel
+  const [{ data: similarCards }, userLikeResult, userBookmarkResult] = await Promise.all([
+    supabase
+      .from('news_cards')
+      .select('id, headline, category_main, practice_relevance_score')
+      .eq('status', 'published')
+      .eq('category_main', card.category_main)
+      .neq('id', id)
+      .order('published_at', { ascending: false })
+      .limit(3),
+    user
+      ? supabase.from('likes').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single()
+      : Promise.resolve(null),
+    user
+      ? supabase.from('bookmarks').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single()
+      : Promise.resolve(null),
+  ]);
 
   if (user) {
-    const [{ data: userLike }, { data: userBookmark }] = await Promise.all([
-      supabase.from('likes').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single(),
-      supabase.from('bookmarks').select('user_id').eq('user_id', user.id).eq('news_card_id', id).single(),
-    ]);
-    enrichedCard.user_has_liked = !!userLike;
-    enrichedCard.user_has_bookmarked = !!userBookmark;
+    enrichedCard.user_has_liked = !!userLikeResult?.data;
+    enrichedCard.user_has_bookmarked = !!userBookmarkResult?.data;
   }
-
-  const { data: similarCards } = await similarPromise;
 
   return (
     <div className="pt-2">
       <div className="px-4 mb-3">
-        <a
-          href="/"
+        <BackButton
+          fallbackHref="/"
+          label="← Zurück zum Feed"
           className="text-[13px] text-forest-600 dark:text-forest-400 font-medium hover:text-forest-700 transition-colors"
-        >
-          &larr; Zurück zum Feed
-        </a>
+        />
       </div>
       <div className="px-4">
         <NewsCardComponent

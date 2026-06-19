@@ -20,15 +20,19 @@ export default async function CommunityRoute() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Load channels
-  let { data: channels } = await supabase
-    .from('channels')
-    .select('*')
-    .order('name');
+  // Phase 1: channels + quick questions are independent — fetch in parallel
+  const [{ data: channels }, { data: questions }] = await Promise.all([
+    supabase.from('channels').select('*').order('name'),
+    supabase
+      .from('quick_questions')
+      .select('*, profile:user_id(id, full_name, avatar_url)')
+      .order('created_at', { ascending: false })
+      .limit(30),
+  ]);
 
   let channelList: Channel[] = channels ?? [];
+  let questionList: QuickQuestion[] = (questions ?? []) as QuickQuestion[];
 
-  // If no channels exist yet, we still show the default list (seeding happens via SQL)
   if (channelList.length === 0) {
     channelList = DEFAULT_CHANNELS.map((c, i) => ({
       id: `default-${i}`,
@@ -42,96 +46,80 @@ export default async function CommunityRoute() {
       is_member: false,
       created_at: new Date().toISOString(),
     }));
-  } else if (user) {
-    // Load membership info
-    const { data: memberships } = await supabase
-      .from('channel_members')
-      .select('channel_id')
-      .eq('user_id', user.id);
+  }
 
-    const memberSet = new Set(memberships?.map(m => m.channel_id));
+  const hasRealChannels = channelList.some(c => !c.id.startsWith('default-'));
+  const channelsToLoad = channelList.filter(c => !c.id.startsWith('default-')).slice(0, 8);
+  const questionIds = questionList.map(q => q.id);
+  const firstQuestionIds = questionList.slice(0, 5).map(q => q.id).filter(id => !id.startsWith('default-'));
+
+  // Phase 2: memberships, votes, answers and channel posts are all independent — run in parallel
+  const [
+    [membershipResult, sameVotesResult, userVotesResult, answersResult],
+    postResults,
+  ] = await Promise.all([
+    Promise.all([
+      hasRealChannels && user
+        ? supabase.from('channel_members').select('channel_id').eq('user_id', user.id)
+        : Promise.resolve({ data: null as { channel_id: string }[] | null }),
+      questionIds.length > 0
+        ? supabase.from('same_question_votes').select('question_id').in('question_id', questionIds)
+        : Promise.resolve({ data: null as { question_id: string }[] | null }),
+      questionIds.length > 0 && user
+        ? supabase.from('same_question_votes').select('question_id').eq('user_id', user.id).in('question_id', questionIds)
+        : Promise.resolve({ data: null as { question_id: string }[] | null }),
+      firstQuestionIds.length > 0
+        ? supabase.from('quick_answers').select('*, profile:user_id(id, full_name, avatar_url)').in('question_id', firstQuestionIds).order('created_at', { ascending: true }).limit(50)
+        : Promise.resolve({ data: null as QuickAnswer[] | null }),
+    ]),
+    Promise.all(
+      channelsToLoad.map(channel =>
+        supabase
+          .from('channel_posts')
+          .select('*, profile:user_id(id, full_name, avatar_url, role)')
+          .eq('channel_id', channel.id)
+          .is('parent_post_id', null)
+          .order('created_at', { ascending: false })
+          .limit(20)
+          .then(({ data }) => ({ channelId: channel.id, posts: (data ?? []) as ChannelPost[] }))
+      )
+    ),
+  ]);
+
+  // Enrich channel list with membership
+  if (membershipResult?.data) {
+    const memberSet = new Set(membershipResult.data.map(m => m.channel_id));
     channelList = channelList.map(c => ({ ...c, is_member: memberSet.has(c.id) }));
   }
 
-  // Load recent posts for each channel (top 20 per channel)
+  // Build channel posts map
   const channelPosts: Record<string, ChannelPost[]> = {};
-  for (const channel of channelList.slice(0, 8)) {
-    if (channel.id.startsWith('default-')) continue;
-
-    const { data: posts } = await supabase
-      .from('channel_posts')
-      .select('*, profile:user_id(id, full_name, avatar_url, role)')
-      .eq('channel_id', channel.id)
-      .is('parent_post_id', null)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    channelPosts[channel.id] = (posts ?? []) as ChannelPost[];
+  for (const result of postResults) {
+    channelPosts[result.channelId] = result.posts;
   }
 
-  // Load quick questions
-  const { data: questions } = await supabase
-    .from('quick_questions')
-    .select('*, profile:user_id(id, full_name, avatar_url)')
-    .order('created_at', { ascending: false })
-    .limit(30);
-
-  // Enrich with same_question counts
-  let questionList: QuickQuestion[] = (questions ?? []) as QuickQuestion[];
-  if (questionList.length > 0) {
-    const questionIds = questionList.map(q => q.id);
-    const { data: sameVotes } = await supabase
-      .from('same_question_votes')
-      .select('question_id')
-      .in('question_id', questionIds);
-
+  // Enrich questions with same_question counts
+  if (questionIds.length > 0) {
     const voteCountMap: Record<string, number> = {};
-    sameVotes?.forEach(v => {
+    sameVotesResult?.data?.forEach(v => {
       voteCountMap[v.question_id] = (voteCountMap[v.question_id] ?? 0) + 1;
     });
+    const userVoteSet = new Set(userVotesResult?.data?.map(v => v.question_id));
 
-    if (user) {
-      const { data: userVotes } = await supabase
-        .from('same_question_votes')
-        .select('question_id')
-        .eq('user_id', user.id)
-        .in('question_id', questionIds);
-
-      const userVoteSet = new Set(userVotes?.map(v => v.question_id));
-
-      questionList = questionList.map(q => ({
-        ...q,
-        same_question_count: voteCountMap[q.id] ?? 0,
-        user_has_same_question: userVoteSet.has(q.id),
-      }));
-    } else {
-      questionList = questionList.map(q => ({
-        ...q,
-        same_question_count: voteCountMap[q.id] ?? 0,
-      }));
-    }
+    questionList = questionList.map(q => ({
+      ...q,
+      same_question_count: voteCountMap[q.id] ?? 0,
+      ...(user ? { user_has_same_question: userVoteSet.has(q.id) } : {}),
+    }));
   }
 
-  // Load answers for the first 5 questions (server-side pre-fetch)
+  // Build answers map
   const answersMap: Record<string, QuickAnswer[]> = {};
-  const questionsToLoad = questionList.slice(0, 5);
-  if (questionsToLoad.length > 0) {
-    const questionIds = questionsToLoad.map(q => q.id).filter(id => !id.startsWith('default-'));
-    if (questionIds.length > 0) {
-      const { data: allAnswers } = await supabase
-        .from('quick_answers')
-        .select('*, profile:user_id(id, full_name, avatar_url)')
-        .in('question_id', questionIds)
-        .order('created_at', { ascending: true })
-        .limit(50);
-
-      for (const answer of (allAnswers ?? []) as QuickAnswer[]) {
-        if (!answersMap[answer.question_id]) {
-          answersMap[answer.question_id] = [];
-        }
-        answersMap[answer.question_id].push(answer);
-      }
+  for (const answer of (answersResult?.data ?? []) as QuickAnswer[]) {
+    if (!answersMap[answer.question_id]) {
+      answersMap[answer.question_id] = [];
     }
+    answersMap[answer.question_id].push(answer);
   }
 
   return (
