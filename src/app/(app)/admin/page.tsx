@@ -11,7 +11,7 @@ export default async function Admin() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*')
+    .select('role')
     .eq('id', user.id)
     .single();
 

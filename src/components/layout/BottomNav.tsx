@@ -95,18 +95,20 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
     }
   }, [pathname]);
 
+  // restoreScroll: ScrollRestoration setzt die Position selbst — Next soll
+  // hier nicht vorab nach oben springen (verhindert Flackern beim Tab-Wechsel).
   const navItems = [
-    { href: '/',          label: t('nav.home'),      icon: Home,    dot: false,        badge: 0 },
-    { href: '/community', label: t('nav.community'), icon: Users,   dot: communityDot, badge: 0 },
-    { href: '/inbox',     label: t('nav.inbox'),     icon: Inbox,   dot: false,        badge: inboxUnread },
-    { href: '/saved',     label: t('nav.saved'),     icon: Bookmark,dot: false,        badge: ux.readLaterQueue.length },
-    { href: '/profile',   label: t('nav.profile'),   icon: User,    dot: false,        badge: 0 },
+    { href: '/',          label: t('nav.home'),      icon: Home,    dot: false,        badge: 0,                        restoreScroll: true },
+    { href: '/community', label: t('nav.community'), icon: Users,   dot: communityDot, badge: 0,                        restoreScroll: true },
+    { href: '/inbox',     label: t('nav.inbox'),     icon: Inbox,   dot: false,        badge: inboxUnread,              restoreScroll: true },
+    { href: '/saved',     label: t('nav.saved'),     icon: Bookmark,dot: false,        badge: ux.readLaterQueue.length, restoreScroll: true },
+    { href: '/profile',   label: t('nav.profile'),   icon: User,    dot: false,        badge: 0,                        restoreScroll: false },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-20 glass border-t border-slate-200/60 dark:border-slate-700/60 safe-bottom max-w-2xl mx-auto">
       <div className="flex">
-        {navItems.map(({ href, label, icon: Icon, dot, badge }) => {
+        {navItems.map(({ href, label, icon: Icon, dot, badge, restoreScroll }) => {
           const active = pathname === href;
           const ariaLabel = badge > 0
             ? `${label}, ${badge} ungelesen`
@@ -117,6 +119,7 @@ export default function BottomNav({ isAdmin: isAdminProp }: { isAdmin?: boolean 
             <Link
               key={href}
               href={href}
+              scroll={!restoreScroll}
               aria-current={active ? 'page' : undefined}
               aria-label={ariaLabel}
               className={clsx(

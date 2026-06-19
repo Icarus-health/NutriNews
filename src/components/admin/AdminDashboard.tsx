@@ -4,11 +4,10 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Trash2, ChevronDown, ChevronUp, Zap, RefreshCw, CheckCheck, AlertCircle, Info, MessageSquare, Activity, Wifi, WifiOff } from 'lucide-react';
 import { clsx } from 'clsx';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, getCategoryLabel, getCategoryStyle } from '@/lib/categories';
 import { EVIDENCE_CONFIG } from '@/lib/evidence';
 import { createNewsCard, publishNewsCard, deleteNewsCard } from '@/lib/actions/news';
 import { createClient } from '@/lib/supabase/client';
-import { getCategoryStyle } from '@/lib/categories';
 import { sanitizeExternalUrl } from '@/lib/url';
 import type { NewsCard, EvidenceLevel } from '@/types/database';
 
@@ -283,7 +282,7 @@ export default function AdminDashboard({ drafts: initialDrafts }: Props) {
                       <div className="p-3">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className={clsx('text-xs font-semibold px-2 py-0.5 rounded-full', getCategoryStyle(d.category_main))}>
-                            {d.category_main}
+                            {getCategoryLabel(d.category_main)}
                           </span>
                           <div className="flex items-center gap-1.5">
                             {d.curated_by_agent && (

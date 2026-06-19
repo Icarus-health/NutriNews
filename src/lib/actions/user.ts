@@ -27,11 +27,11 @@ export async function deleteAccount(): Promise<{ error?: string }> {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  const tables = ['likes', 'bookmarks', 'notes', 'shares', 'card_verifications', 'app_feedback'] as const;
-  for (const table of tables) {
-    await admin.from(table).delete().eq('user_id', user.id);
-  }
-  await admin.from('comments').delete().eq('user_id', user.id);
+  await Promise.all(
+    (['likes', 'bookmarks', 'notes', 'shares', 'card_verifications', 'app_feedback', 'comments'] as const).map(
+      table => admin.from(table).delete().eq('user_id', user.id)
+    )
+  );
 
   // Delete auth user — cascades to profiles via FK ON DELETE CASCADE
   const { error } = await admin.auth.admin.deleteUser(user.id);

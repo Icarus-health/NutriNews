@@ -1,6 +1,8 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { getCategoryLabel } from '@/lib/categories';
 import type { Metadata } from 'next';
 
@@ -10,15 +12,20 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
+// Deduplicated per-request: generateMetadata and the page share one DB call
+const getProfile = cache(async (id: string) => {
   const supabase = await createClient();
-  const { data: profile } = await supabase
+  const { data } = await supabase
     .from('profiles')
-    .select('full_name, alias')
+    .select('id, full_name, alias, avatar_url, role, setting, preferred_categories, created_at')
     .eq('id', id)
     .single();
+  return data;
+});
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const profile = await getProfile(id);
   const name = profile?.alias || profile?.full_name || 'Nutzer';
   return {
     title: `${name} — NutriNews`,
@@ -40,19 +47,16 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, full_name, alias, avatar_url, role, setting, preferred_categories, created_at')
-    .eq('id', id)
-    .single();
+  // Profile (deduped with generateMetadata via cache) and activity counts in parallel
+  const [profile, [{ count: verifications }, { count: comments }]] = await Promise.all([
+    getProfile(id),
+    Promise.all([
+      supabase.from('card_verifications').select('*', { count: 'exact', head: true }).eq('user_id', id),
+      supabase.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', id),
+    ]),
+  ]);
 
   if (!profile) notFound();
-
-  // Load activity counts
-  const [{ count: verifications }, { count: comments }] = await Promise.all([
-    supabase.from('card_verifications').select('*', { count: 'exact', head: true }).eq('user_id', id),
-    supabase.from('comments').select('*', { count: 'exact', head: true }).eq('user_id', id),
-  ]);
 
   const displayName = profile.alias || profile.full_name || 'Anonym';
   const memberSince = new Date(profile.created_at).toLocaleDateString('de-DE', {
@@ -61,7 +65,19 @@ export default async function PublicProfilePage({ params }: PageProps) {
   });
 
   return (
-    <div className="px-4 pt-6 pb-24">
+    <div>
+      <header className="sticky top-0 z-10 glass-strong border-b border-slate-200/60 dark:border-slate-700/60 safe-top">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Link
+            href="/community"
+            className="text-[13px] text-forest-600 dark:text-forest-400 font-medium hover:text-forest-700 transition-colors"
+          >
+            &larr; Community
+          </Link>
+          <h1 className="text-[17px] font-bold text-slate-900 dark:text-slate-100 tracking-tight ml-2">{displayName}</h1>
+        </div>
+      </header>
+      <div className="px-4 pt-6 pb-24">
       {/* Avatar & Name */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-16 h-16 rounded-full bg-forest-100 dark:bg-forest-900/30 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -120,6 +136,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
         <span className="text-[11px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full">
           {profile.role === 'admin' ? 'Admin' : 'Fachkraft'}
         </span>
+      </div>
       </div>
     </div>
   );

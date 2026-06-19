@@ -17,13 +17,19 @@ const fetchTopCards = unstable_cache(
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from('news_cards')
-      .select('id, headline, category_main, practice_relevance_score, published_at')
+      .select('id, headline, category_main, practice_relevance_score, like_count, published_at')
       .eq('status', 'published')
-      .gte('practice_relevance_score', 4)
+      .gte('practice_relevance_score', 3)
       .gte('published_at', cutoff)
-      .order('practice_relevance_score', { ascending: false })
-      .limit(3);
-    return (data ?? []) as Pick<NewsCard, 'id' | 'headline' | 'category_main' | 'practice_relevance_score' | 'published_at'>[];
+      .order('published_at', { ascending: false })
+      .limit(50);
+    if (!data || data.length === 0) return [];
+    // Score = practice_relevance * 1.5 + log(like_count + 1)
+    const scored = data.map(c => ({
+      ...c,
+      _score: (c.practice_relevance_score ?? 0) * 1.5 + Math.log((c.like_count ?? 0) + 1),
+    })).sort((a, b) => b._score - a._score).slice(0, 3);
+    return scored as (Pick<NewsCard, 'id' | 'headline' | 'category_main' | 'practice_relevance_score' | 'like_count' | 'published_at'> & { _score: number })[];
   },
   ['top-of-week'],
   { tags: ['news-cards'], revalidate: 3600 },
@@ -38,6 +44,7 @@ export default async function TopOfWeek() {
     headline: card.headline,
     categoryStyle: getCategoryStyle(card.category_main),
     categoryLabel: getCategoryLabel(card.category_main),
+    likeCount: card.like_count ?? 0,
     rank: i,
   }));
 

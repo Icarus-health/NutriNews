@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect, useCallback, memo } from 'react';
 import { useMinuteTick } from '@/hooks/useMinuteTick';
-import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, ChevronDown, Link2, PenLine, Printer, EyeOff, Languages, Clock } from 'lucide-react';
+import { Heart, Bookmark, Send, ExternalLink, MessageCircle, RotateCcw, ChevronRight, ChevronDown, Link2, PenLine, Printer, EyeOff, Languages, FolderPlus, Check, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -10,7 +10,7 @@ const CommentSection = dynamic(() => import('./CommentSection'), { ssr: false })
 const CardVerification = dynamic(() => import('./CardVerification'), { ssr: false });
 import { EVIDENCE_CONFIG, getEvidenceLabel } from '@/lib/evidence';
 import { getCategoryStyle, getCategoryLabel, getCategoryCardAccent } from '@/lib/categories';
-import { toggleLike, toggleBookmark, upsertNote, getNote } from '@/lib/actions/news';
+import { toggleLike, toggleBookmark, upsertNote, getNote, getUserCollections, getCardCollectionIds, addToCollection, removeFromCollection } from '@/lib/actions/news';
 import { getCardVerifications } from '@/lib/actions/community';
 import { getCardTranslation } from '@/lib/actions/translate';
 import type { CardTranslation } from '@/lib/translate-fields';
@@ -84,6 +84,10 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState('');
   const [hasNote, setHasNote] = useState(false);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const [collections, setCollections] = useState<{ id: string; name: string; emoji: string }[] | null>(null);
+  const [cardCollectionIds, setCardCollectionIds] = useState<Set<string>>(new Set());
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
   const [verifications, setVerifications] = useState<{ praxisrelevant: number; fachlich_korrekt: number; korrektur_noetig: number; quelle_zweifelhaft: number } | null>(null);
   const [translation, setTranslation] = useState<CardTranslation | null>(null);
   const [translating, setTranslating] = useState(false);
@@ -304,6 +308,36 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
     }, 1500);
   }, [noteKey, card.id, userId]);
 
+  async function handleOpenCollectionPicker(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!userId) { onRequireAuth?.(); return; }
+    setShowCollectionPicker(p => !p);
+    if (collections !== null) return;
+    setCollectionsLoading(true);
+    const [cols, collectionIds] = await Promise.all([
+      getUserCollections(),
+      getCardCollectionIds(card.id),
+    ]);
+    setCollections(cols as { id: string; name: string; emoji: string }[]);
+    setCardCollectionIds(new Set(collectionIds));
+    setCollectionsLoading(false);
+  }
+
+  async function handleToggleCollection(e: React.MouseEvent, collectionId: string) {
+    e.stopPropagation();
+    const isIn = cardCollectionIds.has(collectionId);
+    setCardCollectionIds(prev => {
+      const next = new Set(prev);
+      if (isIn) next.delete(collectionId); else next.add(collectionId);
+      return next;
+    });
+    if (isIn) {
+      await removeFromCollection(card.id, collectionId);
+    } else {
+      await addToCollection(card.id, collectionId);
+    }
+  }
+
   function handlePrint(e: React.MouseEvent) {
     e.stopPropagation();
     const noteHtml = note.trim()
@@ -497,7 +531,13 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
 
             {/* Tap hint — kompakter CTA */}
             <div className="px-4 pb-2">
-              <div className="flex items-center justify-center gap-1 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-1.5 rounded-xl transition-colors">
+              <div className="flex items-center justify-center gap-1.5 bg-forest-600 dark:bg-forest-700 hover:bg-forest-700 dark:hover:bg-forest-600 py-1.5 rounded-xl transition-colors">
+                {card.read_time_sec && card.read_time_sec > 0 && (
+                  <>
+                    <span className="text-[10px] font-medium text-white/60">~{Math.ceil(card.read_time_sec / 60)} Min</span>
+                    <span className="text-white/30 text-[10px]">·</span>
+                  </>
+                )}
                 <span className="text-[12px] font-bold text-white">{t('card.readDetails')}</span>
                 <ChevronRight size={13} strokeWidth={2.5} className="text-white/80" />
               </div>
@@ -778,20 +818,31 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
               </div>
             )}
 
-            {/* Personal note + Read Later */}
-            <div className="px-4 pb-3 flex items-start justify-between gap-3">
-              <div className="flex-1">
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowNote(n => !n); }}
-                className={clsx(
-                  'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
-                  showNote || hasNote ? 'text-amber-500' : 'text-slate-400 hover:text-amber-400'
-                )}
-              >
-                <PenLine size={14} strokeWidth={2} />
-                {showNote ? t('card.hideNote') : hasNote ? t('card.editNote') : t('card.addNote')}
-                {hasNote && !showNote && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />}
-              </button>
+            {/* Personal note + Read later */}
+            <div className="px-4 pb-3">
+              <div className="flex items-center gap-3 mb-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowNote(n => !n); }}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+                    showNote || hasNote ? 'text-amber-500' : 'text-slate-400 hover:text-amber-400'
+                  )}
+                >
+                  <PenLine size={14} strokeWidth={2} />
+                  {showNote ? t('card.hideNote') : hasNote ? t('card.editNote') : t('card.addNote')}
+                  {hasNote && !showNote && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); ux.toggleReadLater(card.id); }}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+                    ux.isInReadLater(card.id) ? 'text-sky-500' : 'text-slate-400 hover:text-sky-400'
+                  )}
+                >
+                  <Clock size={14} strokeWidth={2} />
+                  {ux.isInReadLater(card.id) ? 'Aus Liste entfernen' : 'Später lesen'}
+                </button>
+              </div>
               {showNote && (
                 <div className="mt-2 animate-fade-in" onClick={e => e.stopPropagation()}>
                   <textarea
@@ -803,23 +854,61 @@ function NewsCard({ card, userId, onRequireAuth, onShare, defaultFlipped = false
                   />
                 </div>
               )}
-              </div>
-              {/* Read Later toggle */}
-              <button
-                onClick={(e) => { e.stopPropagation(); vibrate(ux.isInReadLater(card.id) ? 3 : [4,1,4]); ux.toggleReadLater(card.id); }}
-                aria-label={ux.isInReadLater(card.id) ? 'Aus "Später lesen" entfernen' : 'Für später merken'}
-                aria-pressed={ux.isInReadLater(card.id)}
-                className={clsx(
-                  'flex items-center gap-1 text-[12px] font-semibold transition-colors px-2 py-1 rounded-lg shrink-0 mt-0.5',
-                  ux.isInReadLater(card.id)
-                    ? 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20'
-                    : 'text-slate-400 hover:text-sky-500 hover:bg-sky-50/60 dark:hover:bg-sky-900/10'
-                )}
-              >
-                <Clock size={14} strokeWidth={ux.isInReadLater(card.id) ? 2.5 : 1.5} />
-                <span className="hidden sm:inline">{ux.isInReadLater(card.id) ? 'Gemerkt' : 'Später'}</span>
-              </button>
             </div>
+
+            {/* Add to collection */}
+            {userId && (
+              <div className="px-4 pb-3">
+                <button
+                  onClick={handleOpenCollectionPicker}
+                  className={clsx(
+                    'flex items-center gap-1.5 text-[12px] font-semibold transition-colors',
+                    showCollectionPicker || cardCollectionIds.size > 0
+                      ? 'text-forest-600 dark:text-forest-400'
+                      : 'text-slate-400 hover:text-forest-500'
+                  )}
+                >
+                  <FolderPlus size={14} strokeWidth={2} />
+                  {cardCollectionIds.size > 0
+                    ? `In ${cardCollectionIds.size} Sammlung${cardCollectionIds.size > 1 ? 'en' : ''}`
+                    : 'Zur Sammlung hinzufügen'}
+                </button>
+                {showCollectionPicker && (
+                  <div className="mt-2 animate-fade-in" onClick={e => e.stopPropagation()}>
+                    {collectionsLoading ? (
+                      <p className="text-[12px] text-slate-400 py-2">Lade…</p>
+                    ) : !collections || collections.length === 0 ? (
+                      <p className="text-[12px] text-slate-400 py-2">
+                        Noch keine Sammlungen.{' '}
+                        <a href="/saved" className="text-forest-600 underline">Erstelle eine</a>
+                      </p>
+                    ) : (
+                      <div className="space-y-1">
+                        {collections.map(col => {
+                          const isIn = cardCollectionIds.has(col.id);
+                          return (
+                            <button
+                              key={col.id}
+                              onClick={e => handleToggleCollection(e, col.id)}
+                              className={clsx(
+                                'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors text-left',
+                                isIn
+                                  ? 'bg-forest-50 dark:bg-forest-900/30 text-forest-700 dark:text-forest-300'
+                                  : 'bg-slate-50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                              )}
+                            >
+                              <span className="text-base">{col.emoji}</span>
+                              <span className="flex-1 truncate">{col.name}</span>
+                              {isIn && <Check size={13} className="text-forest-600 dark:text-forest-400 flex-shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Source footer */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100/80 dark:border-slate-700/60">

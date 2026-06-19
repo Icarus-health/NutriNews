@@ -3,7 +3,8 @@
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, WifiOff, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { RefreshCw, WifiOff, Loader2, CheckCircle2, Flame, Users, Bookmark } from 'lucide-react';
 import NewsCardComponent from './NewsCard';
 import { loadMoreCards, loadNewCards } from '@/lib/actions/news';
 import { getCardTranslations } from '@/lib/actions/translate';
@@ -36,11 +37,15 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [pendingCards, setPendingCards] = useState<import('@/types/database').NewsCard[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
   // Batch-Übersetzungen (locale != de): ein Server-Call pro Karten-Batch
   // statt ein Call pro Karte. requested verhindert doppelte Anfragen.
   const [translations, setTranslations] = useState<Record<string, CardTranslation>>({});
   const requestedTranslations = useRef<Set<string>>(new Set());
+  // Stable refs for use inside event listeners / intervals (avoid stale closures)
+  const cardsRef = useRef(initialCards);
+  const filtersRef = useRef(filters);
 
   // Pull-to-refresh — use refs to avoid re-renders on every touchmove
   const pullStartY = useRef(0);
@@ -50,7 +55,12 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
   useEffect(() => {
     setCards(initialCards);
     setHasMore(initialCards.length >= 15);
+    setPendingCards([]);
+    cardsRef.current = initialCards;
   }, [initialCards]);
+
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { cardsRef.current = cards; }, [cards]);
 
   // Online/offline detection
   useEffect(() => {
@@ -64,6 +74,39 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
       window.removeEventListener('offline', goOffline);
     };
   }, []);
+
+  // Check for new articles on visibility change and every 15 min — shows a banner instead of
+  // silently auto-prepending (lets the user decide when to refresh their reading position).
+  useEffect(() => {
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || !isOnline) return;
+      const latestTs = cardsRef.current[0]?.published_at;
+      if (!latestTs) return;
+      try {
+        const result = await loadNewCards(latestTs, filtersRef.current);
+        if (result.cards.length === 0) return;
+        const known = new Set(cardsRef.current.map(c => c.id));
+        const fresh = result.cards.filter(c => !known.has(c.id));
+        if (fresh.length > 0) setPendingCards(fresh);
+      } catch { /* offline or transient error */ }
+    };
+    document.addEventListener('visibilitychange', check);
+    const interval = setInterval(check, 15 * 60 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', check);
+      clearInterval(interval);
+    };
+  }, [isOnline]);
+
+  function handleLoadPending() {
+    if (pendingCards.length === 0) return;
+    setCards(prev => {
+      const known = new Set(prev.map(c => c.id));
+      return [...pendingCards.filter(c => !known.has(c.id)), ...prev];
+    });
+    setPendingCards([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   // App badge: unread count (Badging API, iOS 16.4+ when installed as PWA)
   useEffect(() => {
@@ -244,6 +287,17 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
         </div>
       </div>
 
+      {/* New articles banner — appears when fresh content is detected */}
+      {pendingCards.length > 0 && (
+        <button
+          onClick={handleLoadPending}
+          className="w-full flex items-center justify-center gap-2 mb-3 py-2.5 bg-forest-700 text-white text-[13px] font-semibold rounded-2xl shadow-lg shadow-forest-900/20 animate-fade-in hover:bg-forest-800 active:scale-[0.98] transition-all"
+        >
+          <RefreshCw size={14} />
+          {pendingCards.length === 1 ? '1 neuer Artikel' : `${pendingCards.length} neue Artikel`}
+        </button>
+      )}
+
       {/* Offline banner */}
       {!isOnline && (
         <div className="flex items-center gap-2 px-4 py-2.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/30 text-amber-700 dark:text-amber-400 text-[13px] font-medium animate-fade-in">
@@ -278,6 +332,54 @@ export default function NewsFeed({ initialCards, userId, filters }: Props) {
           )}
         </div>
       )}
+
+      {/* End-of-feed state — appears when all available articles are loaded */}
+      {!hasMore && cards.length > 0 && (() => {
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayReads = ux.readHistory.filter(e => e.timestamp >= todayStart.getTime()).length;
+        const streakDays = ux.streak.days;
+        return (
+          <div className="mt-4 mb-2 mx-1 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/60 dark:from-slate-800/60 dark:to-slate-800/30 border border-slate-200/60 dark:border-slate-700/30 px-5 py-6 flex flex-col items-center text-center">
+            <div className="w-11 h-11 rounded-full bg-forest-100 dark:bg-forest-900/40 flex items-center justify-center mb-3">
+              <CheckCircle2 size={22} className="text-forest-600 dark:text-forest-400" />
+            </div>
+            <p className="text-[14px] font-bold text-slate-700 dark:text-slate-200">
+              Alle Artikel gelesen
+            </p>
+            {todayReads > 0 && (
+              <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-1">
+                {todayReads} {todayReads === 1 ? 'Artikel' : 'Artikel'} heute gelesen
+                {streakDays >= 2 && <span className="ml-1.5 text-orange-500">🔥 {streakDays} Tage</span>}
+              </p>
+            )}
+            <div className="flex gap-2 mt-4">
+              <Link
+                href="/community"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-forest-700 text-white text-[12px] font-semibold hover:bg-forest-800 transition-colors"
+              >
+                <Users size={13} />
+                Community
+              </Link>
+              <Link
+                href="/saved"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-[12px] font-semibold hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+              >
+                <Bookmark size={13} />
+                Gespeichert
+              </Link>
+              {streakDays >= 1 && (
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-orange-50 dark:bg-orange-900/20 border border-orange-200/60 dark:border-orange-800/30 text-orange-600 dark:text-orange-400 text-[12px] font-semibold hover:bg-orange-100 transition-colors"
+                >
+                  <Flame size={13} />
+                  Streak
+                </Link>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {shareCardId && (
         <ShareModal
