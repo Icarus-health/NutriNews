@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       locale: 'de_DE',
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: card.headline,
       description,
     },
