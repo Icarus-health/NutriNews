@@ -7,6 +7,8 @@ import { TRANSLATABLE_FIELDS as FIELDS, type CardTranslation } from '@/lib/trans
 
 const LANG_NAMES: Record<string, string> = { en: 'English' };
 
+const anthropic = new Anthropic();
+
 function anonClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -159,7 +161,6 @@ async function translateFieldsBatch(
   sources: { id: string; fields: CardTranslation }[],
   lang: string,
 ): Promise<{ id: string; fields: CardTranslation }[]> {
-  const anthropic = new Anthropic();
   const target = LANG_NAMES[lang] ?? lang;
 
   const response = await anthropic.messages.create({
@@ -192,7 +193,6 @@ async function translateFieldsBatch(
 }
 
 async function translateFields(source: CardTranslation, lang: string): Promise<CardTranslation> {
-  const anthropic = new Anthropic();
   const target = LANG_NAMES[lang] ?? lang;
 
   const response = await anthropic.messages.create({

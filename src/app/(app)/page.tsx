@@ -96,8 +96,8 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   // Cached cards query + per-request auth + daily briefing, all in parallel
   const supabase = await createClient();
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
   const [cachedCards, { data: { user } }, briefingResult] = await Promise.all([
     fetchCachedCards({
       categories: activeCategories,
